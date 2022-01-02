@@ -1,0 +1,7 @@
+Package: nubomanagement-img
+Version: %Version%
+Architecture: all
+Recommends:
+Maintainer: NuboSoftware <alexander@nubosoftware.com>
+Section: main
+Description: images of android file system

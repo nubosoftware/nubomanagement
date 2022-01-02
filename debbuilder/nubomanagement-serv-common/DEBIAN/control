@@ -1,0 +1,8 @@
+Package: nubomanagement-serv-common
+Version: %Version%
+Architecture: all
+Depends: nubomanagement-serv-js(= %Js_Version%), nubomanagement-serv-node-modules(= %Node_modules_Version%), nubomanagement-serv
+Recommends:
+Maintainer: NuboSoftware <alexander@nubosoftware.com>
+Section: main
+Description: nubo management web service that run in internal network

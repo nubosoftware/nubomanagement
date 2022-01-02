@@ -1,0 +1,8 @@
+Package: nubomanagement-serv-node-modules
+Version: %Version%
+Architecture: all
+Depends: nodejs(>=8.11.2), nubomanagement-serv-js
+Recommends:
+Maintainer: NuboSoftware <alexander@nubosoftware.com>
+Section: main
+Description: nubo management web service that run in internal network

@@ -1,0 +1,22 @@
+#!/bin/sh
+
+chown 1000.1000 -R /opt/nubomanagement
+
+FILE=/etc/.nubo/.docker
+if [ -f "$FILE" ]; then
+# inside docker - TBD add docker restart of services
+    echo "Running in a docker container"
+    cd /opt/nubomanagement
+    sudo node dist/upgrade.js ||:
+    cd -
+else 
+    service rsyslog reload > /dev/null 2>&1 ||:
+    systemctl enable nubomanagement.service
+    systemctl stop nubomanagement.service
+    cd /opt/nubomanagement
+    node dist/upgrade.js ||:
+    cd -
+    systemctl start nubomanagement.service
+fi
+
+

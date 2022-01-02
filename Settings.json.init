@@ -1,0 +1,62 @@
+{
+    "logLevel": "debug",
+    "sequelizeLogs": false,    
+    "encKey" : "",       
+    "authValidatorPermittedMode": false,
+    "serverurl": "http://127.0.0.1/",
+    "internalurl": "http://127.0.0.1:8080/",
+    "nfsserver": "user@127.0.0.1",
+    "nfshomefolder": "/srv/nfs/homes/",   
+    "sessionTimeout": 600,
+    "sshPrivateKey": ".ssh/id_rsa",
+    "adminName": "Admin",
+    "platformType": "static",
+    "dcName": "DATACENTER",
+    "listenAddresses": [        
+        "http://"
+    ],
+    "mailOptions": false,    
+    "platformParams": {
+        "concurrency": 3,
+        "concurrencyDelay": 20,
+        "platformPoolSize": 0,
+        "explatformPoolSize": 0,
+        "upperCapacityLevel": 0.5,
+        "bottomCapacityLevel": 0,
+        "maxCapacity": 40,
+        "usersPerPlatform": 20,
+        "choosePool": 10,
+        "maxFailed": 0,
+        "maxFails": 5,
+        "fixedPool": true,
+        "cleanPlatformsMode": false
+    },
+    "platformCred": {
+      "ca": "../cert/root.crt",
+      "key": "../cert/management.key",
+      "cert": "../cert/managementFull.crt"
+    },
+    "platformCred": false,
+    "vmwareParams": {
+        "viconfig": "~/.viconfig",
+        "folder": "Nubo-needs",
+        "vihost": "vmguest",
+        "platformTemplate": "PlatForm",
+        "staticMachinesFile": "./machines.csv"
+    },
+    "http_proxy": "http://127.0.0.1:3128",
+    "http_proxy": false,
+    "EwsAuthorizationMethod": "Basic",
+    "NotificationGateway": {
+        "smsUrl": "http://127.0.0.1/SmsNotification/sendSmsNotificationFromRemoteServer",
+        "url" : "http://127.0.0.1/Notifications/sendNotificationFromRemoteServer",
+        "serverID": "BE",
+        "authKey": "BEBE"
+    },
+    "publicServerCredentials": {
+        "key": "../cert/management.key",
+        "cert": "../cert/managementFull.crt"
+    },
+    "publicServerCredentials": {},
+    "platformVersionCode": 300
+}

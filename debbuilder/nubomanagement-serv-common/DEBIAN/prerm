@@ -1,0 +1,6 @@
+#!/bin/sh
+
+if [ "$1" = remove ]; then
+  systemctl disable nubomanagement
+fi
+systemctl stop nubomanagement

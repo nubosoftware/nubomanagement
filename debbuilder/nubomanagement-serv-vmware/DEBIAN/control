@@ -1,0 +1,8 @@
+Package: nubomanagement-serv-vmware
+Version: %Version%
+Architecture: all
+Depends: nubomanagement-serv-js
+Recommends:
+Maintainer: NuboSoftware <alexander@nubosoftware.com>
+Section: main
+Description: nubo management web service that run in internal network

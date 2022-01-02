@@ -1,0 +1,852 @@
+{
+
+"1.2.0.0.0" : "CREATE TABLE versions (
+version varchar(255),
+time TIMESTAMP,
+PRIMARY KEY ( version )
+);"
+
+, "1.2.0.0.1" : "CREATE TABLE activations (
+activationkey varchar(255),
+deviceid varchar(255),
+devicetype varchar(255),
+email varchar(255),
+emailtoken varchar(255),
+firstlogin int,
+firstname varchar(255),
+jobtitle varchar(255),
+lastname varchar(255),
+pushregid varchar(255),
+resetpasscode int,
+status int,
+createdate date,
+expirationdate date,
+onlinestatus int,
+lasteventtime date,
+lasteventdcname varchar(255),
+PRIMARY KEY ( activationKey )
+);"
+
+, "1.2.0.0.2" : "CREATE INDEX activations_deviceid ON activations (deviceid);"
+, "1.2.0.0.3" : "CREATE INDEX activations_email ON activations (email);"
+, "1.2.0.0.4" : "CREATE INDEX activations_emailToken ON activations (emailToken);"
+, "1.2.0.0.5" : "CREATE INDEX activations_status ON activations (status);"
+
+
+, "1.2.0.0.6" : "CREATE TABLE users (
+email varchar(255),
+authtype varchar(255),
+country varchar(255),
+encrypted int,
+firstname varchar(255),
+imageurl varchar(255),
+isactive int,
+isadmin int,
+jobtitle varchar(255),
+lastname varchar(255),
+orgdomain varchar(255),
+orgemail varchar(255),
+loginemailtoken varchar(255),
+loginattempts int,
+lastupdate date,
+orgkey varchar(255),
+orgpassword varchar(255),
+orgpasswordcache varchar(255),
+orguser varchar(255),
+passcode varchar(255),
+securessl varchar(255),
+serverurl varchar(255),
+signature varchar(255),
+manager varchar(255),
+officephone varchar(255),
+mobilephone varchar(255),
+language varchar(255),
+countrylang varchar(255),
+localevar varchar(255),
+PRIMARY KEY ( email )
+);"
+
+, "1.2.0.0.7" : "CREATE INDEX users_orgemail ON users (orgemail);"
+, "1.2.0.0.8" : "CREATE INDEX users_orgDomain ON users (orgdomain);"
+, "1.2.0.0.9" : "CREATE INDEX users_orgKey ON users (orgKey);"
+, "1.2.0.0.10" : "CREATE INDEX users_passcode ON users (passcode);"
+, "1.2.0.0.11" : "CREATE INDEX users_isActive ON users (isActive);"
+, "1.2.0.0.12" : "CREATE INDEX users_isAdmin ON users (isAdmin);"
+
+
+
+, "1.2.0.0.13" : "CREATE TABLE orgs (
+maindomain varchar(255),
+authtype int,
+orgname varchar(255),
+securessl varchar(255),
+serverurl varchar(255),
+signature varchar(255),
+PRIMARY KEY ( mainDomain )
+);"
+
+
+
+, "1.2.0.0.14" : "CREATE TABLE apps (
+packagename varchar(255),
+appname varchar(255),
+category varchar(255),
+description varchar(255),
+imageurl varchar(255),
+imageurlleft varchar(255),
+imageurlmiddle varchar(255),
+imageurlright varchar(255),
+maindomain varchar(255),
+price varchar(255),
+privacypolicyurl varchar(255),
+webpage varchar(255),
+whatisnew varchar(255),
+status int,
+err varchar(255),
+PRIMARY KEY ( packagename )
+);"
+
+, "1.2.0.0.15" : "CREATE INDEX apps_domain ON apps (maindomain);"
+
+
+
+, "1.2.0.0.16" : "CREATE TABLE devices (
+devicename varchar(255),
+maindomain varchar(255),
+resolution varchar(255),
+PRIMARY KEY ( devicename, maindomain )
+);"
+
+
+
+, "1.2.0.0.17" : "CREATE TABLE groups (
+groupname varchar(255),
+maindomain varchar(255),
+addomain varchar(255),
+status varchar(255),
+type varchar(255),
+distinguishedname varchar(255),
+PRIMARY KEY (groupname, maindomain, addomain)
+);"
+
+, "1.2.0.0.18" : "CREATE INDEX groups_type ON groups (type);"
+, "1.2.0.0.19" : "CREATE INDEX groups_distinguishedName ON groups (distinguishedname);"
+
+
+
+, "1.2.0.0.20" : "CREATE TABLE group_apps (
+groupname varchar(255),
+packagename varchar(255),
+maindomain varchar(255),
+PRIMARY KEY (groupname, maindomain, packagename)
+);"
+
+
+
+
+, "1.2.0.0.21" : "CREATE TABLE user_apps (
+email varchar(255),
+packagename varchar(255),
+maindomain varchar(255),
+private int,
+PRIMARY KEY (email, maindomain, packagename)
+);"
+
+, "1.2.0.0.22" : "CREATE INDEX user_apps_private ON user_apps (private);"
+
+
+
+, "1.2.0.0.23" : "CREATE TABLE user_devices (
+email varchar(255),
+imei varchar(255),
+active int,
+devicename varchar(255),
+maindomain varchar(255),
+PRIMARY KEY (email, imei)
+);"
+
+, "1.2.0.0.24" : "CREATE INDEX user_devices_domain ON user_devices (maindomain);"
+
+
+
+, "1.2.0.0.25" : "CREATE TABLE user_groups (
+email varchar(255),
+groupname varchar(255),
+maindomain varchar(255),
+addomain varchar(255),
+PRIMARY KEY (email, groupname, maindomain, addomain)
+);"
+
+
+
+, "1.2.0.0.26" : "CREATE TABLE ad_field_mappings (
+adfield varchar(255),
+maindomain varchar(255),
+addomain varchar(255),
+nubofield varchar(255),
+PRIMARY KEY (adField, maindomain, addomain, nubofield)
+);"
+
+, "1.2.0.0.27" : "CREATE INDEX ad_field_mapping_maindomain ON ad_field_mappings (maindomain);"
+, "1.2.0.0.28" : "CREATE INDEX ad_field_mapping_adDomain ON ad_field_mappings (addomain);"
+
+
+
+
+, "1.2.0.0.29" : "CREATE TABLE device_apps (
+email varchar(255),
+deviceid varchar(255),
+packagename varchar(255),
+hrtime bigint,
+maindomain varchar(255),
+time bigint,
+installed int,
+PRIMARY KEY (email, deviceid, packagename)
+);"
+
+, "1.2.0.0.30" : "CREATE INDEX device_apps_installed ON device_apps (installed);"
+, "1.2.0.0.31" : "CREATE INDEX device_apps_domain ON device_apps (maindomain);"
+
+, "1.2.0.0.32" : "CREATE TABLE events_logs (
+eventtype int,
+email varchar(255),
+maindomain varchar(255),
+extrainfo varchar(255),
+time datetime,
+level varchar(255),
+PRIMARY KEY (eventtype, email, maindomain, extrainfo, time)
+);"
+
+, "1.2.0.0.33" : "CREATE TABLE ldaps (
+domain varchar(255),
+addomain varchar(255),
+basedn varchar(255),
+connectionurl varchar(255),
+password varchar(255),
+username varchar(255),
+PRIMARY KEY (domain, addomain)
+);"
+
+, "1.2.0.0.34" : "CREATE TABLE app_rules (
+ruleid int NOT NULL AUTO_INCREMENT,
+domain varchar(255),
+packagename varchar(255),
+ip varchar(255),
+port varchar(255),
+protocol varchar(255),
+mask varchar(255),
+ipversion varchar(255),
+PRIMARY KEY (ruleid, domain)
+);"
+
+, "1.2.0.0.35" : "ALTER TABLE orgs ADD COLUMN accessstatus varchar(255) default 'open';"
+
+, "1.2.0.0.36" : "CREATE TABLE muc_users (
+roomjid varchar(255),
+userjid varchar(255),
+maindomain varchar(255),
+PRIMARY KEY (roomjid, userjid, maindomain)
+);"
+
+, "1.2.0.0.37" : "ALTER TABLE users ADD COLUMN clientip varchar(255);"
+, "1.2.0.0.38" : "ALTER TABLE users ADD COLUMN clientport varchar(255);"
+
+, "1.2.0.0.39" : "CREATE TABLE web_files (
+filename varchar(255),
+tojid varchar(255),
+addeddate varchar(255),
+refcount int,
+PRIMARY KEY (filename, tojid)
+);"
+
+, "1.2.0.0.40" : "ALTER TABLE users ADD COLUMN im_mobile varchar(255);"
+, "1.2.0.0.41" : "ALTER TABLE users ADD COLUMN im_verification_code varchar(255);"
+, "1.2.0.0.42" : "ALTER TABLE users ADD UNIQUE (im_mobile);"
+, "1.2.0.0.43" : "ALTER TABLE users ADD COLUMN im_verification_status int;"
+, "1.2.0.0.44" : "ALTER TABLE users ADD COLUMN username varchar(255);"
+, "1.2.0.0.45" : "ALTER TABLE users ADD COLUMN displayname varchar(255);"
+, "1.2.0.0.46" : "ALTER TABLE ldaps CHANGE domain maindomain varchar(255);"
+, "1.2.0.0.47" : "ALTER TABLE apps DROP PRIMARY KEY;"
+, "1.2.0.0.48" : "ALTER TABLE apps ADD PRIMARY KEY (packagename,maindomain);"
+, "1.2.0.0.49" : "ALTER TABLE web_files ADD COLUMN maindomain varchar(255);"
+, "1.2.0.0.50" : "ALTER TABLE web_files DROP PRIMARY KEY;"
+, "1.2.0.0.51" : "ALTER TABLE web_files ADD PRIMARY KEY (filename,tojid,maindomain);"
+, "1.2.0.0.52" : "ALTER TABLE users ADD UNIQUE (username);"
+, "1.2.0.0.53" : "ALTER TABLE users DROP PRIMARY KEY;"
+, "1.2.0.0.54" : "ALTER TABLE users ADD PRIMARY KEY (email,orgdomain);"
+, "1.2.0.0.55" : "ALTER TABLE app_rules CHANGE domain maindomain varchar(255);"
+, "1.2.0.0.56" : "ALTER TABLE orgs ADD COLUMN im_phone_verification_needed int default 0;"
+
+, "1.2.0.0.57" : "CREATE TABLE user_application_notifs (
+maindomain varchar(255),
+email varchar(255),
+appname varchar(255),
+sendnotif int,
+PRIMARY KEY (maindomain, email,appname)
+);"
+
+, "1.2.0.0.58" : "CREATE TABLE jobs (
+maindomain varchar(255),
+jobname varchar(255),
+startimmediately int,
+intervalstr varchar(255),
+timezone varchar(255),
+isactive int,
+commandtorun varchar(1000),
+dcname varchar(255),
+isupdate int,
+PRIMARY KEY (maindomain, jobname)
+);"
+
+, "1.2.0.0.59" : "ALTER TABLE users ADD COLUMN subscriptionid varchar(255);"
+, "1.2.0.0.60" : "ALTER TABLE users ADD COLUMN subscriptionupdatedate datetime;"
+, "1.2.0.0.61" : "ALTER TABLE orgs ADD COLUMN impersonationuser varchar(255);"
+, "1.2.0.0.62" : "ALTER TABLE orgs ADD COLUMN impersonationpassword varchar(255);"
+
+, "1.2.0.0.63" : "CREATE TABLE conversation_history (
+id int NOT NULL AUTO_INCREMENT,
+fromjid varchar(255),
+tojid varchar(255),
+displayname varchar(255),
+message varchar(1000),
+createdate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+PRIMARY KEY (id)
+);"
+
+, "1.2.0.0.64" : "CREATE TABLE admin_groups (
+id int NOT NULL AUTO_INCREMENT,
+creator varchar(255),
+groupname varchar(255),
+createdate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+PRIMARY KEY (id)
+);"
+
+, "1.2.0.0.65" : "CREATE TABLE user_admin_groups (
+userjid varchar(255),
+username varchar(255),
+groupid varchar(255),
+PRIMARY KEY (userjid, groupid)
+);"
+
+, "1.2.0.0.66" : "ALTER TABLE users ADD COLUMN isimadmin int default 0;"
+, "1.2.0.0.67" : "ALTER TABLE groups ADD COLUMN adsync varchar(255);"
+, "1.2.0.0.68" : "ALTER TABLE users ADD COLUMN status varchar(255);"
+, "1.2.0.0.69" : "ALTER TABLE users ADD COLUMN adsync varchar(255);"
+, "1.2.0.0.70" : "ALTER TABLE users ADD COLUMN addomain varchar(255);"
+, "1.2.0.0.71" : "ALTER TABLE user_groups ADD COLUMN adsync varchar(255);"
+, "1.2.0.0.72" : "ALTER TABLE user_groups ADD COLUMN status varchar(255);"
+, "1.2.0.0.73" : "ALTER TABLE group_apps ADD COLUMN addomain varchar(255);"
+, "1.2.0.0.74" : "ALTER TABLE ldaps ADD COLUMN adminemail varchar(255);"
+, "1.2.0.0.75" : "ALTER TABLE ldaps ADD COLUMN orgunits varchar(2000);"
+
+, "1.2.0.0.76" : "ALTER TABLE users add storageLimit float;"
+, "1.2.0.0.77" : "ALTER TABLE users ALTER storageLimit set DEFAULT 100000;"
+, "1.2.0.0.78" : "UPDATE users set storageLimit=100000;"
+
+, "1.2.0.0.79" : "ALTER TABLE users add storageLast float;"
+, "1.2.0.0.80" : "ALTER TABLE users ALTER storageLast set DEFAULT 0;"
+, "1.2.0.0.81" : "UPDATE users set storageLast=0;"
+, "1.2.0.0.82" : "CREATE TABLE packages_lists (
+uid int(255),
+packagename varchar(255),
+maindomain varchar(255),
+createdate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+PRIMARY KEY (uid, packagename)
+);"
+
+, "1.2.0.0.83" : "CREATE TABLE upload_apk_histories (
+id int NOT NULL AUTO_INCREMENT,
+packagename varchar(255),
+createdate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+PRIMARY KEY (id)
+);"
+
+, "1.2.0.0.84" : "ALTER TABLE users ADD COLUMN im_mobile2 varchar(255);"
+, "1.2.0.0.85" : "ALTER TABLE users ADD UNIQUE (im_mobile2);"
+, "1.2.0.0.86" : "ALTER TABLE users ADD COLUMN im_verification_code2 varchar(255);"
+, "1.2.0.0.87" : "ALTER TABLE admin_groups ADD UNIQUE (creator);"
+, "1.2.0.0.88" : "ALTER TABLE apps ADD COLUMN versionname varchar(255);"
+, "1.2.0.0.89" : "ALTER TABLE apps ADD COLUMN versioncode varchar(255);"
+, "1.2.0.0.90" : "ALTER TABLE orgs MODIFY authtype varchar(255);"
+, "1.2.0.0.91" : "ALTER TABLE user_devices ADD COLUMN inserttime datetime;"
+, "1.2.0.0.92" : "ALTER TABLE user_devices ADD COLUMN imsi varchar(255) default '';"
+, "1.2.0.0.93" : "ALTER TABLE user_devices ADD COLUMN gateway varchar(255);"
+, "1.2.0.0.94" : "ALTER TABLE user_devices ADD COLUMN platform varchar(255);"
+, "1.2.0.0.95" : "ALTER TABLE users ADD COLUMN dcname varchar(255);"
+, "1.2.0.0.96" : "ALTER TABLE users ADD COLUMN dcurl varchar(255);"
+, "1.2.0.0.97" : "CREATE TABLE recordings (
+id int NOT NULL AUTO_INCREMENT,
+sessionid varchar(255),
+displayname varchar(255),
+filename varchar(255),
+devicename varchar(255),
+startdate datetime,
+duration varchar(255),
+width varchar(255),
+height varchar(255),
+PRIMARY KEY (id)
+);"
+
+, "1.2.0.0.98" : "ALTER TABLE packages_lists ADD UNIQUE(packagename);"
+, "1.2.0.0.99" : "ALTER TABLE orgs ADD COLUMN passcodeexpirationdays int default 0;"
+, "1.2.0.0.100" : "ALTER TABLE users ADD COLUMN passcodeupdate datetime DEFAULT NOW();"
+, "1.2.0.0.101" : "ALTER TABLE orgs ADD COLUMN passcodeminchars int default 6;"
+, "1.2.0.0.102" : "ALTER TABLE orgs ADD COLUMN passcodetype int default 0;"
+
+, "1.2.0.0.103" : "CREATE TABLE blocked_devices (
+ruleid int NOT NULL AUTO_INCREMENT,
+rulename varchar(255),
+devicename varchar(255),
+maindomain varchar(255),
+PRIMARY KEY (ruleid)
+);"
+
+, "1.2.0.0.104" : "ALTER TABLE users ADD COLUMN passcodetypechange int default 0;"
+, "1.2.0.0.105" : "ALTER TABLE orgs ADD COLUMN notifieradmin varchar(255);"
+, "1.2.0.0.106" : "ALTER TABLE orgs ADD COLUMN deviceapprovaltype int default 0;"
+, "1.2.0.0.107" : "ALTER TABLE users ADD COLUMN passcodetypeprev int default 0;"
+, "1.2.0.0.108" : "ALTER TABLE activations ADD COLUMN maindomain varchar(255)"
+
+, "1.2.0.0.109" : "CREATE TABLE app_usages (
+id int NOT NULL AUTO_INCREMENT,
+email varchar(255),
+packagename varchar(255),
+count int,
+time TIMESTAMP,
+PRIMARY KEY (id)
+);"
+
+, "1.2.0.0.110" : "CREATE INDEX email_index ON app_usages (email);"
+, "1.2.0.0.111" : "CREATE INDEX packagename_index ON app_usages (packagename);"
+, "1.2.0.0.112" : "CREATE INDEX time_index ON app_usages (time);"
+, "1.2.0.0.113" : "CREATE INDEX count_index ON app_usages (count);"
+
+, "1.2.0.0.114": "CREATE TABLE urllauncher_apps (
+url varchar(255),
+domain varchar(255),
+apkname varchar(255),
+appname varchar(255),
+PRIMARY KEY(url, domain)
+);"
+
+, "1.2.0.0.115" : "ALTER TABLE events_logs MODIFY column extrainfo varchar(765);"
+, "1.2.0.0.116" : "ALTER TABLE users ADD COLUMN im_authenticate varchar(255);"
+
+, "1.2.0.0.117": "CREATE TABLE last_sessions (
+id int NOT NULL AUTO_INCREMENT,
+count int,
+time TIMESTAMP,
+maindomain varchar(255),
+PRIMARY KEY(id)
+);"
+
+, "1.2.0.0.118" : "ALTER TABLE user_devices ADD COLUMN vpnprofilename varchar(255)"
+
+, "1.2.0.0.119" : "ALTER TABLE user_devices ADD COLUMN vpnstate int default 0;"
+
+, "1.2.0.0.120" : "ALTER TABLE user_devices ADD COLUMN vpnclient varchar(255)"
+
+, "1.2.0.0.121": "CREATE TABLE openvpn_profiles (
+id int NOT NULL AUTO_INCREMENT,
+user varchar(255),
+profilename varchar(255),
+configfile blob,
+PRIMARY KEY(id)
+);"
+
+, "1.2.0.0.122" : "CREATE INDEX openvpn_profiles_user_name ON openvpn_profiles (user, profilename);"
+
+, "1.2.0.0.123" : "ALTER TABLE openvpn_profiles ADD COLUMN vpnusername varchar(255)"
+
+, "1.2.0.0.124" : "ALTER TABLE openvpn_profiles ADD COLUMN vpnpassword varchar(255)"
+
+, "1.2.0.0.125" : "ALTER TABLE openvpn_profiles ADD COLUMN orgaccount int default 0"
+
+, "1.2.0.0.126" : "ALTER TABLE orgs ADD COLUMN exchangeencoding varchar(255) default 'UTF-8'"
+
+, "1.2.0.0.127" : "ALTER TABLE users ALTER storageLimit set DEFAULT 1000000;"
+
+, "1.2.0.0.128" : "UPDATE users set storageLimit=1000000;"
+
+, "1.2.0.0.129" : "ALTER TABLE users ADD COLUMN enablesound int default 0"
+
+, "1.2.0.0.130" : "ALTER TABLE users ADD COLUMN enablevibrate int default 0"
+
+, "1.2.0.0.131" : "ALTER TABLE orgs ADD COLUMN showfullnotif int default 0"
+
+, "1.2.0.0.132": "CREATE TABLE apps_versions (
+packagename varchar(255),
+maindomain varchar(255),
+versioncode varchar(255),
+PRIMARY KEY(packagename, maindomain)
+);"
+
+, "1.2.0.0.133" : "ALTER TABLE orgs ADD COLUMN dedicatedplatform int default 0;"
+
+, "1.2.0.0.134" : "ALTER TABLE orgs ADD COLUMN allowconnect int default 1;"
+
+, "1.2.0.0.135": "CREATE TABLE user_notifications_history (
+id int NOT NULL AUTO_INCREMENT,
+email varchar(255),
+date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+titleText varchar(255),
+notifyTime varchar(255),
+notifyLocation varchar(255),
+appName varchar(255),
+PRIMARY KEY(id),
+KEY `user_notifications_history_email` (`email`),
+KEY `user_notifications_history_date` (`date`),
+KEY `user_notifications_history_appName` (`appName`)
+);"
+
+, "1.2.0.0.136" : "ALTER TABLE urllauncher_apps ADD COLUMN ssourl varchar(255)"
+
+, "1.2.0.0.137" : "ALTER TABLE urllauncher_apps ADD COLUMN status int default 0"
+
+, "1.2.0.0.138" : "ALTER TABLE `events_logs` ADD `id` INT NOT NULL AUTO_INCREMENT UNIQUE FIRST;"
+, "1.2.0.0.139" : "alter table events_logs drop primary key, add primary key(id);"
+
+, "1.2.0.0.140" : "ALTER TABLE activations CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.141" : "ALTER TABLE ad_field_mappings CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.142" : "ALTER TABLE admin_groups CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.143" : "ALTER TABLE app_rules CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.144" : "ALTER TABLE app_usages CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.145" : "ALTER TABLE apps CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.146" : "ALTER TABLE apps_versions CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.147" : "ALTER TABLE blocked_devices CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.148" : "ALTER TABLE conversation_history CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.149" : "ALTER TABLE device_apps CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.150" : "ALTER TABLE devices CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.151" : "ALTER TABLE events_logs CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.152" : "ALTER TABLE group_apps CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.153" : "ALTER TABLE groups CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.154" : "ALTER TABLE jobs CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.155" : "ALTER TABLE last_sessions CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.156" : "ALTER TABLE ldaps CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.157" : "ALTER TABLE muc_users CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.158" : "ALTER TABLE openvpn_profiles CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.159" : "ALTER TABLE orgs CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.160" : "ALTER TABLE packages_lists CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.161" : "ALTER TABLE recordings CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.162" : "ALTER TABLE upload_apk_histories CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.163" : "ALTER TABLE urllauncher_apps CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.164" : "ALTER TABLE user_admin_groups CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.165" : "ALTER TABLE user_application_notifs CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.166" : "ALTER TABLE user_apps CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.167" : "ALTER TABLE user_devices CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.168" : "ALTER TABLE user_groups CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.169" : "ALTER TABLE user_notifications_history CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.170" : "ALTER TABLE users CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.171" : "ALTER TABLE versions CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.172" : "ALTER TABLE web_files CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+
+, "1.2.0.0.173" : "ALTER TABLE users ALTER COLUMN enablesound SET default 1"
+, "1.2.0.0.174" : "ALTER TABLE users ALTER COLUMN enablevibrate SET default 1"
+, "1.2.0.0.175" : "ALTER TABLE orgs ADD COLUMN vpn int default 0;"
+, "1.2.0.0.176" : "ALTER TABLE apps DROP COLUMN category;"
+, "1.2.0.0.177" : "ALTER TABLE apps DROP COLUMN imageurlleft;"
+, "1.2.0.0.178" : "ALTER TABLE apps DROP COLUMN imageurlright;"
+, "1.2.0.0.179" : "ALTER TABLE apps DROP COLUMN imageurlmiddle;"
+, "1.2.0.0.180" : "ALTER TABLE apps DROP COLUMN privacypolicyurl;"
+, "1.2.0.0.181" : "ALTER TABLE apps DROP COLUMN whatisnew;"
+, "1.2.0.0.182" : "ALTER TABLE apps DROP COLUMN webpage;"
+
+, "1.2.0.0.183" : "ALTER TABLE users ADD COLUMN lastactivity varchar(255);"
+
+, "1.2.0.0.184" : "ALTER TABLE users ADD COLUMN im_mobile_swap varchar(255);"
+, "1.2.0.0.185" : "ALTER TABLE users ADD UNIQUE (im_mobile_swap);"
+, "1.2.0.0.186" : "ALTER TABLE users ADD COLUMN im_mobile2_swap varchar(255);"
+, "1.2.0.0.187" : "ALTER TABLE users ADD UNIQUE (im_mobile2_swap);"
+
+, "1.2.0.0.188": "CREATE TABLE global_configs (
+name varchar(255),
+value varchar(255),
+PRIMARY KEY(name)
+);"
+
+, "1.2.0.0.189" : "INSERT INTO global_configs VALUES ('hideControlPanel', 'false')"
+, "1.2.0.0.190" : "INSERT INTO global_configs VALUES ('sessionTimeout', '600')"
+, "1.2.0.0.191" : "INSERT INTO global_configs VALUES ('withService', 'false')"
+, "1.2.0.0.192" : "INSERT INTO global_configs VALUES ('sendTrackData', 'false')"
+, "1.2.0.0.193" : "INSERT INTO global_configs VALUES ('fastConnection', 'false')"
+, "1.2.0.0.194" : "INSERT INTO global_configs VALUES ('EWSKeepAliveInterval', '5')"
+, "1.2.0.0.195" : "INSERT INTO global_configs VALUES ('EWSDomain', '')"
+, "1.2.0.0.196" : "INSERT INTO global_configs VALUES ('EWSServerURL', '')"
+, "1.2.0.0.197" : "INSERT INTO global_configs VALUES ('activationTimeoutPeriod', '48')"
+, "1.2.0.0.198" : "INSERT INTO global_configs VALUES ('activateBySMS', 'false')"
+, "1.2.0.0.199" : "INSERT INTO global_configs VALUES ('allowOnlyImportedADusers', 'false')"
+, "1.2.0.0.200" : "INSERT INTO global_configs VALUES ('disableIPBlockMechanism', 'false')"
+, "1.2.0.0.201" : "INSERT INTO global_configs VALUES ('isHandlingMediaStreams', 'false')"
+, "1.2.0.0.202" : "INSERT INTO global_configs VALUES ('externalMountsSrc', '')"
+, "1.2.0.0.203" : "INSERT INTO global_configs VALUES ('streams', '')"
+
+, "1.2.0.0.204": "CREATE TABLE data_center_configs (
+dcName varchar(255),
+name varchar(255),
+value varchar(255),
+PRIMARY KEY(dcName, name)
+);"
+
+, "1.2.0.0.205": "CREATE TABLE platform_configs (
+dcName varchar(255),
+concurrency int default 2,
+concurrencyDelay int default 10000,
+platformPoolSize int default 0,
+explatformPoolSize int default 0,
+upperCapacityLevel float default 0.5,
+bottomCapacityLevel float default 0,
+maxCapacity int default 60,
+usersPerPlatform int default 20,
+choosePool int default 10,
+maxFailed int default 0,
+maxFails int default 5,
+fixedPool varchar(255) default 'true',
+cleanPlatformsMode varchar(255) default 'false',
+PRIMARY KEY(dcName)
+);"
+
+, "1.2.0.0.206": "CREATE TABLE org_redirection_maps (
+domain varchar(255),
+url varchar(255),
+PRIMARY KEY(domain)
+);"
+
+, "1.2.0.0.207": "CREATE TABLE version_redirection_maps (
+version varchar(255),
+url varchar(255),
+PRIMARY KEY(version)
+);"
+
+, "1.2.0.0.208": "CREATE TABLE allowed_front_end_servers (
+dcName varchar(255),
+servername varchar(255),
+serverkey varchar(255),
+PRIMARY KEY (dcName, servername)
+);"
+
+, "1.2.0.0.209": "CREATE TABLE remote_servers (
+servername varchar(255),
+serverkey varchar(255),
+PRIMARY KEY (servername)
+);"
+
+, "1.2.0.0.210" : "ALTER TABLE user_apps ADD COLUMN enablehidenuboapp int default 1;"
+
+, "1.2.0.0.211" : "ALTER TABLE orgs ADD COLUMN owaurl varchar(255) default 'UTF-8'"
+, "1.2.0.0.212" : "ALTER TABLE orgs ADD COLUMN refererurl varchar(255) default 'UTF-8'"
+, "1.2.0.0.213" : "ALTER TABLE orgs ADD COLUMN owaurlpostauth varchar(255) default 'UTF-8'"
+
+, "1.2.0.0.214" : "ALTER TABLE user_notifications_history MODIFY date datetime"
+
+, "1.2.0.0.215": "CREATE TABLE locks (
+name varchar(255),
+dcname varchar(255),
+timeset datetime,
+timeout datetime,
+PRIMARY KEY (name)
+);"
+
+, "1.2.0.0.216": "CREATE TABLE data_centers (
+dcname varchar(255),
+status varchar(255),
+updatetime datetime,
+users mediumblob,
+PRIMARY KEY (dcname)
+);"
+
+, "1.2.0.0.217": "CREATE TABLE nfs_servers (
+id int NOT NULL AUTO_INCREMENT,
+dcname varchar(255),
+nfsip varchar(255),
+sship varchar(255),
+sshuser varchar(255),
+keypath varchar(255),
+nfspath varchar(255),
+PRIMARY KEY (id)
+);"
+
+, "1.2.0.0.218" : "ALTER TABLE nfs_servers ADD COLUMN nfspathslow varchar(255);"
+, "1.2.0.0.219" : "INSERT INTO global_configs VALUES ('dataCenterUpdateTimeout', '1')"
+, "1.2.0.0.220" : "UPDATE activations SET onlinestatus = 0 where onlinestatus is NULL"
+, "1.2.0.0.221" : "ALTER TABLE activations ALTER COLUMN onlinestatus SET DEFAULT 0;"
+, "1.2.0.0.222" : "ALTER TABLE activations ADD COLUMN secondAuthRegistred varchar(255) DEFAULT 'false';"
+
+, "1.2.0.0.223": "CREATE TABLE webclient_allowed_subnets (
+dcname varchar(255),
+subnet varchar(255),
+PRIMARY KEY (dcname, subnet)
+);"
+
+, "1.2.0.0.224" : "ALTER TABLE platform_configs ADD COLUMN rsyslog varchar(255);"
+
+, "1.2.0.0.225": "CREATE TABLE passcode_history (
+id int NOT NULL AUTO_INCREMENT,
+email varchar(255),
+passcode varchar(255),
+maindomain varchar(255),
+lastupdate datetime,
+PRIMARY KEY (id)
+);"
+
+, "1.2.0.0.226" : "ALTER TABLE blocked_devices CHANGE devicename filtername varchar(255);"
+
+, "1.2.0.0.227" : "ALTER TABLE orgs ADD COLUMN inviteurl varchar(255) DEFAULT 'https://nubosoftware.com/app-download.html';"
+
+, "1.2.0.0.228" : "DELETE FROM global_configs WHERE name = 'withService';"
+, "1.2.0.0.229" : "INSERT INTO global_configs VALUES ('sysVersion', 0);"
+, "1.2.0.0.230" : "ALTER TABLE orgs ALTER COLUMN owaurl SET default ''"
+, "1.2.0.0.231" : "ALTER TABLE orgs ALTER COLUMN refererurl SET default ''"
+, "1.2.0.0.232" : "ALTER TABLE orgs ALTER COLUMN owaurlpostauth SET default ''"
+
+, "1.2.0.0.233" : "CREATE TABLE device_model_convert (
+hardwaredesc varchar(50),
+devicemodel varchar(50),
+PRIMARY KEY (hardwaredesc, devicemodel));"
+
+, "1.2.0.0.234" : "insert into device_model_convert values ('iPhone3,1', 'iPhone4');"
+, "1.2.0.0.235" : "insert into device_model_convert values ('iPhone3,2', 'iPhone4');"
+, "1.2.0.0.236" : "insert into device_model_convert values ('iPhone3,3', 'iPhone4');"
+, "1.2.0.0.237" : "insert into device_model_convert values ('iPhone4,1', 'iPhone4S');"
+, "1.2.0.0.238" : "insert into device_model_convert values ('iPhone4,2', 'iPhone4S');"
+, "1.2.0.0.239" : "insert into device_model_convert values ('iPhone4,3', 'iPhone4S');"
+, "1.2.0.0.240" : "insert into device_model_convert values ('iPhone5,1', 'iPhone5');"
+, "1.2.0.0.241" : "insert into device_model_convert values ('iPhone5,2', 'iPhone5');"
+, "1.2.0.0.242" : "insert into device_model_convert values ('iPhone5,3', 'iPhone5C');"
+, "1.2.0.0.243" : "insert into device_model_convert values ('iPhone5,4', 'iPhone5C');"
+, "1.2.0.0.244" : "insert into device_model_convert values ('iPhone6,1', 'iPhone5S');"
+, "1.2.0.0.245" : "insert into device_model_convert values ('iPhone6,2', 'iPhone5S');"
+, "1.2.0.0.246" : "insert into device_model_convert values ('iPhone7,2', 'iPhone6');"
+, "1.2.0.0.247" : "insert into device_model_convert values ('iPhone7,1', 'iPhone6Plus');"
+, "1.2.0.0.248" : "insert into device_model_convert values ('iPhone8,1', 'iPhone6S');"
+, "1.2.0.0.249" : "insert into device_model_convert values ('iPhone8,2', 'iPhone6SPlus');"
+, "1.2.0.0.250" : "insert into device_model_convert values ('iPhone8,4', 'iPhoneSE');"
+, "1.2.0.0.251" : "insert into device_model_convert values ('iPhone9,1', 'iPhone7');"
+, "1.2.0.0.252" : "insert into device_model_convert values ('iPhone9,3', 'iPhone7');"
+, "1.2.0.0.253" : "insert into device_model_convert values ('iPhone9,2', 'iPhone7Plus');"
+, "1.2.0.0.254" : "insert into device_model_convert values ('iPhone9,4', 'iPhone7Plus');"
+, "1.2.0.0.255" : "insert into device_model_convert values ('iPhone10,1', 'iPhone8');"
+, "1.2.0.0.256" : "insert into device_model_convert values ('iPhone10,4', 'iPhone8');"
+, "1.2.0.0.257" : "insert into device_model_convert values ('iPhone10,2', 'iPhone8Plus');"
+, "1.2.0.0.258" : "insert into device_model_convert values ('iPhone10,5', 'iPhone8Plus');"
+, "1.2.0.0.259" : "insert into device_model_convert values ('iPhone10,3', 'iPhoneX');"
+, "1.2.0.0.260" : "insert into device_model_convert values ('iPhone10,6', 'iPhoneX');"
+, "1.2.0.0.261" : "insert into device_model_convert values ('iPad1,1', 'iPad1');"
+, "1.2.0.0.262" : "insert into device_model_convert values ('iPad2,1', 'iPad2');"
+, "1.2.0.0.263" : "insert into device_model_convert values ('iPad2,2', 'iPad2');"
+, "1.2.0.0.264" : "insert into device_model_convert values ('iPad2,3', 'iPad2');"
+, "1.2.0.0.265" : "insert into device_model_convert values ('iPad2,4', 'iPad2');"
+, "1.2.0.0.266" : "insert into device_model_convert values ('iPad3,1', 'iPad3');"
+, "1.2.0.0.267" : "insert into device_model_convert values ('iPad3,2', 'iPad3');"
+, "1.2.0.0.268" : "insert into device_model_convert values ('iPad3,3', 'iPad3');"
+, "1.2.0.0.269" : "insert into device_model_convert values ('iPad3,4', 'iPad4');"
+, "1.2.0.0.270" : "insert into device_model_convert values ('iPad3,5', 'iPad4');"
+, "1.2.0.0.271" : "insert into device_model_convert values ('iPad3,6', 'iPad4');"
+, "1.2.0.0.272" : "insert into device_model_convert values ('iPad6,11', 'iPad5');"
+, "1.2.0.0.273" : "insert into device_model_convert values ('iPad6,12', 'iPad5');"
+, "1.2.0.0.274" : "insert into device_model_convert values ('iPad4,1', 'iPadAir');"
+, "1.2.0.0.275" : "insert into device_model_convert values ('iPad4,2', 'iPadAir');"
+, "1.2.0.0.276" : "insert into device_model_convert values ('iPad4,3', 'iPadAir');"
+, "1.2.0.0.277" : "insert into device_model_convert values ('iPad5,3', 'iPadAir2');"
+, "1.2.0.0.278" : "insert into device_model_convert values ('iPad5,4', 'iPadAir2');"
+, "1.2.0.0.279" : "insert into device_model_convert values ('iPad2,5', 'iPadMini');"
+, "1.2.0.0.280" : "insert into device_model_convert values ('iPad2,6', 'iPadMini');"
+, "1.2.0.0.281" : "insert into device_model_convert values ('iPad2,7', 'iPadMini');"
+, "1.2.0.0.282" : "insert into device_model_convert values ('iPad4,4', 'iPadMini2');"
+, "1.2.0.0.283" : "insert into device_model_convert values ('iPad4,5', 'iPadMini2');"
+, "1.2.0.0.284" : "insert into device_model_convert values ('iPad4,6', 'iPadMini2');"
+, "1.2.0.0.285" : "insert into device_model_convert values ('iPad4,7', 'iPadMini3');"
+, "1.2.0.0.286" : "insert into device_model_convert values ('iPad4,8', 'iPadMini3');"
+, "1.2.0.0.287" : "insert into device_model_convert values ('iPad4,9', 'iPadMini3');"
+, "1.2.0.0.288" : "insert into device_model_convert values ('iPad5,1', 'iPadMini4');"
+, "1.2.0.0.289" : "insert into device_model_convert values ('iPad5,2', 'iPadMini4');"
+, "1.2.0.0.290" : "insert into device_model_convert values ('iPad6,7', 'iPadPro12_9Inch');"
+, "1.2.0.0.291" : "insert into device_model_convert values ('iPad6,8', 'iPadPro12_9Inch');"
+, "1.2.0.0.292" : "insert into device_model_convert values ('iPad7,1', 'iPadPro12_9Inch');"
+, "1.2.0.0.293" : "insert into device_model_convert values ('iPad7,2', 'iPadPro12_9Inch');"
+, "1.2.0.0.294" : "insert into device_model_convert values ('iPad7,3', 'iPadPro10_5Inch');"
+, "1.2.0.0.295" : "insert into device_model_convert values ('iPad7,4', 'iPadPro10_5Inch');"
+, "1.2.0.0.296" : "insert into device_model_convert values ('iPad6,3', 'iPadPro9_7Inch');"
+, "1.2.0.0.297" : "insert into device_model_convert values ('iPad6,4', 'iPadPro9_7Inch');"
+, "1.2.0.0.298" : "ALTER TABLE user_devices ADD COLUMN loginattempts int default 0;"
+, "1.2.0.0.299" : "ALTER TABLE users DROP COLUMN loginattempts;"
+, "1.2.0.0.300" : "ALTER TABLE users ADD COLUMN last_im_time varchar(255) default -1;"
+, "1.2.0.0.301" : "INSERT INTO global_configs VALUES ('geoRedundancy', 'false');"
+, "1.2.0.0.302" : "ALTER TABLE users ADD COLUMN passcodesalt varchar(255) default NULL;"
+, "1.2.0.0.303" : "create index user_groups_idx_1 on user_groups (maindomain,groupname,email);"
+, "1.2.0.0.304" : "DROP TABLE app_usages;"
+, "1.2.0.0.305" : "CREATE TABLE app_usages (
+    day DATE,
+    email varchar(100),
+    packagename varchar(100),
+    count int,
+    PRIMARY KEY (day,email,packagename)
+    );"
+, "1.2.0.0.306" : "ALTER TABLE app_usages CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+, "1.2.0.0.307" : "CREATE TABLE self_installed_apps (email VARCHAR(100) , deviceid VARCHAR(100) , packagename VARCHAR(100) , maindomain VARCHAR(100), createdAt DATETIME NOT NULL, updatedAt DATETIME NOT NULL, PRIMARY KEY (email, deviceid, packagename));"
+, "1.2.0.0.308" : "ALTER TABLE user_devices ADD COLUMN assigned_phone_number VARCHAR(100);"
+, "1.2.0.0.309" : "create index user_devices_phone on user_devices (assigned_phone_number);"
+, "1.2.0.0.310" : "ALTER TABLE user_devices ADD sip_username VARCHAR(100) , ADD sip_domain VARCHAR(100), ADD sip_password VARCHAR(100), ADD sip_port int, ADD sip_protocol VARCHAR(20), ADD sip_proxy VARCHAR(100) ;"
+, "1.2.0.0.311" : "CREATE TABLE apks (packagename VARCHAR(100) NOT NULL,  versioncode BIGINT NOT NULL , versionname VARCHAR(100), appname VARCHAR(100), is_in_image int NOT NULL, can_be_updated int NOT NULL, createdAt DATETIME NOT NULL, updatedAt DATETIME NOT NULL, PRIMARY KEY (packagename));"
+, "1.2.0.0.312" : "ALTER TABLE user_devices ADD session_cache_params TEXT ;"
+, "1.2.0.0.313" : "CREATE TABLE telephony_subscriptions (email VARCHAR(100) , deviceid VARCHAR(100) , provider VARCHAR(100), assigned_phone_number VARCHAR(100), sid VARCHAR(100), createdAt DATETIME NOT NULL, updatedAt DATETIME NOT NULL, PRIMARY KEY (email, deviceid));"
+, "1.2.0.0.314" : "CREATE index telephony_subs_idx_1 on telephony_subscriptions (assigned_phone_number);"
+, "1.2.0.0.315" : "CREATE TABLE telephony_trunks (trunkid VARCHAR(100) , trunk_priority int, provider VARCHAR(100), sip_proxy VARCHAR(100), sip_username VARCHAR(100) , sip_domain VARCHAR(100), sip_password VARCHAR(100), sip_port int, sip_protocol VARCHAR(20), createdAt DATETIME NOT NULL, updatedAt DATETIME NOT NULL, PRIMARY KEY (trunkid));"
+, "1.2.0.0.316" : "ALTER TABLE user_devices ADD COLUMN region_code VARCHAR(10) AFTER sip_proxy;"
+, "1.2.0.0.317" : "ALTER TABLE activations ADD COLUMN phone_number varchar(100);"
+, "1.2.0.0.318" : "ALTER TABLE user_devices ADD COLUMN reg_phone_number varchar(100) AFTER vpnclient;"
+, "1.2.0.0.319" : "ALTER TABLE user_devices ADD COLUMN local_extension varchar(100) AFTER reg_phone_number;"
+, "1.2.0.0.320" : "ALTER TABLE activations ADD COLUMN imsi varchar(100) default '';"
+, "1.2.0.0.321" : "ALTER TABLE activations ADD COLUMN devicename varchar(100) default '';"
+, "1.2.0.0.322" : "CREATE TABLE  telephony_local_numbers (local_number VARCHAR(40), is_used int default 0, email VARCHAR(100) , deviceid VARCHAR(100), vip_number int default 0, PRIMARY KEY (local_number)); "
+, "1.2.0.0.324" : "ALTER TABLE telephony_trunks ADD COLUMN outgoing_rule varchar(250) AFTER sip_protocol;"
+, "1.2.0.0.325" : "ALTER TABLE user_apps ADD COLUMN auto_install int default 1;"
+, "1.2.0.0.326" : "ALTER TABLE group_apps ADD COLUMN auto_install int default 1;"
+, "1.2.0.0.327" : "ALTER TABLE apps ADD COLUMN summary varchar(250) AFTER description;"
+, "1.2.0.0.328" : "ALTER TABLE apps ADD COLUMN categories varchar(250) AFTER summary;"
+, "1.2.0.0.329" : "ALTER TABLE apps MODIFY description TEXT ;"
+, "1.3.0.0.100" : "ALTER TABLE user_devices ADD COLUMN messaging_server VARCHAR(100) AFTER region_code;"
+, "1.3.0.0.101" : "ALTER TABLE user_devices ADD COLUMN messaging_token_type VARCHAR(50) AFTER messaging_server;"
+, "1.3.0.0.102" : "ALTER TABLE activations ADD COLUMN resetpasscode_wipe int default 0;"
+, "1.3.0.0.103" : "ALTER TABLE users ADD COLUMN ldap_dn varchar(250) default null;"
+, "1.3.0.1.100" : "CREATE TABLE admins (
+    email varchar(100),
+    maindomain varchar(100),
+    permissions text,
+    createdAt DATETIME NOT NULL,
+    updatedAt DATETIME NOT NULL,
+    PRIMARY KEY (email)
+    );"
+, "1.3.0.1.101" : "ALTER TABLE orgs ADD COLUMN clientauthtype int default 1 AFTER passcodetype;"
+, "1.3.0.1.102" : "ALTER TABLE orgs ADD COLUMN secondauthmethod int default 3 AFTER clientauthtype;"
+, "1.3.0.1.103" : "ALTER TABLE activations ADD COLUMN biometric_token varchar(100) default '';"
+, "1.4.0.0.100" : "ALTER TABLE telephony_subscriptions ADD COLUMN maindomain varchar(100) AFTER deviceid;"
+, "1.4.0.0.101" : "ALTER TABLE telephony_local_numbers ADD COLUMN maindomain varchar(100) AFTER is_used;"
+, "1.4.0.0.102" : "ALTER TABLE user_devices ADD COLUMN last_login DATETIME AFTER messaging_token_type;"
+, "1.4.0.0.103" : "ALTER TABLE users ADD COLUMN exchange_domain varchar(100) default '';"
+, "1.4.0.0.104" : "ALTER TABLE activations ADD COLUMN otp_token varchar(100) default '';"
+, "1.4.0.0.105" : "ALTER TABLE orgs ADD COLUMN otptype int default 0 AFTER secondauthmethod;"
+, "1.4.0.0.106" : "ALTER TABLE orgs ADD COLUMN watermark varchar(100) default '' AFTER otptype;"
+, "1.4.0.0.107" : "ALTER TABLE orgs MODIFY COLUMN watermark VARCHAR(2000);"
+, "1.4.0.0.108" : "ALTER TABLE platform_configs ADD COLUMN restartPlatformSessionsThreshold int default 0 AFTER fixedPool;"
+, "1.5.0.0.100" : "ALTER TABLE apps ADD COLUMN apptype varchar(20) default 'apk' AFTER packagename;"
+, "1.5.0.0.101" : "ALTER TABLE apps ADD COLUMN filename varchar(150) default '' AFTER apptype;"
+, "1.5.0.0.102" : "ALTER TABLE users ADD COLUMN docker_image varchar(100) default '';"
+, "1.5.0.0.103" : "CREATE TABLE static_platforms ( 
+    platid int NOT NULL,
+    ip varchar(100) default '',
+    vmname varchar(100) default '',
+    PRIMARY KEY (platid)
+    );"
+, "1.5.0.0.104" : "ALTER TABLE static_platforms ADD COLUMN ssh_port int default 22;"
+, "1.5.0.0.105" : "ALTER TABLE apps
+    ADD COLUMN createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ADD COLUMN updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;"
+, "1.5.0.0.106" : "CREATE TABLE images (
+    maindomain varchar(100) NOT NULL,
+    image_name varchar(100) NOT NULL,
+    content_hash varchar(100) NOT NULL,
+    createdAt DATETIME NOT NULL,
+    updatedAt DATETIME NOT NULL,
+    PRIMARY KEY (maindomain,image_name)
+    );"
+}

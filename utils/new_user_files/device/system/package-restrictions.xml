@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<package-restrictions>
+    <pkg name="com.android.bluetooth" enabled="2" />
+    <pkg name="com.android.deskclock" enabled="2" />
+    <pkg name="com.android.development" enabled="2" />
+    <pkg name="com.android.providers.downloads.ui" enabled="2" />
+    <pkg name="com.android.music" enabled="2" />
+    <pkg name="com.android.mms" enabled="2" />
+    <pkg name="com.android.videoeditor" enabled="2" />
+    <pkg name="com.android.quicksearchbox" enabled="2" />
+    <pkg name="com.android.speechrecorder" enabled="2" />
+    <pkg name="com.android.voicedialer" enabled="2" />
+    <pkg name="com.android.email">
+        <disabled-components>
+            <item name="com.android.email.service.EmailUpgradeBroadcastReceiver" />
+            <item name="com.android.email.service.LegacyEasAuthenticatorService" />
+            <item name="com.android.email.service.AttachmentDownloadService" />
+            <item name="com.android.email.service.LegacyEmailAuthenticatorService" />
+        </disabled-components>
+    </pkg>
+    <preferred-activities />
+</package-restrictions>
