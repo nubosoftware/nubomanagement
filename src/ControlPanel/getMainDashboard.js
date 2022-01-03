@@ -70,6 +70,7 @@ function getMainDashboardFromDB(domain, isNewCP, siteAdmin, callback) {
     var totalUsedSpaceMB;
     var totalSpaceMB
     var iPhoneDevices;
+    var deviceNames;
     var runningPlatforms;
     var errorPlatforms;
     var sessionsPerPlatform = [];
@@ -163,6 +164,24 @@ function getMainDashboardFromDB(domain, isNewCP, siteAdmin, callback) {
             Common.sequelize.query(query + queryWhereClause, { replacements: queryParams, type: QueryTypes.SELECT}).then(function(results) {
 
                 iPhoneDevices = results[0].count;
+                callback(null);
+                return;
+
+            }).catch(function(err) {
+                callback(err);
+                return;
+            });
+        },
+        // get all device types
+        function(callback) {
+            var query = 'SELECT count(DISTINCT(imei)) AS count , devicename FROM user_devices ';
+
+            var queryWhereClause = " WHERE maindomain= :domain group by devicename order by count desc limit 10";
+            var queryParams = {domain:domain};
+
+            Common.sequelize.query(query + queryWhereClause, { replacements: queryParams, type: QueryTypes.SELECT}).then(function(results) {
+
+                deviceNames = results;
                 callback(null);
                 return;
 
@@ -305,6 +324,7 @@ function getMainDashboardFromDB(domain, isNewCP, siteAdmin, callback) {
                 totalDevices : totalDevices,
                 androidDevices : androidDevices,
                 iPhoneDevices : iPhoneDevices,
+                deviceNames,
                 totalUsedSpaceMB : totalUsedSpaceMB,
                 totalSpaceMB : totalSpaceMB,
                 availablePlatforms : maxCapacity/usersPerPlatform,
