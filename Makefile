@@ -28,8 +28,8 @@ all: nubomanagement-serv nubomanagement-serv-common
 all: nubomanagement-serv-js nubomanagement-serv-node_modules nubomanagement-serv-vmware
 all: nubomanagement-img
 
-BASE_TAG := nubo_release_3.0
-BASE_VERSION := 3.0
+BASE_TAG := nubo_release_3.1
+BASE_VERSION := 3.1
 
 define get_current_version
 $(eval $1_commit=$(shell git log -n 1 --format=oneline -- $($1_files_list)))
