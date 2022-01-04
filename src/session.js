@@ -42,8 +42,7 @@ var Session = function(sessid, opts, callback) {
             if (Object.keys(sess.params).length <= 1) {
                 var stack = new Error().stack;
                 console.log("Save session with one param: " + stack);
-            }
-
+            }            
             Common.redisClient.hmset('sess_' + sess.params.sessid, sess.params, function(err, obj) {
                 if (err) {
                     logger.info("Error in save hmset:" + err);
@@ -572,6 +571,7 @@ function reassignAvalibleGatewayForSession(sessId, callback) {
     var gwLock;
     var sessNotFound = false;
 
+    logger.info(`reassignAvalibleGatewayForSession. sessId: ${sessId}`);
     async.waterfall([
         function(callback) {
             new Session(sessId, function(err, obj) {
@@ -671,28 +671,12 @@ function reassignAvalibleGatewayForSession(sessId, callback) {
                     return;
                 }
 
-                // var opts = {
-                //     object: true,
-                //     reversible: true
-                // }
-
-                //var toJson = xml2jsonParser.toJson(data, opts);
-
-                
-
-                // toJson.session.gateway_url['$t'] = session.params.gatewayInternal;
-                // toJson.session.gateway_controller_port['$t'] = session.params.gatewayControllerPort;
-                // toJson.session.gateway_apps_port['$t'] = session.params.gatewayAppsPort;
-
-                // var toXml = xml2jsonParser.toXml(toJson);
-                // var newXml = "<?xml version='1.0' encoding='utf-8' standalone='yes' ?>\r\n" + toXml.replace(/></g, '>\r\n<');
-
                 var toJson = convert.xml2js(data, {compact: true});
                 toJson.session.gateway_url._text = session.params.gatewayInternal;
                 toJson.session.gateway_controller_port._text = session.params.gatewayControllerPort;
                 toJson.session.gateway_apps_port._text = session.params.gatewayAppsPort;
-                var toXml = convert.js2xml(toJson,{compact: true});
-                var newXml = "<?xml version='1.0' encoding='utf-8' standalone='yes' ?>\r\n" + toXml.replace(/></g, '>\r\n<');
+                var newXml = convert.js2xml(toJson,{compact: true});                
+                //logger.info(`newXml: ${newXml}`);
                 callback(null, session, newXml, xmlFile);
             });
         },
