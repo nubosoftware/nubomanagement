@@ -1756,10 +1756,10 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     },
                     //attach gateway to session
                     function(callback) {
-                        if (desktopDevice) {
+                        /*if (desktopDevice) {
                             callback(null);
                             return;
-                        }
+                        }*/
                         //create dummy gateway obj
                         var gwObj = {
                             index: -1
@@ -1809,7 +1809,11 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                                 session.params.containerIpAddress = res.params.ipAddress;
                                 session.params.containerUserName = res.params.linuxUserName;
                                 session.params.containerUserPass = res.params.userPass;
-                                session.params.guacAddr = Common.guacAddr;
+                                if (session.params.gatewayExternal) {
+                                    session.params.guacAddr = session.params.gatewayExternal;
+                                } else {
+                                    session.params.guacAddr = Common.guacAddr;
+                                }
                             }
                             buildStatus.userAttached = true;
                             callback(null);
@@ -1827,10 +1831,10 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     },
                     // update gateway Reference
                     function(callback) {
-                        if (desktopDevice) {
+                        /*if (desktopDevice) {
                             callback(null);
                             return;
-                        }
+                        }*/
                         gatewayModule.updateGWSessionScore(session.params.gatewayIndex, 1, session.params.sessid, session.logger, function(err) {
                             if (err) {
                                 callback("failed increasing gateway reference");
@@ -1842,10 +1846,10 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     },
                     // unlock GW after session files created
                     function(callback) {
-                        if (desktopDevice) {
+                        /*if (desktopDevice) {
                             callback(null);
                             return;
-                        }
+                        }*/
                         buildStatus.gatewayLock.release(function(err, replay) {
                             if (err) {
                                 callback("cannot remove lock on platform");
