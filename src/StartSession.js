@@ -2165,11 +2165,7 @@ function response2Client(session, errResObj, res, isLocalIP, logger, loginToken)
 
     var resobj;
 
-    if (errResObj) {
-        if (Common.withService) {
-            _.extend(errResObj, dummyGW);
-        }
-
+    if (errResObj) {        
         logger.error("response to client: " + JSON.stringify(errResObj, null, 2));
         res.send(errResObj);
         return;
