@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+npm install --only=dev
 if [ ! -d "./nubo-management-desktop" ] 
 then   
     echo "Directory nubo-management-desktop does not exists. Clone from git project."

@@ -10,6 +10,7 @@ RUN apt install -y \
     telnet \
     dnsutils \
     net-tools \
+    rsync \
     sudo
 
 #install node js 14.x
@@ -26,17 +27,6 @@ RUN apt update -y ; apt install -y docker-ce-cli
 # mark this as docker installation
 RUN mkdir -p /etc/.nubo/ && \
     touch  /etc/.nubo/.docker
-
-#install fdroid
-RUN apt install -y python3-pip git autoconf patch libtool pkg-config gradle ant
-RUN cd /opt \
-    && git clone --depth 1 https://gitlab.com/fdroid/fdroidserver.git \
-    && cd fdroidserver \
-    && pip3 install --upgrade babel pip setuptools \
-    && pip3 install --no-binary python-vagrant -e . \
-    && python3 setup.py compile_catalog build \
-    && python3 setup.py install
-
 
 # install nubo debs
 COPY debs /tmp
