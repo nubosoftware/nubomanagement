@@ -240,14 +240,14 @@ let logTransports = [
         maxsize: 100*1024*1024, //100MB
         maxFiles: 4,
     }),
-    /*new transports.Syslog({
+    new transports.Syslog({
         app_name : "nubomanagement",
         handleExceptions : true,
         localhost: null,
         protocol: "unix",
         path: "/dev/log",
         format: format.json()
-    })*/
+    })
 ];
 if (scriptBaseName == "nuboConfig") {
     logTransports.shift();
