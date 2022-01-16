@@ -13,12 +13,18 @@ var Sequelize;
 
 //init sequelize connection
 var initDBObj = function(callback) {
+    let dbConf;
+    if (Common.syslogDb && Common.syslogDb.user) {
+        dbConf = Common.syslogDb;
+    } else {     
+        dbConf = Common.sysConf.dbConf;
+    }
     DBModule.initSequelize(
             "nuboLogs",
-            (Common.syslogDb && Common.syslogDb.user) || Common.dbUser,
-            (Common.syslogDb && Common.syslogDb.password) || Common.dbPassword,
-            (Common.syslogDb && Common.syslogDb.host) || Common.dbHost,
-            (Common.syslogDb && Common.syslogDb.port) || Common.dbPort,
+            (dbConf.user) || Common.dbUser,
+            (dbConf.password) || Common.dbPassword,
+            (dbConf.host) || Common.dbHost,
+            (dbConf.port) || Common.dbPort,
             function(err, obj, obj2) {
                 console.log(" initDBObj finished: ");
                 if(err) {

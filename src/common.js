@@ -528,7 +528,7 @@ Common.updateSettingsJSON = function (params,cb) {
         (cb) => {
             // load the sysconf
             SysConf.loadSysConf(function(err, sysConfObj) {                
-                sysConf = sysConfObj
+                sysConf = sysConfObj;                
                 cb(err);
             });
         }, (cb) => {
@@ -597,7 +597,8 @@ function parse_configs(parseConfigCB) {
                 dbMaxIdleTime: sysConf.maxIdleTime
             };
 
-            var dbConf = sysConf.dbConf;
+            Common.sysConf = sysConf;
+            var dbConf = sysConf.dbConf;            
 
             require('./DBModel.js').initSequelize(dbConf.name, dbConf.user, dbConf.password, dbConf.host, dbConf.port, options, function(err, dbObj, sequelizeObj) {
                 if(err){

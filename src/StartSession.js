@@ -2420,7 +2420,7 @@ function logoutUser(req, res, next) {
                     return;
                 }
                 logger.user(login.getEmail());
-                logger.info("logoutUser", {
+                logger.info("Logout User", {
                     mtype: "important"
                 });
                 loginData = login;
@@ -2569,7 +2569,7 @@ function closeOtherSessions(req, res, next) {
                     return;
                 }
                 logger.user(login.getEmail());
-                logger.info("logoutUser", {
+                logger.info("Logout User", {
                     mtype: "important"
                 });
                 loginData = login;
