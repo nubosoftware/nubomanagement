@@ -16,6 +16,9 @@ var TreadedLogger = function (moduleLogger) {
     this.user = function(user) {
         extra_meta.user = user;
     }
+    this.device = function(device) {
+        extra_meta.device = device;
+    }
 
     var ctime = new Date().getTime();
     (function(obj) {
@@ -37,7 +40,8 @@ var TreadedLogger = function (moduleLogger) {
                     logger = moduleLogger;
                 else
                     logger = Common.logger;
-                    logger.log.apply(logger, arr);
+                //console.log(`TreadedLogger. arr: ${JSON.stringify(arr)}`);
+                logger.log.apply(logger, arr);
             }
         });
         obj.timelogger = new TimeLog(obj);

@@ -182,7 +182,7 @@ var Session = function(sessid, opts, callback) {
                         callback(msg);
                         return;
                     }
-                    logger.info(`created_sessions_cnt: ${val}`);
+                    //logger.info(`created_sessions_cnt: ${val}`);
                     callback(null,val);
                 });
             });

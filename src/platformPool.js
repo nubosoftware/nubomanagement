@@ -258,7 +258,7 @@ function closePlatforms(callback) {
 
 
 function platformChannel(message) {
-    logger.info("platformChannel: "+message+" message.");
+    //logger.info("platformChannel: "+message+" message.");
     if (message === 'refresh') {
         refresh(function() {});
     } else if (message === 'close') {

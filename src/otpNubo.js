@@ -161,7 +161,7 @@ function checkUserOtpCodeTOTP(login, SMSCode, logger, callback){
                 }
 
                 if (results[0].otp_token == "") {
-                    logger.info(`Adding new otp token ${SMSCode}`);
+                    logger.info(`Adding new otp token ${SMSCode}`,{mtype: "important"});                    
                     try {
                         totp(SMSCode);
                     } catch (err) {

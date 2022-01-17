@@ -45,6 +45,7 @@ function checkOtpAuth(req, res, next) {
 
                 login = loginObj;
                 logger.user(login.getEmail());
+                logger.device(login.getDeviceID());
                 callback(null);
             });
         },
@@ -70,13 +71,15 @@ function checkOtpAuth(req, res, next) {
     ], function(err) {
         if (err && err !== finish) {
             sendTrack(login, ip, response.message, response.status);
-            logger.error("checkOtpAuth: " + err);
+            logger.error("checkOtpAuth: " + err,{mtype: "important"});
             res.send(response);
             return;
         }
 
         if (response.status != Common.STATUS_OK) {
-            logger.warn("checkOtpAuth: " + response.message);
+            logger.info("checkOtpAuth: " + response.message,{mtype: "important"});
+        } else {
+            logger.info("checkOtpAuth: OTP code is valid.",{mtype: "important"});
         }
 
         res.send(response);        

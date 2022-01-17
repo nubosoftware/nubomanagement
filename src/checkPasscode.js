@@ -77,6 +77,7 @@ function checkPasscode(req, res, next) {
 
                 login = loginObj;
                 logger.user(login.getEmail());
+                logger.device(login.getDeviceID());
                 webClient = login.getDeviceID().includes("web");
                 callback(null);
             });
@@ -368,7 +369,7 @@ function checkPasscode(req, res, next) {
                 }
             }
         }
-
+        logger.info(message,{ mtype: "important"});
         var response = {
             status: status,
             message: message

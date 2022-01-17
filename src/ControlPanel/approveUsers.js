@@ -91,6 +91,11 @@ function RemoveByEmailAndDeviceId(email, deviceid, domain, admin, pendingStatus,
         eventLog.createEvent(eventLog.EV_CONST.EV_REMOVE_PENDING_ACTIVATION, admin, domain, "Update pending activation by admin for user " + email + "and device " + deviceid, eventLog.EV_CONST.INFO, function(err) {
             logger.error(err);
         });
+        logger.log('info',`Activation denied. user: ${email}, device: ${deviceid}`,{
+            mtype: "important",
+            user: email,
+            device: deviceid
+        });
 
         callback(null);
         return;
@@ -307,19 +312,47 @@ function ApproveUsers(req, res, domain, admin) {
     function(callback) {
         if (isNeedToUnlock) {
             unlockUser(email, deviceId, domain, function(err) {
+                if (!err) {
+                    logger.log('info',`Approve ${approveType}. user: ${email}, device: ${deviceId}`,{
+                        mtype: "important",
+                        user: email,
+                        device: deviceId
+                    });
+                }
                 callback(err);
             });
         } else if (resetPasscode) {
 
             resetPasscodeUser(email, deviceId, domain, approve, function(err) {
+                if (!err) {
+                    logger.log('info',`Approve ${approveType}. user: ${email}, device: ${deviceId}`,{
+                        mtype: "important",
+                        user: email,
+                        device: deviceId
+                    });
+                }
                 callback(err);
             });
         } else if (resetBiometric) {
             resetBiometricFunc(email, deviceId, domain, approve, function(err) {
+                if (!err) {
+                    logger.log('info',`Approve ${approveType}. user: ${email}, device: ${deviceId}`,{
+                        mtype: "important",
+                        user: email,
+                        device: deviceId
+                    });
+                }
                 callback(err);
             });
         } else if (resetOTP) {
             resetOTPFunc(email, deviceId, domain, approve, function(err) {
+                if (!err) {
+                    logger.log('info',`Approve ${approveType}. user: ${email}, device: ${deviceId}`,{
+                        mtype: "important",
+                        user: email,
+                        device: deviceId
+                    });
+                }
                 callback(err);
             });
         } else {

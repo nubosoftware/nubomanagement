@@ -123,13 +123,13 @@ async function activate(req, res, next) {
         var token = crypto.randomBytes(48).toString('hex');
         var emailtoken = crypto.randomBytes(48).toString('hex');
 
-        logger.info("token: " + token);
+        //logger.info("token: " + token);
 
         // set creation date of the activation link
         var currentDate = new Date();
 
         // build expiration date 48 hours from creation date (make it settings later on)
-        logger.info('Activation Timeout Period:' + Common.activationTimeoutPeriod);
+        //logger.info('Activation Timeout Period:' + Common.activationTimeoutPeriod);
         var expirationDate = new Date();
         expirationDate.setHours(expirationDate.getHours() + Common.activationTimeoutPeriod);
 
@@ -188,7 +188,11 @@ async function activate(req, res, next) {
             }
         });
 
-        logger.info("Added activation " + token);
+        logger.log('info',`Added activation. user: ${email}, device: ${deviceid}`,{
+            user: email,
+            device: deviceid,
+            mtype: "important"
+        });
 
         // send result to the user
         let retObj = {

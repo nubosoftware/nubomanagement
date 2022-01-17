@@ -225,6 +225,15 @@ const myFormat = printf(info => {
 
 require('winston-syslog').Syslog;
 let scriptBaseName = Common.path.basename(scriptName, '.js');
+let syslogAppName;
+if (scriptBaseName == "multithreadserver" || scriptBaseName == "restserver") {
+    syslogAppName = "nubomanagement";
+} else {
+    syslogAppName = `nubomanagement-${scriptBaseName}`;
+}
+console.log(`syslogAppName: ${syslogAppName}`);
+
+
 let logTransports = [
     new (transports.Console)({
         name: 'console',
@@ -241,7 +250,7 @@ let logTransports = [
         maxFiles: 4,
     }),
     new transports.Syslog({
-        app_name : "nubomanagement",
+        app_name : syslogAppName,
         handleExceptions : true,
         localhost: null,
         protocol: "unix",

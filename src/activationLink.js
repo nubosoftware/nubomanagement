@@ -49,8 +49,13 @@ function activationLink(req, res, next) {
     var emailToken = req.params.token;
     var cloneActivation = req.params.cloneActivation;
     var datetest = new Date();
-    var expirationDateInit = (Common.withService) ? new Date(0) : new Date();
-    logger.info("activationLink called. emailToken: " + emailToken);
+    var expirationDateInit = (Common.withService) ? new Date(0) : new Date();    
+    if (req.params.email) {
+        logger.user(req.params.email);
+        logger.info(`activationLink called. emailToken: ${emailToken} user: ${req.params.email}`,{ mtype: "important"});
+    } else {
+        logger.info("activationLink called. emailToken: " + emailToken);
+    }
 
     let smsActivation = req.params.smsActivation;
     let activationWhere;
@@ -137,6 +142,7 @@ function activationLink(req, res, next) {
                     maindomain = email.substr(email.indexOf('@') + 1);
                 }
                 logger.user(email);
+                logger.device(deviceid);
                 if (Common.isEnterpriseEdition()) {
                     var clientIP = req.connection.remoteAddress;
                     var appid = deviceid + "_" + oldActivationKey;
@@ -564,6 +570,15 @@ function activationLink(req, res, next) {
             }
         }
     ], (err) => {
+        if (status === 0) {
+            logger.info(`Activation approved. user: ${email}, device: ${deviceid}`, {
+                mtype: "important"
+            });
+        } else {
+            logger.info(`Activation denied. user: ${email}, device: ${deviceid}, status: ${status}, message: ${msg}`,{
+                mtype: "important"
+            });
+        }
         if (!isControlPanel) {
             if (status === 0) {
                 res.send({

@@ -246,6 +246,7 @@ function startSessionImp(startSessionParams) {
                         return;
                     }
                     logger.user(login.getEmail());
+                    logger.device(login.getDeviceID());
                     logger.info("Start session", {
                         mtype: "important"
                     });
@@ -373,9 +374,13 @@ function startSessionImp(startSessionParams) {
                         if (err.startSessionErrorCode) {
                             resObj.startSessionErrorCode = err.startSessionErrorCode;
                         }
-                        logger.error("startSession: starting user session failed. err: " + err);
+                        logger.error(`startSession: starting user session failed. err: ${JSON.stringify(err)}`,{
+                            mtype: "important"
+                        });
                     } else {
-                        logger.info("startSession: user session started succefully");
+                        logger.info("startSession: user session started succefully",{
+                            mtype: "important"
+                        });
                     }
                     callback(null, session);
                 });
@@ -1803,7 +1808,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                                 return;
                             }
 
-                            logger.info("attachUser. res: "+res);
+                            //logger.info("attachUser. res: "+res);
                             session.params.localid = res.localid;
                             if (Common.platformType == "docker") {
                                 session.params.containerIpAddress = res.params.ipAddress;
@@ -2243,7 +2248,7 @@ function updateLastActivityInDB(login) {
             orgdomain: domain
         }
     }).then(function() {
-        logger.info('updated last activity to user');
+        //logger.info('updated last activity to user');
     }).catch(function(err) {
         logger.info(err);
         return;
