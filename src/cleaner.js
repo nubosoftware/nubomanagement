@@ -5,8 +5,7 @@ var sessionModule = require('./session.js');
 var Session = sessionModule.Session;
 var ThreadedLogger = require('./ThreadedLogger.js');
 var async = require('async');
-var logger = new ThreadedLogger(Common.getLogger(__filename));
-logger.user("cleaner");
+var logger = Common.getLogger(__filename);
 var StartSession = require('./StartSession.js');
 var MAX_SESSIONS_IN_PARALLEL = 5;
 var cleanerStoped = false;
@@ -45,6 +44,11 @@ function cleaner(callback) {
                     }
 
                     if (session) {
+                        logger.log('info',`"cleaner: Closing session after timeout. sessid: ${session.params.sessid}`,{
+                            user: session.params.email,
+                            device: session.params.deviceid,
+                            mtype: "important"
+                        });
                         StartSession.endSession(session.params.sessid, function(err) {
                             if (err) {
                                 var errMsg = "cleaner: error ending session - " + session.params.sessid;

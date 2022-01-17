@@ -885,6 +885,8 @@ function endSession(sessionID, callback, closeSessionMsg) {
                 email = tempSession.params.email;
                 sessid = tempSession.params.sessid;
                 sessLogger.user(email);
+                sessLogger.device(deviceid);
+                sessLogger.info(`Closing session. user: ${email}, sessid: ${sessid}`,{ mtype:"important"});
                 if (sessid != sessionID) {
                     var msg = "loaded invalid session id: " + sessid;
                     callback(msg);
@@ -1102,9 +1104,10 @@ function endSession(sessionID, callback, closeSessionMsg) {
     ], function(err) {
         if (err) {
             var errMsg = "endSession: " + err;
-            sessLogger.error(errMsg);
+            sessLogger.error(errMsg,{ mtype:"important"});
         } else {
             sessLogger.logTime("Session closed");
+            sessLogger.info(`Session closed`,{ mtype:"important"});
         }
 
         if (session != null) {
