@@ -27,9 +27,14 @@ function registerGateway(req, res) {
 
     var baseIndex = req.params.baseIndex;
     var offset = req.params.offset;
+    let internal_ip = req.params.internal_ip;
+    if (internal_ip == "auto") {
+        internal_ip = req.socket.remoteAddress;
+        logger.info(`registerGateway. Detected internal_ip: ${internal_ip}`);
+    }
 
     var settingsData = {
-        "internal_ip" : req.params.internal_ip,
+        "internal_ip" : internal_ip,
         "controller_port" : req.params.controller_port,
         "apps_port" : req.params.apps_port,
         "external_ip" : req.params.external_ip,

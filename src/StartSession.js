@@ -1817,8 +1817,8 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                                 session.params.containerIpAddress = res.params.ipAddress;
                                 session.params.containerUserName = res.params.linuxUserName;
                                 session.params.containerUserPass = res.params.userPass;
-                                if (session.params.gatewayExternal) {
-                                    session.params.guacAddr = session.params.gatewayExternal;
+                                if (session.params.gatewayInternal) {
+                                    session.params.guacAddr = session.params.gatewayInternal;
                                 } else {
                                     session.params.guacAddr = Common.guacAddr;
                                 }
