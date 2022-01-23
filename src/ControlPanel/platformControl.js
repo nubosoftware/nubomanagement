@@ -329,17 +329,30 @@ function getStaticParamsFromMachinesFile(platID) {
 }
 
 async function getStaticPlatformParams(platID) {
+
+    let selfRegisterIP = await require('../platformSelfReg').getSelfRegisterPlatformIP(platID);
+
     let staticPlatform = await Common.db.StaticPlatforms.findByPk(platID);
     let params;    
-    if (!staticPlatform) {
-        try {
-            // try to get paramter from old file
-            params = await getStaticParamsFromMachinesFile(platID);            
-        } catch (err) {
-            logger.info(`Error getting platform parameters from machines file: ${err}`);
+    if (!staticPlatform || (selfRegisterIP && selfRegisterIP != staticPlatform.ip) ) {
+        if (!selfRegisterIP) {
+            try {
+                // try to get paramter from old file
+                params = await getStaticParamsFromMachinesFile(platID);            
+            } catch (err) {
+                logger.info(`Error getting platform parameters from machines file: ${err}`);
+                params = {
+                    platid: platID,
+                    ip: "",
+                    vmname: "",
+                    ssh_port: 22
+                }
+            }
+        } else {
+            logger.info(`Update self register platform in DB. platID: ${platID}, IP: ${selfRegisterIP}`);
             params = {
                 platid: platID,
-                ip: "",
+                ip: selfRegisterIP,
                 vmname: "",
                 ssh_port: 22
             }

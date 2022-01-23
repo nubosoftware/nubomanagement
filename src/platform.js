@@ -16,7 +16,10 @@ var daemonTools = require('./daemonTools.js');
 var commonUtils = require('./commonUtils.js');
 var jwt = require('jsonwebtoken');
 const { QueryTypes } = require('sequelize');
+const Numbers = require("twilio/lib/rest/Numbers");
 var platformSsl;
+const { promisify } = require("util");
+
 
 
 // hold all platform types that are registered
@@ -308,17 +311,19 @@ var Platform = function(platid, platType, callback, newplatid) {
             updateRequestOptionsWithCertsForPlatform(options);
         }
         //logger.info(`doPlatformRequest. options: ${JSON.stringify(options,null,2)}`);
+        //console.log(new Error());
         if (options.method === "GET") {
             http.doGetRequest(options, function(err, data) {
                 if (err) {
                     logger.error("Cannot connect to platform " + self.params.platid + ", err: " + err); // Keep this log
+                    
                 }
                 arg2(err, data);
             });
         } else if (options.method === "POST") {
             http.doPostRequest(options, arg2, function(err, data) {
                 if (err) {
-                    logger.error("Cannot connect to platform " + self.params.platid + ", err: " + err); // Keep this log
+                    logger.error("Cannot connect to platform " + self.params.platid + ", err: " + err); // Keep this log                    
                 }
                 arg3(err, data);
             });
@@ -396,7 +401,9 @@ var Platform = function(platid, platType, callback, newplatid) {
             }
         };
 
+        console.log(`startPlatform: doPlatformRequest`);
         doPlatformRequest(options, postData, function(err, resData) {
+            console.log(`startPlatform: doPlatformRequest response: ${err}`);
             if (err) {
                 callback(err);
             } else {
@@ -1429,7 +1436,8 @@ var registerPlatformNum = function(_opts, callbackMain) {
     var opts = {};
     var maxFailed = isNaN(Common.platformParams.maxFailed) ? 10 : Common.platformParams.maxFailed;
     opts.min = _opts.min || Common.startPlatformNum;
-    opts.max = _opts.max || (Common.startPlatformNum + Common.platformParams.maxCapacity / Common.platformParams.usersPerPlatform - 1 + maxFailed); opts.min//allow upto 10 in bad states
+    opts.max = _opts.max || (Common.startPlatformNum + Common.platformParams.maxCapacity / Common.platformParams.usersPerPlatform - 1 + maxFailed); 
+    //opts.min//allow upto 10 in bad states
     opts.hostline = (_opts.hostline === undefined) ? Common.hostline : _opts.hostline;
     opts.platType = _opts.platType || "";
     var logger = _opts.logger || Common.logger;
@@ -1506,82 +1514,106 @@ var registerPlatformNum = function(_opts, callbackMain) {
 
 }
 
+/**
+ * Get array of all avaialble platform numbers
+ */
+async function getAllPlatformNumbers() {
+    
+    if (Common.platformParams['poolStrategy'] == "calculated") {
+        let nums = [];
+        let maxFailed = isNaN(Common.platformParams.maxFailed) ? 10 : Common.platformParams.maxFailed;
+        let min = Common.startPlatformNum;
+        let max = Common.startPlatformNum + Common.platformParams.maxCapacity / Common.platformParams.usersPerPlatform - 1 + maxFailed;    
+        //console.log(`listAllPlatforms. min: ${min}, max: ${max}`);
+        for (let i=min; i<=max; i++){
+            nums.push(i);
+        }
+        return nums;
+    } else {
+        const redisSmembers = promisify(Common.redisClient.smembers).bind(Common.redisClient);
+        let arr = await redisSmembers('platform_regs');
+        for (let i = 0; i < arr.length; i++) {
+            arr[i] = Number(arr[i]);
+        }
+        arr.sort();
+        return arr;
+    }
+    
+}
 
 function listAllPlatforms(domain,cb) {
-    let maxFailed = isNaN(Common.platformParams.maxFailed) ? 10 : Common.platformParams.maxFailed;
-    let min = Common.startPlatformNum;
-    let max = Common.startPlatformNum + Common.platformParams.maxCapacity / Common.platformParams.usersPerPlatform - 1 + maxFailed;
-    let nums = [];
-    //console.log(`listAllPlatforms. min: ${min}, max: ${max}`);
-    for (let i=min; i<=max; i++){
-        nums.push(i);
-    }
-    let plats = [];
-    async.eachSeries(nums,(curPlatID,cb) => {
-        //logger.info("Getting info for plat: "+curPlatID);
-        var multi = Common.getRedisMulti();
-        multi.zscore('platforms', curPlatID); // [0]
-        multi.zscore('platforms_errs', curPlatID); // [1]
-        multi.sismember('platforms_idle', curPlatID); // [2]
-        multi.sismember('platforms_close', curPlatID); // [3]
-        multi.zscore('platforms_fails', curPlatID); // [4]
-        multi.hgetall('platform_'+curPlatID); // [5]
-        multi.zscore('platforms_'+domain, curPlatID); //[6]
-        multi.zscore('platforms_errs_'+domain, curPlatID); // [7]
-        multi.sismember('platforms_idle_'+domain, curPlatID); // [8]
+    getAllPlatformNumbers().then(nums => {
+        let plats = [];
+        async.eachSeries(nums, (curPlatID, cb) => {
+            //logger.info("Getting info for plat: "+curPlatID);
+            var multi = Common.getRedisMulti();
+            multi.zscore('platforms', curPlatID); // [0]
+            multi.zscore('platforms_errs', curPlatID); // [1]
+            multi.sismember('platforms_idle', curPlatID); // [2]
+            multi.sismember('platforms_close', curPlatID); // [3]
+            multi.zscore('platforms_fails', curPlatID); // [4]
+            multi.hgetall('platform_' + curPlatID); // [5]
+            multi.zscore('platforms_' + domain, curPlatID); //[6]
+            multi.zscore('platforms_errs_' + domain, curPlatID); // [7]
+            multi.sismember('platforms_idle_' + domain, curPlatID); // [8]
 
 
-        multi.exec(function(err, r) {
-            if (err) {
-                var errMsg = "cannot get data from redis err: " + err;
-                cb(errMsg);
+            multi.exec(function (err, r) {
+                if (err) {
+                    var errMsg = "cannot get data from redis err: " + err;
+                    cb(errMsg);
+                    return;
+                }
+                let status;
+                let sessions = 0;
+                if (r[0] == null && r[1] == null && r[2] == 0 && r[3] == 0 && r[4] < Common.platformParams.maxFails) {
+                    status = "available";
+                } else if (r[6] != null) {
+                    status = "running"
+                    sessions = r[6];
+                } else if (r[7] != null) {
+                    status = "error"
+                    sessions = r[7];
+                } else if (r[8] != 0) {
+                    status = "starting"
+                } else if (r[3] != 0) {
+                    status = "stopping"
+                } else {
+                    status = "not_available";
+                }
+                let platform_ip = "";
+                if (status != "not_available" && r[5] && r[5].domain == domain) {
+                    platform_ip = r[5].platform_ip;
+                }
+                if (status == "error" && r[5] && r[5].revive == "true") {
+                    status = "revive";
+                }
+                let params;
+                if (r[5]) {
+                    params = _.pick(r[5], "created_sessions_cnt", "startTime", "lastCheckStatus", "lastCheckTime", "lastCheckMsg", "currentLoad", "memActive", "memTotal", "memAvailable");
+                } else {
+                    params = {};
+                }
+                plats.push({
+                    platID: curPlatID,
+                    status,
+                    sessions,
+                    platform_ip,
+                    params
+                })
+
+                cb(null);
                 return;
-            }
-            let status;
-            let sessions = 0;
-            if (r[0] == null && r[1] == null && r[2] == 0 && r[3] == 0 && r[4] < Common.platformParams.maxFails ) {
-                status = "available";
-            } else if(r[6] != null) {
-                status = "running"
-                sessions = r[6];
-            } else if(r[7] != null) {
-                status = "error"
-                sessions = r[7];
-            } else if(r[8] != 0) {
-                status = "starting"
-            } else if(r[3] != 0) {
-                status = "stopping"
-            } else {
-                status = "not_available";
-            }
-            let platform_ip = "";
-            if (status != "not_available" && r[5] && r[5].domain == domain) {
-                platform_ip = r[5].platform_ip;
-            }
-            if (status == "error" && r[5] && r[5].revive == "true") {
-                status = "revive";
-            }
-            let params;
-            if (r[5]) {
-                params = _.pick(r[5], "created_sessions_cnt","startTime","lastCheckStatus", "lastCheckTime","lastCheckMsg", "currentLoad", "memActive" , "memTotal","memAvailable");
-            } else {
-                params = {};
-            }
-            plats.push({
-                platID: curPlatID,
-                status,
-                sessions,
-                platform_ip,
-                params
-            })
-
-            cb(null);
-            return;
+            });
+        }, (err) => {
+            //logger.info("plats: "+JSON.stringify(plats,null,2));
+            cb(err, plats);
         });
-    },(err)=> {
-        //logger.info("plats: "+JSON.stringify(plats,null,2));
-        cb(err,plats);
+    }).catch(err => {
+        cb(err);
     });
+
+
 }
 
 function findAvaliblePlatform(opts, dedicatedDomain, callback) {

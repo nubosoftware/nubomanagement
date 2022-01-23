@@ -113,6 +113,7 @@ function getDataCenterParamsSchema(Common) {
 
 
 var platParams = {
+    poolStrategy: 'string',
     concurrency: 'int',
     concurrencyDelay: 'int',
     platformPoolSize: 'int',
@@ -130,55 +131,88 @@ var platParams = {
     rsyslog: 'string'
 };
 
-function getPlatParamsSchema(Common) {
+function getPlatParamsSchema(Common,prompt) {
     var schema = {
         properties: {
+            poolStrategy: {
+                validator: /calculated|StartAll/,               
+                required: true,               
+                message: 'Pool strategy (calculated / StartAll)?',
+                ask: function() {
+                    return true;
+                },                
+                default: Common.platformParams.poolStrategy
+            },
             concurrency: {
-                description: 'max platforms loaded in parallel:',
+                description: 'Max platforms started in parallel:',
                 default: Common.platformParams.concurrency
             },
             concurrencyDelay: {
-                description: 'wait internval between platform load:',
+                description: 'Wait internval between platform start:',
                 default: Common.platformParams.concurrencyDelay
-            },
+            },            
             platformPoolSize: {
-                description: 'platform pool size:',
-                default: Common.platformParams.platformPoolSize
+                description: 'Platform pool size:',
+                default: Common.platformParams.platformPoolSize,
+                ask: function() {
+                    var calculated = (prompt.history('poolStrategy').value == 'calculated');
+                    return calculated;
+                }
             },
             upperCapacityLevel: {
-                description: 'max ratio of users per platform before loading new platform:',
-                default: Common.platformParams.upperCapacityLevel
+                description: 'Max ratio of users per platform before loading new platform:',
+                default: Common.platformParams.upperCapacityLevel,
+                ask: function() {
+                    var calculated = (prompt.history('poolStrategy').value == 'calculated');
+                    return calculated;
+                }
             },
             bottomCapacityLevel: {
-                description: 'min ratio of users per platform before removeing platform:',
-                default: Common.platformParams.bottomCapacityLevel
+                description: 'Min ratio of users per platform before removeing platform:',
+                default: Common.platformParams.bottomCapacityLevel,
+                ask: function() {
+                    var calculated = (prompt.history('poolStrategy').value == 'calculated');
+                    return calculated;
+                }
             },
             maxCapacity: {
-                description: 'maximum users on data center:',
-                default: Common.platformParams.maxCapacity
+                description: 'Maximum users on data center:',
+                default: Common.platformParams.maxCapacity,
+                ask: function() {
+                    var calculated = (prompt.history('poolStrategy').value == 'calculated');
+                    return calculated;
+                }
             },
             usersPerPlatform: {
-                description: 'number of users on platform:',
-                default: Common.platformParams.usersPerPlatform
+                description: 'Number of users on platform:',
+                default: Common.platformParams.usersPerPlatform                
             },
             maxFailed: {
-                description: 'maximum platforms in error state before mgmt stops loading new platforms:',
-                default: Common.platformParams.maxFailed
+                description: 'Maximum platforms in error state before mgmt stops loading new platforms:',
+                default: Common.platformParams.maxFailed,
+                ask: function() {
+                    var calculated = (prompt.history('poolStrategy').value == 'calculated');
+                    return calculated;
+                }
             },
             maxFails: {
-                description: 'number of max fails before stoping loading specific platform:',
+                description: 'Number of max fails before stoping loading specific platform:',
                 default: Common.platformParams.maxFails
             },
             fixedPool: {
-                description: 'include platforms in error state for calculation of capacity level?',
-                default: Common.platformParams.fixedPool
+                description: 'Include platforms in error state for calculation of capacity level?',
+                default: Common.platformParams.fixedPool,
+                ask: function() {
+                    var calculated = (prompt.history('poolStrategy').value == 'calculated');
+                    return calculated;
+                }
             },
             restartPlatformSessionsThreshold: {
                 description: 'Revive Platform Session Threshold',
                 default: Common.platformParams.restartPlatformSessionsThreshold ? Common.platformParams.restartPlatformSessionsThreshold : 0
             },
             cleanPlatformsMode: {
-                description: 'clean platforms?',
+                description: 'Clean platforms?',
                 default: Common.platformParams.cleanPlatformsMode
             }
         }

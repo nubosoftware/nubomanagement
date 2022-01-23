@@ -30,6 +30,8 @@ function registerGateway(req, res) {
     let internal_ip = req.params.internal_ip;
     if (internal_ip == "auto") {
         internal_ip = req.socket.remoteAddress;
+        internal_ip = internal_ip.split(',')[0];
+        internal_ip = internal_ip.split(':').slice(-1)[0];
         logger.info(`registerGateway. Detected internal_ip: ${internal_ip}`);
     }
 

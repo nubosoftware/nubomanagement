@@ -1559,6 +1559,27 @@ var filter = {
             "password": constraints.passcodeConstrRequested,
         }
     },
+    {
+        "path": "/selfRegisterPlatform",
+        "constraints": {           
+            "platform_ip": constraints.hostConstrRequested,            
+        },
+        "headerConstraints": {
+            'fe-user': constraints.ExcludeSpecialCharactersRequested,
+            'fe-pass': constraints.passcodeConstrRequested
+        }
+    },
+    {
+        "path": "/selfRegisterPlatformTtl",
+        "constraints": {
+            "idx": constraints.IndexConstrRequested,          
+            "platform_ip": constraints.hostConstrRequested
+        },
+        "headerConstraints": {
+            'fe-user': constraints.ExcludeSpecialCharactersRequested,
+            'fe-pass': constraints.passcodeConstrRequested
+        }
+    },
     
     {
         "regex": true,

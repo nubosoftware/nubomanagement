@@ -784,6 +784,7 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
             type: Sequelize.STRING,
             primaryKey: true,
         },
+        poolStrategy: Sequelize.STRING,
         concurrency: Sequelize.INTEGER,
         concurrencyDelay: Sequelize.INTEGER,
         platformPoolSize: Sequelize.INTEGER,

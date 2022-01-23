@@ -849,4 +849,5 @@ PRIMARY KEY (hardwaredesc, devicemodel));"
     updatedAt DATETIME NOT NULL,
     PRIMARY KEY (maindomain,image_name)
     );"
+, "1.5.0.0.110" : "ALTER TABLE platform_configs ADD COLUMN poolStrategy varchar(20) default 'calculated' AFTER dcName;"
 }

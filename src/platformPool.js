@@ -30,7 +30,7 @@ var poolQueue = async.queue(
         });
     }, pParams.concurrency);
 
-function startNPlatforms(n, platDomain, callback) {
+function startNPlatforms(n, opts, callback) {
     if (n === 0) {
         callback(null);
     } else if (n > 0) {
@@ -51,10 +51,7 @@ function startNPlatforms(n, platDomain, callback) {
         for (var i = 0; i < n; i++) {
             poolQueue.push(
                 function(cb) {
-                    var opts = {
-                        platType: "",
-                        domain: platDomain
-                    };
+                    
                     platformModule.registerPlatformNum(opts, function(err) {
                         if (err) {
                             logger.error("ERROR: " + err);
@@ -84,6 +81,11 @@ function refreshHelper(domain, callback) {
     var runningPlatforms = 0;
     var idlePlatforms = 0;
     var errPlatforms = 0;
+    var platformRegs;
+    var opts = {
+        platType: "",
+        domain: domain
+    };
 
     async.waterfall([
         function(callback) {
@@ -96,6 +98,7 @@ function refreshHelper(domain, callback) {
             multi.scard('platforms_idle_' + domain);
             multi.scard('sessions_' + domain);
             multi.zcard('platforms_errs_' + domain);
+            multi.smembers('platform_regs');
             multi.exec(function(err, replies) {
                 if (err) {
                     logger.error("platformPool cannot get data from redis err: %j, replies: %s", err, replies.toString());
@@ -105,6 +108,8 @@ function refreshHelper(domain, callback) {
                     idlePlatforms = replies[1];
                     nSessions = replies[2];
                     errPlatforms = replies[3];
+                    platformRegs = replies[4];
+                    //logger.info(`platformRegs: ${JSON.stringify(platformRegs)}`);
                     callback(null);
                 }
             });
@@ -113,35 +118,56 @@ function refreshHelper(domain, callback) {
             //logger.info("platformPool sess: " + nSessions + " rp: " + runningPlatforms + " ip: " + idlePlatforms);
             // we can mistake in maxCapacityCurrent cause of some task in queue (q.running())
             // may been delay function, but it is not critical error
-            var requiredByDefault = pParams['platformPoolSize'] - runningPlatforms - poolQueue.length() - poolQueue.running();
-            if (pParams.fixedPool) requiredByDefault -= errPlatforms;
-            var pLoad = nSessions / pParams["usersPerPlatform"];
-            var CapacityLevel = (runningPlatforms === 0) ? 0 : pLoad / runningPlatforms;
-            //logger.info("platformPool CapacityLevel: " + CapacityLevel);
-            var required = Math.max(requiredByDefault, 0); //need arrive to minimal number of platforms
-            if (required === 0) {
-                if (CapacityLevel > pParams["upperCapacityLevel"]) {
-                    var maxPlatforms = pParams["maxCapacity"] / pParams["usersPerPlatform"];
-                    var requiredPlatformsTotal = Math.ceil(Math.min(pLoad / pParams["upperCapacityLevel"], maxPlatforms));
-                    var requiredCreate = requiredPlatformsTotal - runningPlatforms - poolQueue.length() - poolQueue.running();
-                    required = Math.max(requiredCreate, 0); // in that part platforms can been created only
-                } else if (CapacityLevel < pParams["bottomCapacityLevel"]) {
-                    var requiredPlatformsTotal = runningPlatforms;
-                    if (pParams["bottomCapacityLevel"] > 0) {
-                        requiredPlatformsTotal = Math.ceil(nSessions / pParams["bottomCapacityLevel"] / pParams["usersPerPlatform"]);
-                    }
-                    var requiredKill = Math.min(requiredPlatformsTotal - runningPlatforms, 0);
+            let required = 0;
+            if (pParams['poolStrategy'] == "calculated") {
+                var requiredByDefault = pParams['platformPoolSize'] - runningPlatforms - poolQueue.length() - poolQueue.running();
+                if (pParams.fixedPool) requiredByDefault -= errPlatforms;
+                var pLoad = nSessions / pParams["usersPerPlatform"]; // how many platforms should be running
+                var CapacityLevel = (runningPlatforms === 0) ? 0 : pLoad / runningPlatforms; // 1 - exact capacity. Less then 1 - need more
+                //logger.info("platformPool CapacityLevel: " + CapacityLevel);
+                required = Math.max(requiredByDefault, 0); //need arrive to minimal number of platforms
+                if (required === 0) {
+                    if (CapacityLevel > pParams["upperCapacityLevel"]) {
+                        var maxPlatforms = pParams["maxCapacity"] / pParams["usersPerPlatform"];
+                        var requiredPlatformsTotal = Math.ceil(Math.min(pLoad / pParams["upperCapacityLevel"], maxPlatforms));
+                        var requiredCreate = requiredPlatformsTotal - runningPlatforms - poolQueue.length() - poolQueue.running();
+                        required = Math.max(requiredCreate, 0); // in that part platforms can been created only
+                    } else if (CapacityLevel < pParams["bottomCapacityLevel"]) {
+                        var requiredPlatformsTotal = runningPlatforms;
+                        if (pParams["bottomCapacityLevel"] > 0) {
+                            requiredPlatformsTotal = Math.ceil(nSessions / pParams["bottomCapacityLevel"] / pParams["usersPerPlatform"]);
+                        }
+                        var requiredKill = Math.min(requiredPlatformsTotal - runningPlatforms, 0);
 
-                    required = Math.max(requiredKill, pParams['platformPoolSize'] - runningPlatforms);
-                    required = Math.min(required, 0); // in that part platforms can been killed only
+                        required = Math.max(requiredKill, pParams['platformPoolSize'] - runningPlatforms);
+                        required = Math.min(required, 0); // in that part platforms can been killed only
+                    }
                 }
+            } else if (pParams['poolStrategy'] == "StartAll" && platformRegs) {
+                required = platformRegs.length - runningPlatforms - poolQueue.length() - poolQueue.running();
+                if (required < 0) {
+                    required = 0;
+                }
+                // caluclatged min and max platform number based on platformRegs
+                opts.min = 1000000;
+                opts.max = 0;
+                for (const platidStr of platformRegs) {
+                    const platid = Number(platidStr);
+                    if (platid < opts.min) {
+                        opts.min = platid
+                    }
+                    if ((platid + 1)> opts.max) {
+                        opts.max = platid+1;
+                    }
+                }
+                //logger.info(`startNPlatforms opts: ${JSON.stringify(opts,null,2)}`);
             }
 
             // Platform we need to run to keep requested level
             poolQueue.concurrency = pParams.concurrency;
             if (required != 0) {
                 logger.info("Start new " + required + " platforms to fill pool");
-                startNPlatforms(required, domain, callback);
+                startNPlatforms(required, opts, callback);
             } else {
                 callback(null);
             }
@@ -157,7 +183,7 @@ function refreshHelper(domain, callback) {
 }
 
 
-function refresh(callback) {
+function refresh(callback) {   
     // last command in q is refresh, so the task already exist in q
     if (poolQueue.running()) {
         logger.info("platformPool: Not runnig refresh because poolQueue is already running task(s).");
@@ -185,7 +211,7 @@ function refresh(callback) {
             });
         }
 
-        async.eachSeries(domains, function(domain, callback) {
+        async.eachSeries(domains, function(domain, callback) {            
             refreshHelper(domain, function(err) {
                 if (err) {
                     logger.error("refresh: failed refreshing platforms for \'" + domain + "\' domain");

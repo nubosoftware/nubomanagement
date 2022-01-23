@@ -17,6 +17,7 @@
     ],
     "mailOptions": false,    
     "platformParams": {
+        "poolStrategy": "calculated",
         "concurrency": 3,
         "concurrencyDelay": 20,
         "platformPoolSize": 0,

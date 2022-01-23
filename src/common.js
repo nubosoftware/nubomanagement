@@ -113,6 +113,7 @@ var Common = {
     sendPlatformStatusToAdmin: true,
     sendSessionStatusToAdmin: false,
     platformParams : {
+        poolStrategy: 'calculated',
         concurrency: 2,
         concurrencyDelay: 10000,
         platformPoolSize: 0,

@@ -119,6 +119,8 @@ var gatewayList = {
     '/redisGateway/addPlatform2ErrsList': 1,
     '/redisGateway/reportRecording': 1,
     '/redisGateway/validateUpdSession': 1,
+    '/selfRegisterPlatform': 1,
+    '/selfRegisterPlatformTtl': 1,
 };
 
 var feList = {

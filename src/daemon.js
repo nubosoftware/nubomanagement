@@ -18,6 +18,7 @@ var platformModule;
 var PlatformPoolModule;
 var schedulerService;
 var frontEndService;
+var platSelfReg;
 //============================================================
 
 var nuboJobs;
@@ -54,6 +55,7 @@ var mainFunction = function(err, firstTimeLoad) {
 
         //First of all define handler for exit. In case of of exception on next code
         process.on('SIGINT', function() {
+            logger.info("daemon caught interrupt signal");
             if(serverAtExitProcess){
                 return;
             }
@@ -61,7 +63,7 @@ var mainFunction = function(err, firstTimeLoad) {
                 serverAtExitProcess = true;
             }
 
-            logger.info("daemon caught interrupt signal");
+            
 
             async.series([
                 function(callback) {
@@ -72,6 +74,7 @@ var mainFunction = function(err, firstTimeLoad) {
                     gatewayModule.unsubscribeFromGatewayTTLExpiration();
                     sessionModule.unsubscribeFromGatewayChannel();
                     frontEndService.unsubscribeFromFronEndTTLExpiration();
+                    platSelfReg.unsubscribeFromPlatformTTLExpiration();
                     callback(null);
                 },
                 function(callback) {
@@ -144,6 +147,7 @@ var mainFunction = function(err, firstTimeLoad) {
         sessionModule.subscribeToGatewayChannel();
         PlatformPoolModule.subscribeToPlatformChannel();
         frontEndService.subscribeToFrontEndTTLExpiration();
+        platSelfReg.subscribeToPlatformTTLExpiration();
 
         platformChannelMonitorService.start();
         gatewayChannelMonitorService.start();
@@ -251,4 +255,5 @@ function loadRequires() {
     daemonTools = require('./daemonTools.js');
     platformModule = require('./platform.js');
     frontEndService = require('./frontEndService.js');
+    platSelfReg = require('./platformSelfReg');
 }

@@ -536,6 +536,11 @@ function setPublicServiceServer(server) {
     server.get('/frontEndService/refreshFrontEndTTL', frontEndService.refreshFrontEndTTLRestApi);
     server.get('/frontEndService/unregisterFrontEnd', frontEndService.unregisterFrontEndRestApi);
 
+
+    const platSelfReg = require('./platformSelfReg');
+    server.get('/selfRegisterPlatform', platSelfReg.selfRegisterPlatform);
+    server.get('/selfRegisterPlatformTtl', platSelfReg.selfRegisterPlatformTtl);
+    
     
     
 

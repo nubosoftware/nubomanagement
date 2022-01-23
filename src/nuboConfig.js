@@ -489,7 +489,7 @@ function dataCenterConfigSetParameters(callback) {
 
 function platformConfigSetParameters(callback) {
 
-    prompt.get(Config.getPlatParamsSchema(Common), function(err, result) {
+    prompt.get(Config.getPlatParamsSchema(Common,prompt), function(err, result) {
         if (err) {
             if (err.message === 'canceled') {
                 logger.info('platformConfigSetParameters: user canceled configuration');
