@@ -1519,7 +1519,7 @@ var registerPlatformNum = function(_opts, callbackMain) {
  */
 async function getAllPlatformNumbers() {
     
-    if (Common.platformParams['poolStrategy'] == "calculated") {
+    if (Common.platformParams['poolStrategy'] == "calculated" || !Common.platformParams['poolStrategy']) {
         let nums = [];
         let maxFailed = isNaN(Common.platformParams.maxFailed) ? 10 : Common.platformParams.maxFailed;
         let min = Common.startPlatformNum;

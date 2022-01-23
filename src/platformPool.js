@@ -119,7 +119,7 @@ function refreshHelper(domain, callback) {
             // we can mistake in maxCapacityCurrent cause of some task in queue (q.running())
             // may been delay function, but it is not critical error
             let required = 0;
-            if (pParams['poolStrategy'] == "calculated") {
+            if (pParams['poolStrategy'] == "calculated" || !pParams['poolStrategy']) {
                 var requiredByDefault = pParams['platformPoolSize'] - runningPlatforms - poolQueue.length() - poolQueue.running();
                 if (pParams.fixedPool) requiredByDefault -= errPlatforms;
                 var pLoad = nSessions / pParams["usersPerPlatform"]; // how many platforms should be running
