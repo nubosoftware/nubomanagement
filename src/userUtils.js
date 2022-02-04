@@ -9,12 +9,14 @@ var http = require('./http.js');
 var AddAdmins = require('./ControlPanel/addAdmins.js');
 const NEW_USER_TAR = 'new_user7.tar.gz';
 const LINUX_NEW_USER_TAR = 'new_user_linux.tar.gz';
+const NEW_USER_DATA_IMG = 'new_user_data.img'
 
 var validate = require("validate.js");
 var _ = require('underscore');
 var execFile = require('child_process').execFile;
 var commonUtils = require('./commonUtils.js');
 const { Op } = require('sequelize');
+const fsp = fs.promises;
 
 function changeModeOwner(file, opts, callback) {
     async.series(
@@ -118,7 +120,7 @@ function addAppToProfile(domain, email, packageName, isPrivateApp, callback) {
 
 function getDefaultApps() {
     let apps = [];
-    if (Common.isMobile()) {      
+    if (Common.isMobile()) {
         apps = Common.getMobile().appMgmt.getDefaultApps();
     } else if (Common.isDesktop()) {
         apps =  Common.getDesktop().debs.getDefaultApps();
@@ -838,6 +840,55 @@ function updateDeviceTelephonySettings(regEmail, deviceid, assigned_phone_number
     });
 }
 
+/**
+ * Mount user data.ing into temporary location
+ * return folderParams object with refereneces to folders
+ * @param {*} email
+ * @param {*} deviceId
+ * @param {*} dockerPlatform
+ * @return {*} folderParams
+ */
+ async function mountUserData(email, deviceId,dockerPlatform) {
+    var userFolder = commonUtils.buildPath(Common.nfshomefolder, userModule.getUserDeviceDataFolder(email, deviceId));
+    let folderParams = {
+        userFolder
+    };
+
+    if (dockerPlatform) {
+        let pathToDataImg = commonUtils.buildPath(userFolder,"data.img");
+        let dataTempFolder = commonUtils.buildPath(userFolder,"mnt");
+        // check if mount exists
+        let mountExists = false;
+        try {
+            const stats = await fs.stat(commonUtils.buildPath(dataTempFolder,"data"));
+            mountExists = stats.isDirectory();
+        } catch (e) {
+        }
+        if (!mountExists) {
+            logger.info(`Mounting user data img: ${pathToDataImg}, mount: ${dataTempFolder}`);
+            await fsp.mkdir(dataTempFolder,{recursive: true});
+            await commonUtils.execCmd('mount',[pathToDataImg,dataTempFolder]);
+            folderParams.mounted = true;
+        } else {
+            logger.info(`User data image already mounted. img: ${pathToDataImg} mount: ${dataTempFolder}`);
+        }
+        folderParams.dataTempFolder = dataTempFolder;
+        folderParams.pathToDataImg = pathToDataImg;
+    }
+    return folderParams;
+}
+
+/**
+ * Unmount the data temp folder if its mounted
+ * @param {*} folderParams
+ */
+async function unMountUserData(folderParams) {
+    if (folderParams.mounted) {
+        logger.info(`Unmounting user data. mount: ${folderParams.dataTempFolder}`);
+        await commonUtils.execCmd('umount',[folderParams.dataTempFolder]);
+    }
+}
+
 function addSettingsToSpecificDevice(regEmail, deviceid, paramName, paramValues, settingsFileName, callback) {
     let settings;
     if (typeof settingsFileName === "function") {
@@ -847,10 +898,22 @@ function addSettingsToSpecificDevice(regEmail, deviceid, paramName, paramValues,
     if (!settingsFileName) {
         settingsFileName = "startup.json";
     }
+    let dockerPlatform = (Common.platformType == "docker");
+    let folderParams;
+
     async.series([
         function(callback) {
+            mountUserData(regEmail,deviceid,dockerPlatform).then(folderParamsObj => {
+                folderParams = folderParamsObj;
+                callback();
+            }).catch(err => {
+                logger.error(`mountUserData error: ${err}`,err);
+                callback(err);
+            });
+        },
+        function(callback) {
             // first load existing settings file if exists
-            loadSettingsUpdateFile(regEmail, deviceid, settingsFileName, function(err, oldSettings) {
+            loadSettingsUpdateFile(regEmail, deviceid, settingsFileName,  dockerPlatform,folderParams, function(err, oldSettings) {
                 if (err) {
                     //logger.info("Old settings file does not exists or error: "+err);
                     settings = {};
@@ -863,7 +926,7 @@ function addSettingsToSpecificDevice(regEmail, deviceid, paramName, paramValues,
         function(callback) {
             // update the settings file with the new parameter
             settings[paramName] = paramValues;
-            saveSettingsUpdateFile(settings, regEmail, deviceid, settingsFileName, function (err) {
+            saveSettingsUpdateFile(settings, regEmail, deviceid, settingsFileName, dockerPlatform,folderParams, function (err) {
                 if (err) {
                     //logger.error("Error saveSettingsUpdateFile : " + err);
                     callback(err);
@@ -874,7 +937,16 @@ function addSettingsToSpecificDevice(regEmail, deviceid, paramName, paramValues,
             });
         }
     ],function(err){
-        callback(err);
+        if (folderParams && folderParams.mounted) {
+            unMountUserData(folderParams).then(() => {
+                callback(err);
+            }).catch(errUn => {
+                logger.error(`Error unmounting temp data folder: ${errUn}`,errUn);
+                callback(err);
+            });
+        } else {
+            callback(err);
+        }
     });
 }
 
@@ -922,13 +994,26 @@ function addSettingsToDevices(regEmail, deviceid, paramName, paramValues, update
                 //                    settings[paramName] = paramValues;
                 var settings = {};
                 settings[paramName] = paramValues;
-                saveSettingsUpdateFile(settings, regEmail, newDeviceID, function(err) {
-                    if (err) {
-                        logger.error("Error saveSettingsUpdateFile : " + err);
-                        return;
-                    }
-                    logger.info("Updated settings for " + regEmail + ", " + newDeviceID);
+                let dockerPlatform = (Common.platformType == "docker");
+                mountUserData(regEmail,deviceid,dockerPlatform).then(folderParams => {
+                    saveSettingsUpdateFile(settings, regEmail, newDeviceID, null, dockerPlatform,folderParams, function(err) {
+                        if (err) {
+                            logger.error("Error saveSettingsUpdateFile : " + err);
+                        } else {
+                            logger.info("Updated settings for " + regEmail + ", " + newDeviceID);
+                        }
+                        unMountUserData(folderParams).then(() => {
+
+                        }).catch(err => {
+                            logger.info(`unMountUserData error: ${err}`,err);
+                        })
+                    });
+                }).catch(err => {
+                    logger.error(`mountUserData error: ${err}`,err);
+                    return;
                 });
+
+
 
                 // saveSettingsUpdateFile
                 //                }); // loadSettingsUpdateFile
@@ -939,7 +1024,7 @@ function addSettingsToDevices(regEmail, deviceid, paramName, paramValues, update
     });
 }
 
-function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, callback) {
+function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, dockerPlatform, folderParams, callback) {
     if (typeof settingsFileName === "function") {
         callback = settingsFileName;
         settingsFileName = "startup.json";
@@ -950,7 +1035,12 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
     var str = JSON.stringify(settings, null, 4);
     var fs = Common.fs;
 
-    var folderName = commonUtils.buildPath(Common.nfshomefolder, userModule.getUserDeviceDataFolder(userName, deviceID));
+    var folderName;
+    if (dockerPlatform) {
+        folderName = commonUtils.buildPath(folderParams.dataTempFolder,"data");
+    } else {
+        folderName = commonUtils.buildPath(folderParams.userFolder,"user");
+    }
     var settingsFolder = commonUtils.buildPath(folderName, Common.settingsfolder);
     var fileName = settingsFolder + settingsFileName;
     async.series(
@@ -1007,7 +1097,7 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
 function createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime, callback, demoUser, tempUserDataFlag, sessTrack, hideNuboAppPackageName) {
 
     var userFolder, userFolderSd, storageFolder, dataFolder, domainNewUserFile, newUserFile;
-    
+
 
     logger.info(`createUserFolders. deviceType: ${deviceType}`);
     async.waterfall(
@@ -1029,8 +1119,13 @@ function createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime,
                         storageFolder = userFolderSd + 'storage/media/Download';
                         let domainFolder = userModule.getDomainFolder(email);
                         if (deviceType != "Desktop") {
-                            domainNewUserFile = commonUtils.buildPath(nfsobj.params.nfs_path, domainFolder,NEW_USER_TAR);
-                            newUserFile = commonUtils.buildPath(nfsobj.params.nfs_path, NEW_USER_TAR);
+                            if (Common.platformType == "docker") {
+                                domainNewUserFile = commonUtils.buildPath(nfsobj.params.nfs_path, domainFolder,NEW_USER_DATA_IMG);
+                                newUserFile = commonUtils.buildPath(nfsobj.params.nfs_path, NEW_USER_DATA_IMG);
+                            } else {
+                                domainNewUserFile = commonUtils.buildPath(nfsobj.params.nfs_path, domainFolder,NEW_USER_TAR);
+                                newUserFile = commonUtils.buildPath(nfsobj.params.nfs_path, NEW_USER_TAR);
+                            }
                         } else {
                             domainNewUserFile = commonUtils.buildPath(nfsobj.params.nfs_path, domainFolder,LINUX_NEW_USER_TAR);
                             newUserFile = commonUtils.buildPath(nfsobj.params.nfs_path, LINUX_NEW_USER_TAR);
@@ -1076,26 +1171,6 @@ function createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime,
                 });
             },
             function(callback) {
-                if (Common.demoSystem) {
-                    logger.info("Create a demo Nubo.pdf file!");
-                    var srcpdf = Common.nfshomefolder + "/Nubo.pdf";
-                    var dstpdf = storageFolder + "/Nubo.pdf";
-                    var fileOpts = {
-                        mode: "664",
-                        owner: {
-                            uid: 1023,
-                            gid: 1023
-                        }
-                    };
-                    copyFile(srcpdf, dstpdf, fileOpts, function(err) {
-                        if (err) logger.warn("Copy err: " + err);
-                        callback(null);
-                    });
-                } else {
-                    callback(null);
-                }
-            },
-            function(callback) {
                 Common.fs.exists(dataFolder, function(exist) {
                     callback(null, exist);
                 });
@@ -1130,18 +1205,30 @@ function createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime,
                     return
                 }
 
-                var tarFileName = NEW_USER_TAR;
+
+                if (newUserFile.endsWith(".img")) {
+                    const imgFile = commonUtils.buildPath(dataFolder,"data.img");
+                    fs.copyFile(newUserFile,imgFile,function(err) {
+                        if (err) {
+                            logger.error(`Copy img file error: ${err}`,err);
+                            callback(err);
+                        } else {
+                            callback(null, exists);
+                        }
+                    });
+                } else {
                 var tarParams = ["xvzf", newUserFile, "-C", dataFolder];
-                execFile(Common.globals.TAR, tarParams, function(err, stdout, stderr) {
-                    if (err) {
-                        logger.error("createUserFolders: " + err);
-                        logger.error("createUserFolders: " + stdout);
-                        logger.error("createUserFolders: " + stderr);
-                        callback("failed extracting " + Common.nfshomefolder + tarFileName);
-                        return;
-                    }
-                    callback(null, exists);
-                });
+                    execFile(Common.globals.TAR, tarParams, function(err, stdout, stderr) {
+                        if (err) {
+                            logger.error("createUserFolders: " + err);
+                            logger.error("createUserFolders: " + stdout);
+                            logger.error("createUserFolders: " + stderr);
+                            callback("failed extracting " + Common.nfshomefolder + newUserFile);
+                            return;
+                        }
+                        callback(null, exists);
+                    });
+                }
             },
             function(exists, callback) {
                 if (exists && !overwrite) {
@@ -1377,10 +1464,12 @@ function validateUserFolders(UserName, deviceID, deviceType, keys, callback) {
             });
         },
         // check system folder
-        function(callback) {            
+        function(callback) {
             var chfolder = folder + '/user';
             if (deviceType == "Desktop") {
                 chfolder = folder;
+            } else if (Common.platformType == "docker") {
+                chfolder = folder + '/data.img';
             }
             Common.fs.exists(chfolder, function(exists) {
                 if (!exists) {
@@ -1760,15 +1849,17 @@ var postNewUserProcedure = function(email, domain, logger, callback) {
     );
 }
 
-function loadSettingsUpdateFile(userName, deviceID, settingsFileName, callback) {
-    if (typeof settingsFileName === "function") {
-        callback = settingsFileName;
-        settingsFileName = "startup.json";
-    }
+function loadSettingsUpdateFile(userName, deviceID, settingsFileName,  dockerPlatform,folderParams, callback) {
     if (!settingsFileName) {
         settingsFileName = "startup.json";
     }
-    var folderName = commonUtils.buildPath(Common.nfshomefolder, userModule.getUserDeviceDataFolder(userName, deviceID), Common.settingsfolder);
+
+    var folderName;
+    if (dockerPlatform) {
+        folderName = commonUtils.buildPath(folderParams.dataTempFolder,"data");
+    } else {
+        folderName = commonUtils.buildPath(folderParams.userFolder,"user");
+    }
     var fileName = commonUtils.buildPath(folderName, settingsFileName);
     //logger.info("loadSettingsUpdateFile: fileName = " + fileName);
     Common.fs.readFile(fileName, function(err, data) {
@@ -1913,29 +2004,9 @@ function saveSettingsUpdateFileRestApi(req, res, next) {
     logger.error("saveSettingsUpdateFileRestApi: TODO - validate paramters");
     res.send({
         status: 0,
-        message: "saveSettingsUpdateFileRestApi: TODO - validate paramters"
+        message: "saveSettingsUpdateFileRestApi: Not implemented"
     });
     return;
-
-    logger.error("post saveSettingsUpdateFileRestApi");
-    res.contentType = 'json';
-    var obj = req.body;
-
-    saveSettingsUpdateFile(obj.settings, obj.userName, obj.deviceID, function(err) {
-        if (err) {
-            logger.error("saveSettingsUpdateFileRestApi: " + err);
-            res.send({
-                status: 0,
-                message: err
-            });
-            return;
-        }
-
-        res.send({
-            status: 1
-        });
-        return;
-    });
 }
 
 function wipeUserDevice(email,cb) {
@@ -2063,7 +2134,7 @@ function updateAppProgress(appType,packageName, fileName, versionName, versionCo
                 });
         }
     });
-    
+
     if (Common.isMobile() && status == 0 && appType != "deb" && Common.appstore && Common.appstore.enable === true) {
         // Update app store adter sucessfull install
         Common.getMobile().appStore.updateRepo(maindomain,packageName,() => {});
@@ -2099,6 +2170,9 @@ module.exports = {
     AddSettingToNewDevice,
     postNewOrgProcedure,
     updateAppProgress,
-    getDefaultApps
+    getDefaultApps,
+    mountUserData,
+    unMountUserData,
+
 };
 

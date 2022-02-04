@@ -494,7 +494,7 @@ var Platform = function(platid, platType, callback, newplatid) {
         async.waterfall([
             // install apps
             function(callback) {
-                if (!Common.isMobile()) {
+                if (!Common.isMobile() || Common.platformType == "docker") {
                     callback(null);
                     return;        
                 }
@@ -1788,14 +1788,14 @@ var registerPlatform = function(platid, hostline, platType, domain, callback) {
             },
             // add apks that in image to redis
             function(callback) {
-                if (!Common.isMobile()) {
+                if (!Common.isMobile() || Common.platformType == "docker") {
                     callback(null);
                     return;
                 }
                 Common.getMobile().appMgmt.addImageApksToPlatform(platid,callback);
             },
             function(callback) {
-                if (!Common.isMobile()) {
+                if (!Common.isMobile() || Common.platformType == "docker") {
                     callback(null);
                     return;
                 }

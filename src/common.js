@@ -80,7 +80,7 @@ var Common = {
     nfshomefolder : '/srv/nfs4/homes/',
     nfslocalcachefolder : '/home/nubodev/Android/nubo-production/nubomanagement/homesbak/homes/',
     nfsId: 1,
-    settingsfolder : 'user/com.nubo.nubosettings/startup/',
+    settingsfolder : 'com.nubo.nubosettings/startup/',
     browserfolder : 'com.android.browser/',
     internal_network : 'none',
     gwplatformport : 8890,

@@ -1630,6 +1630,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             session.params.email = email;
                             session.params.deviceid = deviceID;
                             session.params.docker_image = login.loginParams.docker_image;
+                            session.params.deviceType = deviceType;
                             if (deviceParams && deviceParams.appName) {
                                 session.params.appName = deviceParams.appName;
                             } else {
@@ -1697,6 +1698,9 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                                 logger.error("Error reading docker_image",err);
                                 callback(err);
                             });
+                        } else if (!desktopDevice && Common.platformType == "docker") {
+                            session.params.docker_image = "nubo-android-10";
+                            callback(null);
                         } else {
                             callback(null);
                         }
@@ -1763,11 +1767,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         });
                     },
                     //attach gateway to session
-                    function(callback) {
-                        /*if (desktopDevice) {
-                            callback(null);
-                            return;
-                        }*/
+                    function(callback) {                        
                         //create dummy gateway obj
                         var gwObj = {
                             index: -1
@@ -1838,11 +1838,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         }
                     },
                     // update gateway Reference
-                    function(callback) {
-                        /*if (desktopDevice) {
-                            callback(null);
-                            return;
-                        }*/
+                    function(callback) {                       
                         gatewayModule.updateGWSessionScore(session.params.gatewayIndex, 1, session.params.sessid, session.logger, function(err) {
                             if (err) {
                                 callback("failed increasing gateway reference");
@@ -1853,11 +1849,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         });
                     },
                     // unlock GW after session files created
-                    function(callback) {
-                        /*if (desktopDevice) {
-                            callback(null);
-                            return;
-                        }*/
+                    function(callback) {                        
                         buildStatus.gatewayLock.release(function(err, replay) {
                             if (err) {
                                 callback("cannot remove lock on platform");

@@ -39,12 +39,13 @@
         "sequelize": "^6.3.5",
         "totp-generator": "0.0.9",
         "twilio": "^3.28.0",
-        "underscore": "1.13.1",        
+        "underscore": "1.13.1",
         "validate.js": "^0.13.1",
         "winston": "^3.3.3",
         "winston-syslog": "^2.4.4",
         "xml-js": "^1.6.11",
-        "yargs": "^17.3.0"
+        "yargs": "^17.3.0",
+        "nubo-management-desktop": "file:/mnt/diskA/dev/nubomanagement/nubo-management-desktop"
     },
     "devDependencies": {
         "@babel/core": "^7.14.6",

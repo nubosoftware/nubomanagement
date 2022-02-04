@@ -1137,27 +1137,4 @@ function factoryReset(req, res, next) {
 }
 
 
-/*
- *
- Test functions
- */
-/*
- loadSettingsUpdateFile("israel@nubosoftware.com","351554052156594",function (err,starupSettings) {
- if (err) {
- logger.info("Error: "+err);
- return;
- }
- console.dir(starupSettings);
- });
-
- var starupSettings = {};
- starupSettings.lang = "TEST";
- starupSettings.account = {'action' : 'add' , 'type' : 'google'};
- saveSettingsUpdateFile(starupSettings,"israel@nubosoftware.com","351554052156594",function (err) {
- if (err) {
- logger.info("Error: "+err);
- return;
- }
- logger.info("Successfully saved file");
- });*/
 

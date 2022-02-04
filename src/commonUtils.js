@@ -8,6 +8,7 @@ const URL = require('url');
 const validate = require("validate.js");
 const path = require('path');
 var fs = require("fs");
+const execFile = require('child_process').execFile;
 
 function webclientAllowedToaccess(ip) {
 
@@ -152,11 +153,52 @@ function moveFile(oldPath, newPath, callback) {
     }
 }
 
+
+class ExecCmdError extends Error {
+    constructor(msg,err,stdout,stderr) {
+        super(msg);
+        this.err = err;
+        this.stdout = stdout;
+        this.stderr = stderr;
+    }
+}
+
+/**
+ * Run command using execFile
+ * Return promise with object contains stdout and stderr
+ * @param {String} cmd
+ * @param {Array} params
+ * @param {*} options
+ * @returns Promise
+ */
+function execCmd(cmd,params,options) {
+    return new Promise((resolve, reject) => {
+        let opts = {maxBuffer: 1024 * 1024 * 10};
+        if (options) {
+            _.extend(opts, options)
+        }
+        execFile(cmd, params, opts , function (error, stdout, stderr) {
+            if (error) {
+                let e = new ExecCmdError(`${error}`,error,stdout,stderr);
+                reject(e);
+            }
+            //logger.info("execCmd: " + "\'" + stdout + "\'");
+            resolve({
+                stdout,
+                stderr
+            });
+            return;
+        });
+    });
+}
+
 module.exports = {
     webclientAllowedToaccess: webclientAllowedToaccess,
     checkDataCenterStatus: checkDataCenterStatus,
     buildPath: buildPath,
     ensureExists: ensureExists,
     getUploadDir: getUploadDir,
-    moveFile: moveFile
+    moveFile: moveFile,
+    execCmd,
+    ExecCmdError
 }
