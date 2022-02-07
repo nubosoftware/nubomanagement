@@ -58,6 +58,12 @@ function runCronJob(args, logger, callback){
                             return;
                         }
                     }
+                    if (Common.isMobile()) {
+                        const found = Common.getMobile().cronJobs.runJob(job,params,logger,callback);
+                        if (found) {
+                            return;
+                        }
+                    }
                     if (Common.isDesktop()) {
                         const found = Common.getDesktop().cronJobs.runJob(job,params,logger,callback);
                         if (found) {

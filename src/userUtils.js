@@ -860,9 +860,11 @@ function updateDeviceTelephonySettings(regEmail, deviceid, assigned_phone_number
         // check if mount exists
         let mountExists = false;
         try {
-            const stats = await fs.stat(commonUtils.buildPath(dataTempFolder,"data"));
+            let testDir = commonUtils.buildPath(dataTempFolder,"data");
+            const stats = await fsp.stat(testDir);
             mountExists = stats.isDirectory();
         } catch (e) {
+            //logger.error(`mountUserData fsp.stat error`,e);
         }
         if (!mountExists) {
             logger.info(`Mounting user data img: ${pathToDataImg}, mount: ${dataTempFolder}`);

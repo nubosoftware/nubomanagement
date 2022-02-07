@@ -556,18 +556,18 @@ function createLogEvents(email, domain, packageNames, isNeedToInstall, callback)
 
 
 
-function addRemoveAppsForRunningUser(time, hrTime, email, packageNames, domain, isPrivateApp, isNeedToInstall, isAppStoreOnly, appType, callback) {        
+function addRemoveAppsForRunningUser(time, hrTime, email, packageNames, domain, isPrivateApp, isNeedToInstall, isAppStoreOnly, appType, callback) {
     var deviceIds = [];
     var installed;
     if (isNeedToInstall) {
-        installed = TO_BE_INSTALLED;        
+        installed = TO_BE_INSTALLED;
     } else {
         installed = TO_BE_UNINSTALLED;
     }
 
     async.series([
-    
-    
+
+
     // Lock packages for user in user_apps
     function(callback) {
         //logger.info("addRemoveAppsForRunningUser: lockPackages_user_apps");
@@ -612,7 +612,16 @@ function addRemoveAppsForRunningUser(time, hrTime, email, packageNames, domain, 
                     callback(err);
                 });
         } else if (Common.isMobile()) {
-            Common.getMobile().appMgmt.addRemoveAPKsForDevices(deviceIds,time,hrTime,email,packageNames,domain,isNeedToInstall,callback);
+            if (Common.platformType == "docker") {
+                Common.getMobile().apksDocker.addRemoveAppsForDevices(deviceIds,email,packageNames,domain,isNeedToInstall)
+                    .then(() => {
+                        callback();
+                    }).catch(err => {
+                        callback(err);
+                    });
+            } else {
+                Common.getMobile().appMgmt.addRemoveAPKsForDevices(deviceIds,time,hrTime,email,packageNames,domain,isNeedToInstall,callback);
+            }
         } else {
             logger.info(`Cannot install packages: ${packageNames.join(",")}, Not found module for app type: ${appType}`);
             callback();
@@ -790,7 +799,7 @@ function addAppsToProfilesInternal(domain, emails, packageNames, isPrivateApp, i
     if (isPrivateApp == null || isPrivateApp == '') {
         isPrivateApp = IS_PRIVATE_APP_FALSE;
     }
-    
+
     // domain is not really needed since a specific email can't be assigned to
     // different domains
     // Verify that the users are in the users table
@@ -807,7 +816,7 @@ function addAppsToProfilesInternal(domain, emails, packageNames, isPrivateApp, i
                 logger.info(`checkAppsInTable error: ${err}`);
                 callback();
                 return;
-            }            
+            }
             // Need to create a timestamp
             var time = new Date().getTime();
             var hrTime = process.hrtime()[1];

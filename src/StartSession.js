@@ -360,7 +360,7 @@ function startSessionImp(startSessionParams) {
                             callback(err);
                             return;
                         }
-                        
+
                         callback(null);
                     });
             },
@@ -529,7 +529,7 @@ function disableBrowserApp(session, callback) {
 function endSessionLocked(session, platform, callback) {
     var addToErrorsPlatforms = false;
     if (session) {
-        var sessLogger = session.logger;        
+        var sessLogger = session.logger;
         var UNum = (platform && session.params.localid) ? session.params.localid : 0;
         async.series([
             // mark delete flag
@@ -586,7 +586,7 @@ function endSessionLocked(session, platform, callback) {
                                 callback(null);
                                 return;
                             }
-                            
+
                             Common.getMobile().firewall.removeRulesFromTable(session.params.localid, session.params.platid, function(err, tasks) {
                                 if (err) {
                                     sessLogger.error("StartSession::endSessionLocked: failed to create iptables task to remove rules from platform, err: " + err);
@@ -1120,7 +1120,7 @@ function endSession(sessionID, callback, closeSessionMsg) {
                     session: session.params,
                     log: Common.specialBuffers[sessLogger.logid]
                 });
-            }            
+            }
 
             if (errMsg) {
                 var subj = (Common.dcName != "" ? Common.dcName + " - " : "") + "Session deleted unsuccessfully";
@@ -1672,35 +1672,43 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         });
                     },
                     function (callback) {
-                        if (desktopDevice && !session.params.docker_image) {
+                        if (Common.platformType == "docker" && !session.params.docker_image) {
                             // reading docker_image from database
                             Common.db.User.findOne({
                                 attributes: ['docker_image'],
                                 where: {
-                                    email: email                                   
+                                    email: email
                                 },
                             }).then(data => {
                                 logger.info(`Reading docker_image from database: ${data.docker_image}`);
                                 if (data.docker_image) {
-                                    session.params.docker_image = data.docker_image;      
+                                    session.params.docker_image = data.docker_image;
                                     callback(null);
                                 } else {
-                                    Common.getDesktop().debs.createImageForUser(email,login.loginParams.mainDomain).then((imageName) => {
-                                        session.params.docker_image = imageName;
-                                        logger.info(`Using created image: ${imageName}`);
-                                        callback(null);
-                                    }).catch (err => {
-                                        logger.info(`Error in createImageForUser: ${err}`);
-                                        callback(err);
-                                    });
+                                    if (deviceType == "Desktop" && Common.isDesktop()) {
+                                        Common.getDesktop().debs.createImageForUser(email,login.loginParams.mainDomain).then((imageName) => {
+                                            session.params.docker_image = imageName;
+                                            logger.info(`Using created image: ${imageName}`);
+                                            callback(null);
+                                        }).catch (err => {
+                                            logger.info(`Error in createImageForUser: ${err}`);
+                                            callback(err);
+                                        });
+                                    } else {
+                                        Common.getMobile().apksDocker.createImageForUser(email,login.loginParams.mainDomain).then((imageName) => {
+                                            session.params.docker_image = imageName;
+                                            logger.info(`Using created image: ${imageName}`);
+                                            callback(null);
+                                        }).catch (err => {
+                                            logger.info(`Error in createImageForUser: ${err}`);
+                                            callback(err);
+                                        });
+                                    }
                                 }
                             }).catch (err => {
                                 logger.error("Error reading docker_image",err);
                                 callback(err);
                             });
-                        } else if (!desktopDevice && Common.platformType == "docker") {
-                            session.params.docker_image = "nubo-android-10";
-                            callback(null);
                         } else {
                             callback(null);
                         }
@@ -1767,7 +1775,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         });
                     },
                     //attach gateway to session
-                    function(callback) {                        
+                    function(callback) {
                         //create dummy gateway obj
                         var gwObj = {
                             index: -1
@@ -1838,7 +1846,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         }
                     },
                     // update gateway Reference
-                    function(callback) {                       
+                    function(callback) {
                         gatewayModule.updateGWSessionScore(session.params.gatewayIndex, 1, session.params.sessid, session.logger, function(err) {
                             if (err) {
                                 callback("failed increasing gateway reference");
@@ -1849,7 +1857,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         });
                     },
                     // unlock GW after session files created
-                    function(callback) {                        
+                    function(callback) {
                         buildStatus.gatewayLock.release(function(err, replay) {
                             if (err) {
                                 callback("cannot remove lock on platform");
@@ -1987,7 +1995,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             callback(null);
                             return;
                         }
-                        
+
                         Common.getMobile().appMgmt.startSessionInstallations(session, time, hrTime, uninstallFunc, function(err) {
                             callback(null);
                         });
@@ -2132,7 +2140,7 @@ function report(session, createErr, login, oldSession, logger, clientIP, callbac
                     log: Common.specialBuffers[logger.logid]
                 });
             }
-            
+
             var subj = (Common.dcName != "" ? Common.dcName + " - " : "") +
                 (createErr == null ? "Session created successfully" : "Session create Error") +
                 (geoipInfo ? ' [' + geoipInfo.countryCode + ']' : '');
@@ -2165,7 +2173,7 @@ function response2Client(session, errResObj, res, isLocalIP, logger, loginToken)
 
     var resobj;
 
-    if (errResObj) {        
+    if (errResObj) {
         logger.error("response to client: " + JSON.stringify(errResObj, null, 2));
         res.send(errResObj);
         return;

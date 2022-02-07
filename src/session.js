@@ -42,7 +42,7 @@ var Session = function(sessid, opts, callback) {
             if (Object.keys(sess.params).length <= 1) {
                 var stack = new Error().stack;
                 console.log("Save session with one param: " + stack);
-            }            
+            }
             Common.redisClient.hmset('sess_' + sess.params.sessid, sess.params, function(err, obj) {
                 if (err) {
                     logger.info("Error in save hmset:" + err);
@@ -658,57 +658,15 @@ function reassignAvalibleGatewayForSession(sessId, callback) {
             });
         },
         function(session, callback) {
-            if (session.params.deviceid == "desktop") {
-                callback(null, session, "na", "na");
-                return;
-            }
-            var xmlFile = commonUtils.buildPath(Common.nfshomefolder, userModule.getUserDeviceDataFolder(session.params.email, session.params.deviceid), "/user/Session.xml");
-
-            fs.readFile(xmlFile, function(err, data) {
-                if (err) {
-                    logger.error("reassignAvalibleGatewayForSession: " + err);
-                    callback(err);
-                    return;
-                }
-
-                var toJson = convert.xml2js(data, {compact: true});
-                toJson.session.gateway_url._text = session.params.gatewayInternal;
-                toJson.session.gateway_controller_port._text = session.params.gatewayControllerPort;
-                toJson.session.gateway_apps_port._text = session.params.gatewayAppsPort;
-                var newXml = convert.js2xml(toJson,{compact: true});                
-                //logger.info(`newXml: ${newXml}`);
-                callback(null, session, newXml, xmlFile);
-            });
-        },
-        function(session, newXml, xmlFile, callback) {
-            if (session.params.deviceid == "desktop") {
+            if (session.params.deviceid == "desktop" || !Common.isMobile()) {
                 callback(null, session);
                 return;
             }
-            Common.fs.writeFile(xmlFile, newXml, function(err) {
-                if (err) {
-                    logger.error("reassignAvalibleGatewayForSession: " + err);
-                    callback(err);
-                    return;
-                }
 
-                Common.fs.chmod(xmlFile, '600', function(err) {
-                    if (err) {
-                        logger.error("reassignAvalibleGatewayForSession: " + err);
-                        callback(err);
-                        return;
-                    }
-
-                    Common.fs.chown(xmlFile, 1000, 1000, function(err) {
-                        if (err) {
-                            logger.error("reassignAvalibleGatewayForSession: " + err);
-                            callback(err);
-                            return;
-                        }
-
-                        callback(null, session);
-                    });
-                });
+            Common.getMobile().mobileUserUtils.updateGWParamsOnSession(session).then(() => {
+                callback(null, session);
+            }). catch(err => {
+                callback(err);
             });
         },
         function(session, callback) {
@@ -754,7 +712,7 @@ function reassignAvalibleGatewayForSession(sessId, callback) {
             Common.redisClient.srem('sessions_disconnected', sessId, function(redisErr) {
                 if (redisErr) {
                     logger.error("reassignAvalibleGatewayForSession. sessions_disconnected srem error: " + redisErr);
-                }                
+                }
             });
         }
 

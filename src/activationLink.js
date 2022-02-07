@@ -49,7 +49,7 @@ function activationLink(req, res, next) {
     var emailToken = req.params.token;
     var cloneActivation = req.params.cloneActivation;
     var datetest = new Date();
-    var expirationDateInit = (Common.withService) ? new Date(0) : new Date();    
+    var expirationDateInit = (Common.withService) ? new Date(0) : new Date();
     if (req.params.email) {
         logger.user(req.params.email);
         logger.info(`activationLink called. emailToken: ${emailToken} user: ${req.params.email}`,{ mtype: "important"});
@@ -157,7 +157,7 @@ function activationLink(req, res, next) {
                         deviceid: deviceid,
                         phoneNumber: phoneNumber
                     });
-                }                
+                }
                 cb();
             } else if (row.status == Common.STATUS_RESET_PASSCODE_PENDING) {
                 // reset passcoe
@@ -508,6 +508,13 @@ function activationLink(req, res, next) {
                 // do that in background
                 if (deviceType == "Desktop" && Common.isDesktop()) {
                     Common.getDesktop().debs.createImageForUser(email,userObj.domain).then(() => {
+                        // do nothing
+                    }).catch (err => {
+                        logger.info(`Error in createImageForUser: ${err}`);
+                    });
+                }
+                if (deviceType != "Desktop" && Common.isMobile() && Common.platformType == "docker") {
+                    Common.getMobile().apksDocker.createImageForUser(email,userObj.domain).then(() => {
                         // do nothing
                     }).catch (err => {
                         logger.info(`Error in createImageForUser: ${err}`);

@@ -63,7 +63,7 @@ var mainFunction = function(err, firstTimeLoad) {
                 serverAtExitProcess = true;
             }
 
-            
+
 
             async.series([
                 function(callback) {
@@ -98,7 +98,7 @@ var mainFunction = function(err, firstTimeLoad) {
                         Common.getEnterprise().dataCenter.stopDaemon(callback);
                     } else {
                         callback(null);
-                    }                         
+                    }
                 },
                 function(callback){
                     logger.info("Daemon stop platformChannelMonitorService");
@@ -158,7 +158,7 @@ var mainFunction = function(err, firstTimeLoad) {
 
         if (Common.isEnterpriseEdition()) {
             Common.getEnterprise().dataCenter.startDaemon();
-        }        
+        }
 
         tryRun('./readOnlineJournal');
         cleanerService.start();
@@ -169,17 +169,20 @@ var mainFunction = function(err, firstTimeLoad) {
         if (Common.isEnterpriseEdition()) {
             Common.getEnterprise().addDaemonHandlers();
         }
+        if (Common.isMobile()) {
+            Common.getMobile().addDaemonHandlers();
+        }
         if (Common.isDesktop()) {
             Common.getDesktop().addDaemonHandlers();
         }
-        
 
-        
+
+
 
         var addLastSessionsCmd = [];
         addLastSessionsCmd.push(nuboJobs.ADD_LAST_SESSIONS);
         nubocronAPI.addJobToDB("domain", 'addLastSessions', true, '*/1 * * * *', 'Etc/UTC', addLastSessionsCmd.join(','), true, Common.dcName, function(err) {});
-        
+
 
         // copy app usage
         if (Common.syslogDb) {
