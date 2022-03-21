@@ -19,10 +19,10 @@ const { APIException, RedirectException } = require('./exceptions');
  * obtain an activation key.
  * Usually after call to activae the new activation need to be approved
  * By confirm and email/sms or by an admin
- * @param {*} req 
- * @param {*} res 
- * @param {*} next 
- * @returns 
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ * @returns
  */
 async function activate(req, res, next) {
     var responseSent = false;
@@ -232,21 +232,31 @@ async function activate(req, res, next) {
         // prepare notification
 
         // read paramters from organization (if available)
-        let row = Common.db.Orgs.findAll({
+        let rows = await Common.db.Orgs.findAll({
             attributes: ['notifieradmin', 'deviceapprovaltype'],
             where: {
                 maindomain: domainEmail
             },
         });
-        if (!row) {
+        let row;
+        if (!rows || !rows[0]) {
             // default value if org not found in DB
+            logger.info(`activateDevice. org not found in DB: ${domainEmail}`);
             row = {
                 notifieradmin: "",
                 deviceapprovaltype: 0
             }
+        } else {
+            row = rows[0];
+        }
+        if (!row.deviceapprovaltype) {
+            logger.info(`row.deviceapprovaltype not found! row: ${row}`);
+        } else {
+            logger.info(`row.deviceapprovaltype: ${row.deviceapprovaltype}`);
         }
         var notifieradmin = row.notifieradmin != null ? row.notifieradmin : '';
         var deviceapprovaltype = row.deviceapprovaltype != null ? row.deviceapprovaltype : 0;
+        logger.info(`activateDevice. deviceapprovaltype: ${deviceapprovaltype}, domainEmail: ${domainEmail}`);
 
         var senderEmail = Common.emailSender.senderEmail;
         var senderName = Common.emailSender.senderName;
@@ -282,7 +292,7 @@ async function activate(req, res, next) {
             } else {
                 emailSubject = locale.getValue("createPlayerEmailSubject", Common.defaultLocale);//'Create a Player';
             }
-            
+
         } else if (deviceapprovaltype == 1) { // manually only by admin
             if (notifieradmin == "PUSH@nubo.local") {
                 notifyAdminsByNotification = true;
@@ -296,7 +306,7 @@ async function activate(req, res, next) {
             } else {
                 emailSubject = util.format(locale.getValue("createPlayerEmailSubjectToAdmin", Common.defaultLocale), first, last);
             }
-            
+
         } else if (deviceapprovaltype == 2) { // both for admin and user
             if (notifieradmin == "PUSH@nubo.local") {
                 notifyAdminsByNotification = true;
@@ -311,7 +321,7 @@ async function activate(req, res, next) {
             } else {
                 emailSubject = util.format(locale.getValue("createPlayerEmailSubjectToAdmin", Common.defaultLocale), first, last);
             }
-            
+
         } else if (deviceapprovaltype == 3) { // send SMS to subscriber
             if (phoneNumber === "") {
                 let emailArr = email.split("@");
@@ -347,7 +357,7 @@ async function activate(req, res, next) {
             let pushTitle;
             let pushText;
             if (Common.isDesktop()) {
-                pushTitle = locale.getValue("desktopSignupReqNotifTitle");  //"Nubo Player Activation Request";               
+                pushTitle = locale.getValue("desktopSignupReqNotifTitle");  //"Nubo Player Activation Request";
                 pushText =  _.template(locale.getValue("desktopSignupReqNotifText", Common.defaultLocale))(templateSettings);
             } else {
                 pushTitle = locale.getValue("activationReqNotifTitle");  //"Nubo Player Activation Request";
@@ -357,7 +367,7 @@ async function activate(req, res, next) {
         }
 
         if (toEmail !== "") {
-            // send email if reciepient found           
+            // send email if reciepient found
             var activationLinkURL = Common.dcURL + "activationLink?token=" + encodeURIComponent(emailtoken) + "&email=" + encodeURIComponent(email);
             logger.info(`Activation Link: ${activationLinkURL}`);
 
@@ -369,13 +379,13 @@ async function activate(req, res, next) {
                 to: toEmail,
                 // list of receivers
                 toname: toName,
-                subject: emailSubject,                
+                subject: emailSubject,
             };
 
             if (Common.isDesktop()) {
                 templateSettings.link = activationLinkURL;
                 mailOptions.text = _.template(locale.getValue("desktopSignupEmailBody", Common.defaultLocale))(templateSettings);
-                mailOptions.html = _.template(locale.getValue("desktopSignupEmailBodyHTML", Common.defaultLocale))(templateSettings);                
+                mailOptions.html = _.template(locale.getValue("desktopSignupEmailBodyHTML", Common.defaultLocale))(templateSettings);
             } else {
                 mailOptions.text = locale.format("createPlayerEmailBody", first, last, activationLinkURL);
                 mailOptions.html = locale.format("createPlayerEmailBodyHTML", first, last, activationLinkURL, first, last)
@@ -456,7 +466,7 @@ const DOS_MAX_ATTEMPTS = 30; // not more than 30 attemots from the same ip in 10
 
 /**
  * Check that this IP not accessed the service too many time to prevent DOS attacks
- * @param {*} clientIP 
+ * @param {*} clientIP
  */
 function checkDOS(clientIP) {
     if (!clientIP) {
@@ -521,7 +531,7 @@ setTimeout(function () {
 
 /**
  * Check if we need to redirect the user to another data center
- * @param {*} email 
+ * @param {*} email
  */
 async function checkRedirection(email) {
     if (Common.orgRedirectionMap) {
@@ -529,7 +539,7 @@ async function checkRedirection(email) {
         var emailDomain = await User.getUserDomainPromise(email);
         var redirect = orgRedirectionMap[emailDomain];
         if (redirect && redirect != Common.dcURL) {
-            msg = "Redirecting user from " + emailDomain + " to " + redirect;
+            const msg = "Redirecting user from " + emailDomain + " to " + redirect;
             logger.info(msg);
             throw new RedirectException(msg, redirect);
         }

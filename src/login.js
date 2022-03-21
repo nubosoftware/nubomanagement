@@ -294,7 +294,7 @@ module.exports = function(token, callback) {
     };
 
     this.isValidLogin = function() {
-        return (this.loginParams.isLogin && this.checkValidLogin());
+        return this.checkValidLogin();
     };
     this.getDeviceID = function() {
         return this.loginParams.deviceID;

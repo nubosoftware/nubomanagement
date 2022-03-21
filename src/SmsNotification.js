@@ -340,9 +340,9 @@ function platformUserSendSms(req, res) {
     let sentLocally = false;
     let toPhone;
 
-    if (!Common.isEnterprise()) {
+    if (!Common.isEnterpriseEdition()) {
         status = 0;
-        msg = "Not supported";   
+        msg = "Not supported";
     }
 
     if (status != 1) {
@@ -354,7 +354,7 @@ function platformUserSendSms(req, res) {
         return;
     }
 
-    
+
 
     destAddr = destAddr.replace(/[^a-zA-Z0-9\+]/g, "");
 
@@ -391,7 +391,7 @@ function platformUserSendSms(req, res) {
                         }
                     }
                     toPhone = Common.getEnterprise().telephonyAPI.destAddrToPhoneNumber(regionCode,destAddr,fromPhone);
-                    
+
                     callback(null);
                 });
             },

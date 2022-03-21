@@ -117,8 +117,8 @@ function platformUserNotificationInternal(opts, callback) {
                     ' u1.enablevibrate as enablevibrate, o1.showfullnotif as showfullnotif '+
                     ' , o1.maindomain as maindomain ' +
                     ' from activations AS a1 ' +
-                    ' INNER JOIN users as u1 ON (a1.email=u1.email AND a1.maindomain=u1.orgdomain) ' +
-                    ' INNER JOIN orgs as o1 ON (o1.maindomain=a1.maindomain) where a1.activationkey= :activationkey';
+                    ' INNER JOIN users as u1 ON (a1.email=u1.email) ' +
+                    ' INNER JOIN orgs as o1 ON (o1.maindomain=u1.orgdomain) where a1.activationkey= :activationkey';
 
                 var queryParams = { activationkey: activationkey };
 
