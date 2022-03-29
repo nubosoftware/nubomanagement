@@ -1,7 +1,7 @@
 /**
  * Self register platforms
  * Platfroms call this to self register and then the platform pool is based on
- * this data to start and maintain the platforms 
+ * this data to start and maintain the platforms
  */
 
 const Common = require('./common.js');
@@ -28,7 +28,7 @@ const statusError = -1;
 /**
  * Time to live of registration entries in redis
  */
-const TTL_SECONDS = 60;
+const TTL_SECONDS = 60 * 60 * 24;
 
 class PlatSelfReg {
 
@@ -38,8 +38,8 @@ class PlatSelfReg {
     /**
      * Register new platform IP
      * Each new platform get a platform id and added to redis with TTL of TTL_SECONDS
-     * @param {*} req 
-     * @param {*} res 
+     * @param {*} req
+     * @param {*} res
      */
     async selfRegisterPlatform(req, res) {
         try {
@@ -71,7 +71,7 @@ class PlatSelfReg {
                 }
                 if (!platid) {
                     throw new Error(`Cannot found any platform ID!`);
-                }                
+                }
                 // try to register it
                 let reply = await redisSet(`${regPrefix}_${platid}`, platform_ip, 'EX', TTL_SECONDS, 'NX');
                 if (!reply) {
@@ -106,8 +106,8 @@ class PlatSelfReg {
 
     /**
      * Update the registered platfrom TTL to TTL_SECONDS
-     * @param {*} req 
-     * @param {*} res 
+     * @param {*} req
+     * @param {*} res
      */
     async selfRegisterPlatformTtl(req, res) {
         try {
@@ -134,7 +134,7 @@ class PlatSelfReg {
                 });
             } else {
                 throw new Error(`Platform registration not found!`);
-            }            
+            }
 
         } catch (err) {
             logger.error(`selfRegisterPlatformTtl error: ${err}`, err);
@@ -149,13 +149,13 @@ class PlatSelfReg {
     /**
      * Get the IP address of seld register platform
      * @returns {String} IP address or null ifregistration not found
-     * @param {Number} platid 
+     * @param {Number} platid
      */
     async getSelfRegisterPlatformIP(platid) {
         try {
             // try to find platform IP
             let ip = await redisGet(`${regPrefix}_${platid}`);
-            return ip;            
+            return ip;
 
         } catch (err) {
             logger.error(`getSelfRegisterPlatformPlatformIP error: ${err}`, err);
@@ -187,7 +187,7 @@ class PlatSelfReg {
 }
 
 /**
- * 
+ *
  * @returns Check for expired platform registration and remove them from redis set
  */
 async function removeTTLExpired() {

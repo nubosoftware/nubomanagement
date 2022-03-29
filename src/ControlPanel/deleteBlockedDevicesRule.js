@@ -57,6 +57,7 @@ function deleteBlockedDevicesRuleFromDB(res, ruleId, ruleName, filterName, domai
             maindomain : domain
         }
     }).then(function() {
+        require('./getBlockedDevices').clearDomainRuleCache(domain);
         res.send({
             status : '1',
             message : "deleted blocked devices rule from db successfully"

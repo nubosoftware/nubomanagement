@@ -131,7 +131,7 @@ function checkPasscode(req, res, next) {
                 return callback(null);
 
             }
-            
+
             Common.getEnterprise().passwordUtils.virtaulKeyboardDecrypt(login,passcode,false,null,null,function(err,plain) {
                 decryptedPassword = plain;
                 callback(err);
@@ -262,7 +262,7 @@ function checkPasscode(req, res, next) {
                 if(Common.hasOwnProperty("maxLoginAttempts")){
                     maxLoginAttempts = Common.maxLoginAttempts;
                 }
-                if (!Common.withService && maxLoginAttempts > 0 && loginattempts + 1 >= maxLoginAttempts) {
+                if (maxLoginAttempts > 0 && loginattempts + 1 >= maxLoginAttempts) {
                     logger.error("checkPasscode: login attempts failed");
                     status = Common.STATUS_PASSWORD_LOCK;
                     message = "You have incorrectly typed your passcode 3 times. An email was sent to you. Open your email to open your passcode.";
@@ -275,6 +275,13 @@ function checkPasscode(req, res, next) {
                         }
 
                         return callback(finish);
+                    });
+                    // Create event in Eventlog
+                    var eventLog = require('./eventLog.js');
+                    var EV_CONST = eventLog.EV_CONST;
+                    var extra_info = `Login attempts: ${loginattempts + 1}, max login attempts: ${maxLoginAttempts}, device id: ${login.getDeviceID()}`;
+                    eventLog.createEvent(EV_CONST.EV_USER_LOCKED, login.getEmail(), login.getMainDomain(), extra_info, EV_CONST.WARN, function(err) {
+                        if(err) logger.error("createEvent failed with err: " + err);
                     });
 
                 } else {
@@ -384,7 +391,7 @@ function checkPasscode(req, res, next) {
             results.adminEmail = adminEmail;
         }
 
-       
+
         console.log("\n\ncheckPasscode: ", response)
         res.send(response);
     });
@@ -507,15 +514,15 @@ function sendNotification(email, first, last, loginEmailToken, mobilePhone, main
                 } else {
                     emailSubject = locale.getValue("unlockPasscodeEmailSubject");
                 }
-                
-                
+
+
             } else if (deviceapprovaltype == 1) { // manually only by admin
                 if (notifieradmin == "PUSH@nubo.local") {
                     notifyAdminsByNotification = true;
                     toEmail = "";
                 } else {
                     toEmail = notifieradmin;
-                }                
+                }
                 toName = notifieradmin;
                 if (Common.isDesktop()) {
                     emailSubject =  _.template(locale.getValue("desktopUnlockPasscodeEmailSubjectToAdmin", Common.defaultLocale))(templateSettings);
@@ -528,7 +535,7 @@ function sendNotification(email, first, last, loginEmailToken, mobilePhone, main
                     toEmail = email;
                 } else {
                     toEmail = [notifieradmin, email];
-                }                
+                }
                 toName = '';
                 if (Common.isDesktop()) {
                     emailSubject =  _.template(locale.getValue("desktopUnlockPasscodeEmailSubjectToAdmin", Common.defaultLocale))(templateSettings);
@@ -561,15 +568,15 @@ function sendNotification(email, first, last, loginEmailToken, mobilePhone, main
                     to: toEmail,
                     // list of receivers
                     toname: toName,
-                    subject: emailSubject                    
+                    subject: emailSubject
                 };
                 if (Common.isDesktop()) {
                     templateSettings.link = unlockPasswordURL;
                     mailOptions.text = _.template(locale.getValue("desktopUnlockPasscodeEmailBody", Common.defaultLocale))(templateSettings);
-                    mailOptions.html = _.template(locale.getValue("desktopUnlockPasscodeEmailBodyHTML", Common.defaultLocale))(templateSettings);                
+                    mailOptions.html = _.template(locale.getValue("desktopUnlockPasscodeEmailBodyHTML", Common.defaultLocale))(templateSettings);
                 } else {
                     mailOptions.text = locale.format("unlockPasscodeEmailBody",first,last);
-                    mailOptions.html = locale.format("unlockPasscodeEmailBodyHTML",first,last,unlockPasswordURL)                                   
+                    mailOptions.html = locale.format("unlockPasscodeEmailBodyHTML",first,last,unlockPasswordURL)
                 }
                 logger.info("sent " + email + " unlockpassword email");
                 Common.mailer.send(mailOptions, function(success, message) {

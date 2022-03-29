@@ -477,6 +477,26 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         timestamps: false
     });
 
+    // define SessionHistory
+    db.SessionHistory = sequelize.define('session_history', {
+        session_id: {
+            type: Sequelize.STRING,
+            primaryKey: true
+        },
+        email: Sequelize.STRING,
+        device_id:Sequelize.STRING,
+        maindomain: Sequelize.STRING,
+        devicename: Sequelize.STRING,
+        start_time: Sequelize.DATE,
+        end_time: Sequelize.DATE,
+        platform: Sequelize.INTEGER,
+        gateway:  Sequelize.INTEGER,
+        active_seconds: Sequelize.INTEGER,
+    }, {
+        timestamps: false,
+        freezeTableName: true
+    });
+
     // define Ldap Object
     db.Ldap = sequelize.define('ldaps', {
         maindomain : {
@@ -977,7 +997,7 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
             type : Sequelize.STRING,
             primaryKey : true
         },
-        content_hash: Sequelize.STRING        
+        content_hash: Sequelize.STRING
     }, {
         timestamps: true
     });

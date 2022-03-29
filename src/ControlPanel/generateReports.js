@@ -10,7 +10,13 @@ var REPORT_APPS_BY_USER_ID  = "1";
 var REPORT_CONNECTED_USERS_PER_PLATFORM  = "2";
 var REPORT_ACTIVATED_USERS_AND_DEVICE_DETAILS = "3";
 var REPORT_APP_USAGE_BY_USER = "4";
-const { QueryTypes } = require('sequelize');
+var REPORT_SESSIONS = "5";
+var REPORT_DAILY_ACTIVE_SESSIONS = "6";
+var REPORT_DAILY_ACTIVE_USERS = "7";
+var REPORT_BLOCKED_LOGIN = "8";
+
+const { Op, QueryTypes } = require('sequelize');
+const { async } = require('validate.js');
 
 // first call goes to here
 function generateReports(req, res, domain) {
@@ -50,6 +56,18 @@ function generateReports(req, res, domain) {
             generateAppUsageByUser(res, domain);
             break;
 
+        case REPORT_SESSIONS:
+            generateSessionsReport(res, domain,req.params);
+            break;
+        case REPORT_DAILY_ACTIVE_SESSIONS:
+            generateDailySessionsReport(res, domain,req.params);
+            break;
+        case REPORT_DAILY_ACTIVE_USERS:
+            generateDailyUsersReport(res, domain,req.params);
+            break;
+        case REPORT_BLOCKED_LOGIN:
+            generateBlockLoginReport(res, domain,req.params);
+            break;
         default:
             res.send({
                 status : 0,
@@ -143,14 +161,14 @@ function generateConnectedUsersPerPlatform(res, domain) {
         headersSize.push("50");
         headersSize.push("50");
 
-        if (!results || results == "") {
+        /*if (!results || results == "") {
             var msg = "can't find connected users";
             res.send({
                 status : "0",
                 message : msg
             });
             return;
-        }
+        }*/
 
         results.forEach(function(row) {
 
@@ -184,6 +202,216 @@ function generateConnectedUsersPerPlatform(res, domain) {
         return;
     });
 
+}
+
+
+async function generateBlockLoginReport(res,domain,params) {
+    try {
+        const EV_CONST = require('../eventLog').EV_CONST;
+        const sequelize = Common.sequelize;
+        let where = {
+            maindomain : domain,
+            eventtype: [EV_CONST.EV_DISABLED_USER_DEVICE,EV_CONST.EV_DEVICE_TYPE_BLOCKED,EV_CONST.EV_USER_LOCKED],
+        };
+        if (params.from && params.to) {
+            let dateTo = new Date(params.to);
+            dateTo.setDate(dateTo.getDate()+1);
+            where.time = {
+                [Op.gt] : new Date(params.from),
+                [Op.lt] : dateTo
+            };
+        }
+        let options = {
+            where,
+            limit: 10000,
+            order: [["ID","DESC"]],
+        }
+        let results = await Common.db.EventsLog.findAll(options);
+        let values = results.map((item) => {
+            let event = [
+                item.time,
+                item.email,
+                EV_CONST.EV_NAMES[item.eventtype],
+                item.extrainfo,
+            ];
+            return event;
+        });
+        var headers = ['Event Time', 'Email','Title','Description'];
+        var headersSize = ['25', '25','25','25'];
+        res.send({
+            status : "1",
+            message : "generated report successfully",
+            headers : headers,
+            headersSize : headersSize,
+            values : values
+        });
+    } catch (err) {
+        logger.error("generateDailyUsersReport: "+err,err);
+        res.send({
+            status : "0",
+            message : err
+        });
+        return;
+    }
+}
+
+async function generateDailyUsersReport(res,domain,params) {
+    try {
+        const sequelize = Common.sequelize;
+        let where = {
+            maindomain : domain
+        };
+        if (params.from && params.to) {
+            let dateTo = new Date(params.to);
+            dateTo.setDate(dateTo.getDate()+1);
+            where.start_time = {
+                [Op.gt] : new Date(params.from),
+                [Op.lt] : dateTo
+            };
+        }
+        let results = await Common.db.SessionHistory.findAll({
+            attributes : [
+                [sequelize.fn('DATE_FORMAT', sequelize.col('start_time'),'%Y-%m-%d'), 'sessdate'],
+                //[sequelize.fn('COUNT', `DISTINCT(${sequelize.col('email')})`), 'users'],
+                ['COUNT(DISTINCT(email))','users'],
+                [sequelize.fn('SUM', sequelize.col('active_seconds')), 'total_active_seconds'],
+            ],
+            where,
+            group:  ["sessdate"],
+            limit: 10000,
+        });
+        var headers = ['Date', 'Users','Active Seconds'];
+        var headersSize = ['25', '25','25'];
+        var values = [];
+        results.forEach(function(element) {
+            let row = element.get({ plain: true });
+            var item = [row.sessdate,row.users,row.total_active_seconds];
+            //logger.info(`row: ${JSON .stringify(row)}, item: ${item}`);
+            values.push(item);
+        });
+        res.send({
+            status : "1",
+            message : "generated report successfully",
+            headers : headers,
+            headersSize : headersSize,
+            values : values
+        });
+    } catch (err) {
+        logger.error("generateDailyUsersReport: "+err,err);
+        res.send({
+            status : "0",
+            message : err
+        });
+        return;
+    }
+}
+
+/**
+ * Daily active session report
+ * @param {*} res
+ * @param {*} domain
+ * @param {*} params
+ * @returns
+ */
+async function generateDailySessionsReport(res,domain,params) {
+    try {
+        const sequelize = Common.sequelize;
+        let where = {
+            maindomain : domain
+        };
+        if (params.from && params.to) {
+            let dateTo = new Date(params.to);
+            dateTo.setDate(dateTo.getDate()+1);
+            where.start_time = {
+                [Op.gt] : new Date(params.from),
+                [Op.lt] : dateTo
+            };
+        }
+        let results = await Common.db.SessionHistory.findAll({
+            attributes : [
+                [sequelize.fn('DATE_FORMAT', sequelize.col('start_time'),'%Y-%m-%d'), 'sessdate'],
+                [sequelize.fn('COUNT', sequelize.col('session_id')), 'sessions'],
+                [sequelize.fn('SUM', sequelize.col('active_seconds')), 'total_active_seconds'],
+            ],
+            where,
+            group:  ["sessdate"],
+            limit: 10000,
+        });
+        var headers = ['Date', 'Sessions','Active Seconds'];
+        var headersSize = ['25', '25','25'];
+        var values = [];
+        results.forEach(function(element) {
+            let row = element.get({ plain: true });
+            var item = [row.sessdate,row.sessions,row.total_active_seconds];
+            //logger.info(`row: ${JSON .stringify(row)}, item: ${item}`);
+            values.push(item);
+        });
+        res.send({
+            status : "1",
+            message : "generated report successfully",
+            headers : headers,
+            headersSize : headersSize,
+            values : values
+        });
+    } catch (err) {
+        logger.error("generateDailySessionsReport: "+err,err);
+        res.send({
+            status : "0",
+            message : err
+        });
+        return;
+    }
+}
+
+
+/**
+ * Generate report of all past sessions
+ * @param {*} res
+ * @param {*} domain
+ * @returns
+ */
+async function generateSessionsReport(res,domain,params) {
+    try {
+        let where = {
+            maindomain : domain
+        };
+        if (params.from && params.to) {
+            let dateTo = new Date(params.to);
+            dateTo.setDate(dateTo.getDate()+1);
+            where.start_time = {
+                [Op.gt] : new Date(params.from),
+                [Op.lt] : dateTo
+            };
+        }
+        let results = await Common.db.SessionHistory.findAll({
+            attributes : ['email', 'device_id','devicename','start_time','end_time','platform','gateway','active_seconds'],
+            where,
+            order:  [["start_time","DESC"]],
+            limit: 10000,
+        });
+        var headers = ['Email', 'Device ID','Device Name','Start Time','End Time','Platform','Gateway','Session Duration','Active Seconds'];
+        var headersSize = ['25', '25','25','25','25','25','25','25','25'];
+        var values = [];
+        results.forEach(function(row) {
+            let duration = parseInt((row.end_time.getTime() - row.start_time.getTime()) / 1000);
+            var item = [row.email,row.device_id,row.devicename,row.start_time,row.end_time,row.platform,row.gateway,duration,row.active_seconds];
+            values.push(item);
+        });
+        res.send({
+            status : "1",
+            message : "generated report successfully",
+            headers : headers,
+            headersSize : headersSize,
+            values : values
+        });
+    } catch (err) {
+        logger.error("generateSessionsReport: "+err,err);
+        res.send({
+            status : "0",
+            message : err
+        });
+        return;
+    }
 }
 
 function generateActivatedUsersAndDeviceDetails(res, domain) {

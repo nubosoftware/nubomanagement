@@ -9,6 +9,7 @@ var Lock = require('./lock.js');
 var platformModule = require('./platform.js');
 var gatewayModule = require('./Gateway.js');
 var Platform = platformModule.Platform;
+require('date-utils');
 
 var errGatewayAlreadyExist = -7;
 var errIllegalPlatformId = -6;
@@ -141,12 +142,24 @@ function validateUpdSession(req, res) {
         },
         function(callback) {
             if (suspend == 0 || suspend == 1) {
+                //logger.info(`validateUpdSession. suspend: ${suspend}, session["suspend"]: ${session["suspend"]}, session["suspendtime"]: ${session["suspendtime"]}`);
+                let totalActiveSeconds = parseInt(session["totalActiveSeconds"]);
+                if (suspend == 1 && session["suspend"] == 0 && session["suspendtime"]) {
+                    // calculate the number of active session
+                    let activetime =  parseInt( (new Date().getTime() - new Date(session["suspendtime"]).getTime()) / 1000 );
+                    if (activetime > 0) {
+                        totalActiveSeconds = totalActiveSeconds + activetime;
+                        logger.info(`Session active Time: ${activetime}, totalActiveSeconds: ${totalActiveSeconds}`);
+                    }
+                }
                 session["suspend"] = suspend;
                 session["suspendtime"] = d;
+                session["totalActiveSeconds"] = totalActiveSeconds;
 
                 var data = {
                     "suspend": suspend,
-                    "suspendtime": d
+                    "suspendtime": d,
+                    "totalActiveSeconds": totalActiveSeconds
                 };
 
                 Common.redisClient.hmset("sess_" + sessionID, data, function (err, obj) {

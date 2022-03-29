@@ -33,6 +33,9 @@ var EV_CONST = {
     EV_APPROVE_ALL_PENDING_ACTIVATION : 25,
     EV_REMOVE_PENDING_ACTIVATION : 26,
     EV_REMOVE_ALL_PENDING_ACTIVATION : 27,
+    EV_USER_LOCKED: 28,
+    EV_DEVICE_TYPE_BLOCKED: 29,
+    EV_DISABLED_USER_DEVICE: 30,
 
     EV_NAMES: [
         'NA',
@@ -63,6 +66,9 @@ var EV_CONST = {
         'Approve all pending activations',
         'Remove pending activation',
         'Remove all pending activations',
+        'User locked',
+        'Device type blocked',
+        'User device disabled',
     ],
 
     // Event Levels
@@ -93,7 +99,7 @@ function createEvent(event_type, email, maindomain, extra_info, level, callback)
         extrainfo : extra_info,
         time : time,
         level : level
-    }).then(function(results) {        
+    }).then(function(results) {
         callback(null);
     }).catch(function(err) {
         console.log('err');

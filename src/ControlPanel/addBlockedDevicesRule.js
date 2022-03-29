@@ -47,7 +47,7 @@ function addBlockedDevicesRuleToDB(res, ruleName, filterName, domain) {
         filtername : filterName,
         maindomain : domain
     }).then(function(results) {
-
+        require('./getBlockedDevices').clearDomainRuleCache(domain);
         res.send({
             status : '1',
             message : "Inserted device rule Successfully"

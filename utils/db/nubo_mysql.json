@@ -831,7 +831,7 @@ PRIMARY KEY (hardwaredesc, devicemodel));"
 , "1.5.0.0.100" : "ALTER TABLE apps ADD COLUMN apptype varchar(20) default 'apk' AFTER packagename;"
 , "1.5.0.0.101" : "ALTER TABLE apps ADD COLUMN filename varchar(150) default '' AFTER apptype;"
 , "1.5.0.0.102" : "ALTER TABLE users ADD COLUMN docker_image varchar(100) default '';"
-, "1.5.0.0.103" : "CREATE TABLE static_platforms ( 
+, "1.5.0.0.103" : "CREATE TABLE static_platforms (
     platid int NOT NULL,
     ip varchar(100) default '',
     vmname varchar(100) default '',
@@ -850,4 +850,20 @@ PRIMARY KEY (hardwaredesc, devicemodel));"
     PRIMARY KEY (maindomain,image_name)
     );"
 , "1.5.0.0.110" : "ALTER TABLE platform_configs ADD COLUMN poolStrategy varchar(20) default 'calculated' AFTER dcName;"
+, "1.5.0.0.111" : "CREATE TABLE session_history (
+    session_id varchar(100) NOT NULL,
+    email varchar(100) NOT NULL,
+    device_id varchar(100) NOT NULL,
+    maindomain varchar(100) NOT NULL,
+    devicename varchar(100),
+    start_time DATETIME NOT NULL,
+    end_time DATETIME NOT NULL,
+    platform int ,
+    gateway int ,
+    active_seconds int ,
+    PRIMARY KEY (session_id)
+    );"
+, "1.5.0.0.112" : "create index session_history_idx_1 on session_history (maindomain,email,device_id);"
+, "1.5.0.0.113" : "create index session_history_idx_2 on session_history (maindomain,start_time);"
+, "1.5.0.0.114" : "create index session_history_idx_3 on session_history (maindomain,end_time);"
 }

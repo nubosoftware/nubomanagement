@@ -1,5 +1,7 @@
 "use strict";
 
+var Common = require('./common.js');
+
 /**
  * A generic exception thrown when API process cannot continue.
  * The exception status and message should be returened to the caller

@@ -8,6 +8,8 @@ var async = require('async');
 var UserUtils = require('./userUtils.js');
 var Config = require('./config.js');
 var CommonUtils = require("./commonUtils.js");
+var eventLog = require('./eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 Validate = {
     func: validate,
@@ -392,7 +394,7 @@ function getActivationData(activationKey, logger, callback) {
 }
 
 function getUserDeviceData(email, deviceID, logger, maindomain, callback) {
-    var blockedDevices = [];
+    /*var blockedDevices = [];
     Common.db.BlockedDevices.findAll({
         attributes: ['filtername'],
         where: {
@@ -408,7 +410,7 @@ function getUserDeviceData(email, deviceID, logger, maindomain, callback) {
                 blockedDevices.push(row.filtername);
             });
         }
-    });
+    });*/
 
     Common.db.UserDevices.findAll({
         attributes: ['email', 'imei', 'active', 'devicename', 'loginattempts'],
@@ -439,9 +441,14 @@ function getUserDeviceData(email, deviceID, logger, maindomain, callback) {
             return;
         }
 
-        var isDeviceBlocked = false;
-        for (var i = 0; i < blockedDevices.length; i++) {
-            // console.log("****getUserDeviceData. devicename: " + results[0].devicename + ", blockedDevices[i]: " + blockedDevices[i]);
+        require('./ControlPanel/getBlockedDevices').checkBlockDevice(maindomain,results[0].imei,results[0].devicename).then(isDeviceBlocked => {
+            var loginattempts = results[0].loginattempts != null ? results[0].loginattempts : 0;
+            callback(null, results[0], isDeviceBlocked, loginattempts);
+        }).catch (err => {
+            callback(err);
+        });
+        /*for (var i = 0; i < blockedDevices.length; i++) {
+            //console.log("****getUserDeviceData. devicename: " + results[0].devicename + ", blockedDevices[i]: " + blockedDevices[i]);
 
             // check if devicename is in our blockedDevices table
             if (results[0].devicename && blockedDevices[i]) {
@@ -458,11 +465,9 @@ function getUserDeviceData(email, deviceID, logger, maindomain, callback) {
                     break;
                 }
             }
-        };
+        };*/
 
-        var loginattempts = results[0].loginattempts != null ? results[0].loginattempts : 0;
 
-        callback(null, results[0], isDeviceBlocked, loginattempts);
     });
 }
 
@@ -473,7 +478,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
     var response = null;
     var error = null;
     var loginToken = null;
-    
+
 
 
         var login;
@@ -699,7 +704,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                             message: err
                         }
                         error = err;
-                        logger.error('validateActivation: ' + err);
+                        logger.error('validateActivation. getUserDeviceData error: ' + err,err);
                         callback(finish);
                         return;
                     }
@@ -712,6 +717,10 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                             adminEmail: adminEmail,
                             adminName: adminName
                         }
+                        var extra_info = `Attempt to login from a blocked device. device name: ${userDevice.devicename}, device id: ${deviceid}`;
+                        eventLog.createEvent(EV_CONST.EV_DEVICE_TYPE_BLOCKED, email, maindomain, extra_info, EV_CONST.WARN, function(err) {
+                            if(err) logger.error("createEvent failed with err: " + err);
+                        });
                         callback(finish);
                         return;
                     }
@@ -724,6 +733,10 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                             adminEmail: adminEmail,
                             adminName: adminName
                         }
+                        var extra_info = `Attempt to login from a disabled device. device name: ${userDevice.devicename}, device id: ${deviceid}`;
+                        eventLog.createEvent(EV_CONST.EV_DISABLED_USER_DEVICE, email, maindomain, extra_info, EV_CONST.WARN, function(err) {
+                            if(err) logger.error("createEvent failed with err: " + err);
+                        });
                         callback(finish);
                         return;
                     }
@@ -790,7 +803,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                 }
             },
             function(callback) {
-                
+
                 login.setDeviceName(userDeviceData.devicename);
                 login.setDeviceID(userDeviceData.imei);
                 login.setEmail(userData.email);
@@ -816,7 +829,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                     login.setSecondFactorAuth(Common.secondFactorAuthType.NONE);
                 }
                 login.loginParams.secondAuthRegistred = activationData.secondAuthRegistred;
-                
+
                 login.loginParams.hideNuboAppPackageName = hideNuboAppPackageName;
                 login.loginParams.clientauthtype = userData.org.clientauthtype;
                 login.loginParams.secondauthmethod = userData.org.secondauthmethod;
@@ -889,7 +902,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
 
                     callback(finish);
 
-                    
+
                 });
             }
         ], function(finish) {
@@ -975,7 +988,7 @@ function getClientConf(req, res, next) {
             } else {
                 return callback(null);
             }
-        },        
+        },
         function(callback) {
             var regid = req.params.regid;
             if (!regid || regid.length == 0) {

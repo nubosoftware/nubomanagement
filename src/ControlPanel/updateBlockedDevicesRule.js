@@ -49,6 +49,7 @@ function updateBlockedDevicesRuleToDB(res, ruleId, filterName, domain) {
             maindomain : domain
         }
     }).then(function() {
+        require('./getBlockedDevices').clearDomainRuleCache(domain);
         res.send({
             status : 1,
             message : "update blocked devices rule to db successfully"

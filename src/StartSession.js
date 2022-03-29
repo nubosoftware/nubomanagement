@@ -1121,6 +1121,32 @@ function endSession(sessionID, callback, closeSessionMsg) {
                     log: Common.specialBuffers[sessLogger.logid]
                 });
             }
+            // put session details in session history
+            let totalActiveSeconds = parseInt(session.params["totalActiveSeconds"]);
+            if (session.params["suspend"] == 0 && session.params["suspendtime"]) {
+                // calculate the number of active session if session is now connected
+                let activetime =  parseInt( (new Date().getTime() - new Date(session.params["suspendtime"]).getTime()) / 1000 );
+                if (activetime > 0) {
+                    totalActiveSeconds = totalActiveSeconds + activetime;
+                }
+            }
+            logger.info(`Session totalActiveSeconds: ${totalActiveSeconds}`);
+            Common.db.SessionHistory.create({
+                session_id : session.params.sessid,
+                email : session.params.email,
+                device_id : session.params.deviceid,
+                maindomain : session.params.maindomain,
+                devicename : session.params.devicename,
+                start_time: new Date(session.params.startTime),
+                end_time : new Date(),
+                platform : session.params.platid,
+                gateway : session.params.gatewayIndex,
+                active_seconds: totalActiveSeconds
+            }).then(function() {
+                logger.info(`SessionHistory added`);
+            }).catch(function(err) {
+                logger.error('SessionHistory Error: Cannot Insert to table: ' +  err);
+            });
 
             if (errMsg) {
                 var subj = (Common.dcName != "" ? Common.dcName + " - " : "") + "Session deleted unsuccessfully";
@@ -1631,6 +1657,8 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             session.params.deviceid = deviceID;
                             session.params.docker_image = login.loginParams.docker_image;
                             session.params.deviceType = deviceType;
+                            session.params.maindomain = login.loginParams.mainDomain;
+                            session.params.devicename = login.loginParams.deviceName;
                             if (deviceParams && deviceParams.appName) {
                                 session.params.appName = deviceParams.appName;
                             } else {
