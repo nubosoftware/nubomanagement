@@ -28,8 +28,8 @@ all: nubomanagement-serv nubomanagement-serv-common
 all: nubomanagement-serv-js nubomanagement-serv-node_modules nubomanagement-serv-vmware
 all: nubomanagement-img
 
-BASE_TAG := nubo_release_3.1
-BASE_VERSION := 3.1
+BASE_TAG := nubo_release_3.2
+BASE_VERSION := 3.2
 
 define get_current_version
 $(eval $1_commit=$(shell git log -n 1 --format=oneline -- $($1_files_list)))
@@ -94,7 +94,7 @@ versions:
 	@echo "img version $(img_version) $(img_buildid)"
 
 docker: debs
-	mkdir -p docker_build/debs/	
+	mkdir -p docker_build/debs/
 	cp $(nubo_proj_dir)/debs/latest/nubomanagement-serv-node-modules-$(node_modules_version)-$(node_modules_buildid).$(LSBDIST).deb docker_build/debs/nubomanagement-serv-node-modules.deb
 	cp $(nubo_proj_dir)/debs/latest/nubomanagement-serv-common-$(common_version)-$(common_buildid).deb docker_build/debs/nubomanagement-serv-common.deb
 	cp $(nubo_proj_dir)/debs/latest/nubomanagement-serv-js-$(js_version)-$(js_buildid).deb docker_build/debs/nubomanagement-serv-js.deb
@@ -105,9 +105,9 @@ docker: debs
 debs rpms: versions
 
 define make_rpm
-$(eval cur_version=$(shell echo "$2" | sed 's/.*\(3\.1\)\-\([0-9]*\)\.\(.*\)/\1/'))
-$(eval cur_buildid=$(shell echo "$2" | sed 's/.*\(3\.1\)\-\([0-9]*\)\.\(.*\)/\2/'))
-$(eval cur_arch=$(shell echo "$2" | sed 's/.*\(3\.1\)\-\([0-9]*\)\.\(.*\)/\3/'))
+$(eval cur_version=$(shell echo "$2" | sed 's/.*\(3\.2\)\-\([0-9]*\)\.\(.*\)/\1/'))
+$(eval cur_buildid=$(shell echo "$2" | sed 's/.*\(3\.2\)\-\([0-9]*\)\.\(.*\)/\2/'))
+$(eval cur_arch=$(shell echo "$2" | sed 's/.*\(3\.2\)\-\([0-9]*\)\.\(.*\)/\3/'))
 $(eval pkgname=$(subst -$2.rpm,,$(notdir $1)))
 #@echo "rpm $(pkgname) $(cur_version) $(cur_buildid) $(cur_arch)"
 NUBO_PROJ_PATH=$(nubo_proj_dir) \
@@ -153,8 +153,8 @@ $(nubo_proj_dir)/rpms/latest/nubomanagement-img-%.rpm:
 	$(call make_rpm,$@,$*)
 
 define make_deb
-$(eval cur_version=$(shell echo "$2" | sed 's/.*\(3\.1\)\-\([0-9]*\)/\1/'))
-$(eval cur_buildid=$(shell echo "$2" | sed 's/.*\(3\.1\)\-\([0-9]*\)/\2/'))
+$(eval cur_version=$(shell echo "$2" | sed 's/.*\(3\.2\)\-\([0-9]*\)/\1/'))
+$(eval cur_buildid=$(shell echo "$2" | sed 's/.*\(3\.2\)\-\([0-9]*\)/\2/'))
 @echo "deb version $(cur_version) $(cur_buildid) $(cur_arch)"
 $(eval pkgname=$(subst -$2.deb,,$(notdir $1)))
 $(eval pkgname=$(subst -$(cur_version)-$(cur_buildid).deb,,$(notdir $@)))
