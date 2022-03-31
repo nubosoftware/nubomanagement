@@ -11,6 +11,7 @@ RUN apt install -y \
     telnet \
     dnsutils \
     net-tools \
+    openssh-client \
     rsync \
     sudo
 
@@ -37,7 +38,7 @@ RUN apt install -y \
     /tmp/nubomanagement-serv-common.deb \
     /tmp/nubomanagement-serv-js.deb \
     /tmp/nubomanagement-serv-node-modules.deb
-    
+
 RUN rm -f /tmp/*.deb
 
 

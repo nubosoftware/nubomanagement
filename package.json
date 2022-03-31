@@ -44,8 +44,7 @@
         "winston": "^3.3.3",
         "winston-syslog": "^2.4.4",
         "xml-js": "^1.6.11",
-        "yargs": "^17.3.0",
-        "nubo-management-desktop": "file:/mnt/diskA/dev/nubomanagement/nubo-management-desktop"
+        "yargs": "^17.3.0"
     },
     "devDependencies": {
         "@babel/core": "^7.14.6",
