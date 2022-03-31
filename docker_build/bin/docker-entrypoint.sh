@@ -1,19 +1,21 @@
-#!/bin/bash
+#!/bin/sh
 
 # entry point for nubo docker add all needed commands here
 
-cd /opt/nubomanagement
 
 
-sudo /usr/bin/node dist/upgrade.js
-if [ $? -eq 0 ] 
-then 
-  echo "Successfully run update" 
-else 
-  echo "Upgrade failed. Trying again in 20 seconds..";
-  sleep 20
-  sudo /usr/bin/node dist/upgrade.js
+if [ "${1}" -eq 'supervisord' ]; then
+  cd /opt/nubomanagement
+  sudo node dist/upgrade.js
+  if [ $? -eq 0 ]
+  then
+    echo "Successfully run update"
+  else
+    echo "Upgrade failed. Trying again in 20 seconds..";
+    sleep 20
+    sudo node dist/upgrade.js
+  fi
+  cd -
 fi
 
-cd -
 exec "$@"

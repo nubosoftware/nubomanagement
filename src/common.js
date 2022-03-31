@@ -64,7 +64,7 @@ var Common = {
     fs : require('fs'),
     path : require('path'),
     db : '',
-    allowedOrigns : [],        
+    allowedOrigns : [],
     serverurl : "https://lab.nubosoftware.com/",
     internalurl : "https://lab.nubosoftware.com/",
     restify : require('restify'),
@@ -136,7 +136,7 @@ var Common = {
 	controlPanelApp : "com.nubo.controlpanel",
     isHandlingMediaStreams : false,
     streams : "media/streams/",
-    photoCompression : 70,    
+    photoCompression : 70,
     activateBySMS : false,
     smsHandler : false,
     DEFAULT_PASSWORD : "",
@@ -179,14 +179,14 @@ var Common = {
     allowedFE : {},
     defaultTimeZone: "Etc/UTC",
     defaultAppName: "Nubo",
-    
+
     otpTimeout : 90,
     otpMaxTries: 5,
     webClientSubnets: [],
     restrictWebClientAccess: false,
-    savedPasscodeHistory: 0,    
+    savedPasscodeHistory: 0,
     apkDownloadURL: "http://gw.nubosoftware.com:4000/downloadAPK?packageid=",
-    
+
     platformKey: "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAzvlbq4mQcmE4DbdlGE3cniWijiYG6IX1MJ8dyFzAdsxkj94r\nap59BLFc6lnQsxcuqvtOGxt18bNQUnUDdrwbJbn/Out4LE7QhFm29eYHxcS1BVAr\nPGB+KwDUEACL1DRHvsVkBVSXynH/Y5v4Mb2W9Ot5TZnMns2IZBlNredCEagnyqPb\noiOTjSvRZXORVHg+nITydksgTEz+Wo57wX9Z/HKzLKcOZ7amRe28l+NslwgUQM2V\nH8oh+C4h15K/jVseFEeCDq8JBVf/LxXh1wq0vwj1lbcHiM94wnuVfjK0Vp3nUsAS\ncQrdEdKNiZwhxsJbqhKibKtVIaO34sNSHL/iTQIDAQABAoIBAHrlMXtfiXeBJolu\ndgbCZNc6vZTuG3gB4p7mPAb2nAluP9/1KY57YPxiXCuC/Rr6DunTooMSASxtLqpn\ndJESDISQNm7D1m1otwN/SdYkqkTSEjJ/ccy99uyN511BFcYA7QDnsAZCPockvWJm\nAC94xaPUFgjv48H/hJb7N1alVGOqheCHiK2MKBmUilgByK3V1/qTpVnLae772Czf\n1UYnxtajHv02INUqvxcAQuoyVW4r+cS2EaeidUuBwoW7LDDsOEC+2DYVXAVOSVr+\nKVBF81aoT8/qGr/CNu9mwpTGFyE51GbiRl5cVIrn8ZnR5a5hK9XQg93fzD6x91Rh\npjv6HYECgYEA6gc8j+MIWmLzlT3ZlRH2QCRg+u/SwNGRyHuO/I3u1mnQvK5vkJUs\nngM+IVuggbOEoFaj+UOTx+BLld+QVdOZkqoFwnZpjlFawiwFSetf5cWSzNVgYfNO\nDR5el1QDRSTs2yqenCi43Dq880DMadi7pa2uKzGCrLxJfQv/nMNtWj0CgYEA4mfi\nwVoNrHaekoPb7MNaXZ6Z/NTRAHSTPozUxkAfa87hPQbVfwma29ErdLHkUdB3OunB\nd4+3KwsW1VY3lPJKNsttx4JkzlNz4sIY/7cLDlyn+CWmS9bque3VzJrHxO5YvRp+\n0UKvN1sFkuefUPxjZu5Me3O1889Rvkb52Kb1+VECgYAhlMA/9VfxgFlrhOB/33/y\nXEX+PAOF34yHtBMkcklfQvfM20ru+Djaw6RarQcvFU9moogM8IF4INs3uki/yAk1\nXmhNKyiiX1IioqZvoPK1yc/yzHt0ErGUeFMia8+8UDwchtUTm1RLZbJPRXEPjyX9\n9BoV4JjbqHjzFJGtMO20EQKBgFSu6MjLZyvn3l4NBfikBSvZQ92muFoEQIL36CoT\nF+2aHvNVmAuBSzQHI8rtMupLIB2gC2YuEiP+bNb0/asviQS/yFsEcbIe0syxLuqO\ny4req1EMvAvH4loTFJIIHsqRIA3zWBXrbGA3InmVOyjujjuUzHSsjhUYqYmTQKaB\npKVRAoGBAJQOMQQbBt6qphuWaXdoBxW/litXNPmGxBhoJhgKz+ZDb9bZMZ+vE3BT\nO6Q/WUODN+M8bIspSQMfizraI7hIyqxhmnGyXo1i4o9aG7piGpgFocJ9VlBxohHf\nlW3YiLza8c3fnjImNSjcuiqnRjy4IlzJba7MP/vGs9JOo3g5L5la\n-----END RSA PRIVATE KEY-----",
     javaCommand: "java",
     telephonyProvider: {
@@ -272,7 +272,7 @@ Common.getEnterprise = function() {
     return enterpriseLoader.get();
 }
 
-Common.isMobile = function () {    
+Common.isMobile = function () {
     return Common.mobileModule;
 }
 
@@ -280,7 +280,7 @@ Common.getMobile = function() {
     return require('./mobileModuleLoader').get();
 }
 
-Common.isDesktop = function () {    
+Common.isDesktop = function () {
     return Common.desktopModule;
 }
 
@@ -440,7 +440,7 @@ function load_settings(sysConf,callback) {
         },
         function(callback) {
             Common.settingsFile = settingsFile;
-            
+
             Common.fs.readFile(settingsFile, function(err, data) {
                 if (err) {
                     callback(err);
@@ -500,7 +500,7 @@ function load_settings(sysConf,callback) {
                     return;
                 }
 
-                if(newSettingsToFile){                    
+                if(newSettingsToFile){
                     Common.fs.writeFile(settingsFile, newSettingsToFile, callback);
                 }
                 else{
@@ -528,8 +528,8 @@ let initCB = null;
 /**
  * Update the Settings.json file with new/changed params from the params object.
  * Parameters that do not exists in the params object will be kept unchanged
- * @param {Object} params 
- * @param {Function} cb 
+ * @param {Object} params
+ * @param {Function} cb
  */
 Common.updateSettingsJSON = function (params,cb) {
     let sysConf;
@@ -537,8 +537,8 @@ Common.updateSettingsJSON = function (params,cb) {
     async.series([
         (cb) => {
             // load the sysconf
-            SysConf.loadSysConf(function(err, sysConfObj) {                
-                sysConf = sysConfObj;                
+            SysConf.loadSysConf(function(err, sysConfObj) {
+                sysConf = sysConfObj;
                 cb(err);
             });
         }, (cb) => {
@@ -550,7 +550,7 @@ Common.updateSettingsJSON = function (params,cb) {
         }, (cb) => {
             // add all params into the settings file
             settings = _.extend(settings,params);
-            
+
             // write the settings json file
             let settingsToString = JSON.stringify(settings, null, 4);
             Common.fs.writeFile(Common.settingsFile, settingsToString, cb);
@@ -608,7 +608,7 @@ function parse_configs(parseConfigCB) {
             };
 
             Common.sysConf = sysConf;
-            var dbConf = sysConf.dbConf;            
+            var dbConf = sysConf.dbConf;
 
             require('./DBModel.js').initSequelize(dbConf.name, dbConf.user, dbConf.password, dbConf.host, dbConf.port, options, function(err, dbObj, sequelizeObj) {
                 if(err){
@@ -642,7 +642,7 @@ function parse_configs(parseConfigCB) {
                     logger.error(`Unbale to init desktop module: ${err}`,err);
                 }
             }
-            if (enterpriseLoader.isPresent()) {                
+            if (enterpriseLoader.isPresent()) {
                     enterpriseLoader.init(function(err) {
                         if (err) {
                             logger.error(`Unbale to init eneterprise module: ${err}`,err);
@@ -650,7 +650,7 @@ function parse_configs(parseConfigCB) {
                             Common.enterpriseModule = true;
                         }
                         callback(null, settings, sysConf);
-                    });               
+                    });
             } else {
                 callback(null, settings, sysConf);
             }
@@ -767,15 +767,11 @@ function parse_configs(parseConfigCB) {
             callback(null);
         },
         function(callback) {
-
-            globals.getGlobals(function(err, globals) {
-                if (err) {
-                    callback(err);
-                    return;
-                }
-
+            globals.getGlobals().then(globals => {
                 Common.globals = globals;
                 callback(null);
+            }).catch(err => {
+                callback(err);
             });
         },
         function(callback) {
@@ -911,7 +907,7 @@ Common.initPromise = new Promise((resolve,reject) => {
 
 
 function watchSettings() {
-    
+
     Common.fs.watchFile(Common.settingsFile, {
         persistent: false,
         interval: 5007

@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/bin/sh
 
 npm install --only=dev
-if [ ! -d "./nubo-management-desktop" ] 
-then   
+if [ ! -d "./nubo-management-desktop" ]
+then
     echo "Directory nubo-management-desktop does not exists. Clone from git project."
     git clone git@github.com:nubosoftware/nubo-management-desktop.git
 fi

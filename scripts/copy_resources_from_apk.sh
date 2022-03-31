@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Script must be run in management dir
 # $1 apk file (full path)

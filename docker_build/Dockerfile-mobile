@@ -1,0 +1,59 @@
+FROM node:lts-alpine
+ARG BUILD_VER=3.2
+ARG TARGET_DIR=/opt/nubomanagement
+LABEL build_ver="${BUILD_VER}"
+
+# run required packages
+RUN apk add --update rsync openssh-client supervisor curl rsyslog sudo docker
+
+# temporary add build dependencies
+RUN apk add --no-cache --virtual .build-deps-full \
+        binutils-gold \
+        g++ \
+        gcc \
+        gnupg \
+        libgcc \
+        linux-headers \
+        make \
+        python3
+
+# # configure files
+ADD docker_build/etc /etc
+ADD docker_build/bin /usr/local/bin
+RUN mkdir -p /var/log/supervisor/
+#RUN sed -i /imklog/s/module/#module/ /etc/rsyslog.conf
+
+# mark this as docker installation
+RUN mkdir -p /etc/.nubo/ && \
+    touch  /etc/.nubo/.docker
+
+# copy files to target dir
+RUN mkdir -p ${TARGET_DIR}
+COPY package.json ${TARGET_DIR}/.
+COPY webpack.config.js ${TARGET_DIR}/.
+ADD src ${TARGET_DIR}/src
+ADD nubo-management-enterprise ${TARGET_DIR}/nubo-management-enterprise
+ADD nubo-management-mobile ${TARGET_DIR}/nubo-management-mobile
+ADD scripts ${TARGET_DIR}/scripts
+WORKDIR ${TARGET_DIR}
+
+RUN npm --version && node --version
+
+# prepare the mobile/enterprise packages link
+RUN ./scripts/attachEnterpriseMobileModule.sh
+
+
+# build the dist folder
+RUN npm run build
+RUN rm -rf src webpack.config.js nubo-management-enterprise/src nubo-management-mobile/src
+
+# remove build dependencies
+RUN apk del .build-deps-full
+
+
+
+# Docker config
+VOLUME ["/opt/nubomanagement/conf","/opt/nubomanagement/locales","/opt/nubomanagement/docker_apps","/srv/nfs/homes"]
+EXPOSE 8443 8080
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["supervisord", "--nodaemon", "--configuration", "/etc/supervisor/supervisord.conf"]

@@ -36,7 +36,7 @@ var exec = {
 };
 
 var devExec = {
-    NODE: "/Users/israel/.nvm/versions/node/v16.13.0/bin/node"
+    NODE: "node"
 }
 
 var rhDistributes = [
@@ -45,7 +45,37 @@ var rhDistributes = [
     "RedHatEnterpriseServer"
 ];
 
-function getGlobals(callback) {
+
+async function getGlobals() {
+    let os = "unknown";
+    const fsp = require('fs').promises;
+    try {
+        let osRelease = await fsp.readFile('/etc/os-release', "utf8");
+        let lines = osRelease.split("\n");
+        for (const line of lines) {
+            let vals = line.split("=");
+            if (vals[0]=="ID") {
+                os = vals[1];
+                break;
+            }
+        }
+    } catch (err) {
+        console.error(`Error reading /etc/os-release`,err);
+    }
+    console.log(`OS: ${os}`);
+    if (os == "ubuntu") {
+        return _.extend(exec, ubuntuExec);
+    } else if (os == "rhel" || os == "centos") {
+        return _.extend(exec, redHatExec);
+    } else if (os == "alpine") {
+        return _.extend(exec, devExec);
+    } else {
+        return _.extend(exec, devExec);
+    }
+
+}
+
+/*function getGlobalsOld(callback) {
 
     execFile('/usr/bin/lsb_release', ['-i'], function(error, stdout, stderr) {
         if (error) {
@@ -67,8 +97,7 @@ function getGlobals(callback) {
             //return callback('uknown linux distribution');
         }
     });
-
-}
+}*/
 
 
 module.exports = {

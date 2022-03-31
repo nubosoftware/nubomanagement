@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Script must be run in scripts directory inside management dir
 # Accepts parameter for certificate file (full path)
