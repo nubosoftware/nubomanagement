@@ -1,9 +1,9 @@
-FROM node:lts-alpine
+FROM node:16-alpine3.15
 ARG BUILD_VER=3.2
 ARG TARGET_DIR=/opt/nubomanagement
 LABEL build_ver="${BUILD_VER}"
 
-# run required packages
+# add required packages
 RUN apk add --update rsync openssh-client supervisor curl rsyslog sudo docker
 
 # temporary add build dependencies
