@@ -8,10 +8,10 @@ function getRules() {
     let rules = filter.rules;
     if (Common.isEnterpriseEdition()) {
         rules = rules.concat(Common.getEnterprise().parametersMap.getParameterMapRules(constraints));
-    } 
+    }
     if (Common.isMobile()) {
         rules = rules.concat(Common.getMobile().parametersMap.getParameterMapRules(constraints));
-    }    
+    }
     return rules;
 }
 var filter = {
@@ -1145,9 +1145,9 @@ var filter = {
             "email": constraints.userNameConstrRequested,
             "deviceid": constraints.deviceIdConstrRequested,
             "imsi": {
-                "format": "^[0-9a-zA-Z]+$",
+                "format": "^[0-9a-zA-Z]+$|^$",
                 "length": {
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 15
                 }
             },
@@ -1169,9 +1169,9 @@ var filter = {
             "signature": constraints.ExcludeSpecialCharactersOptional,
             "regid": {
                 "presence": false,
-                "format": "^[.a-zA-Z0-9_\\-():]+$",
+                "format": "^[.a-zA-Z0-9_\\-():]+$|^$",
                 "length": {
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 255
                 }
             },
@@ -1414,9 +1414,9 @@ var filter = {
             "supportedConf": constraints.NaturalNumberConstrRequested,
             "regid": {
                 "presence": false,
-                "format": "^[.a-zA-Z0-9_\\-():]+$",
+                "format": "^[.a-zA-Z0-9_\\-():]+$|^$",
                 "length": {
-                    "minimum": 1,
+                    "minimum": 0,
                     "maximum": 255
                 }
             }
@@ -1424,7 +1424,7 @@ var filter = {
     }, {
         "path": "/recheckValidate",
         "constraints": {
-            "loginToken": constraints.requestedLoginTokenConstr,            
+            "loginToken": constraints.requestedLoginTokenConstr,
         }
     }, {
         "path": "/checkStatus",
@@ -1561,8 +1561,8 @@ var filter = {
     },
     {
         "path": "/selfRegisterPlatform",
-        "constraints": {           
-            "platform_ip": constraints.hostConstrRequested,            
+        "constraints": {
+            "platform_ip": constraints.hostConstrRequested,
         },
         "headerConstraints": {
             'fe-user': constraints.ExcludeSpecialCharactersRequested,
@@ -1572,7 +1572,7 @@ var filter = {
     {
         "path": "/selfRegisterPlatformTtl",
         "constraints": {
-            "idx": constraints.IndexConstrRequested,          
+            "idx": constraints.IndexConstrRequested,
             "platform_ip": constraints.hostConstrRequested
         },
         "headerConstraints": {
@@ -1580,7 +1580,7 @@ var filter = {
             'fe-pass': constraints.passcodeConstrRequested
         }
     },
-    
+
     {
         "regex": true,
         "path": "/api/.*",

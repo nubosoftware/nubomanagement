@@ -35,6 +35,7 @@ ADD src ${TARGET_DIR}/src
 ADD nubo-management-enterprise ${TARGET_DIR}/nubo-management-enterprise
 ADD nubo-management-mobile ${TARGET_DIR}/nubo-management-mobile
 ADD scripts ${TARGET_DIR}/scripts
+ADD utils ${TARGET_DIR}/utils
 WORKDIR ${TARGET_DIR}
 
 RUN npm --version && node --version

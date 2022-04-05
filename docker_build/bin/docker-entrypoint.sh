@@ -3,8 +3,8 @@
 # entry point for nubo docker add all needed commands here
 
 
-
-if [ "${1}" -eq 'supervisord' ]; then
+echo "cmd: ${1}"
+#if [ "${1}" -eq 'supervisord' ]; then
   cd /opt/nubomanagement
   sudo node dist/upgrade.js
   if [ $? -eq 0 ]
@@ -16,6 +16,6 @@ if [ "${1}" -eq 'supervisord' ]; then
     sudo node dist/upgrade.js
   fi
   cd -
-fi
+#fi
 
 exec "$@"

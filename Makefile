@@ -102,6 +102,9 @@ docker: debs
 	cp $(nubo_proj_dir)/debs/latest/nubo-common-3.0-1.deb docker_build/debs/nubo-common.deb
 	sudo docker build -t nubomanagement:$(serv_version)-$(serv_buildid) docker_build/.
 
+docker-mobile:
+	docker build -t nubomanagement-mobile:$(serv_version)-$(serv_buildid) -f docker_build/Dockerfile-mobile .
+
 debs rpms: versions
 
 define make_rpm
