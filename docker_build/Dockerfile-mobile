@@ -1,21 +1,39 @@
-FROM node:16-alpine3.15
+FROM ubuntu:20.04
 ARG BUILD_VER=3.2
 ARG TARGET_DIR=/opt/nubomanagement
 LABEL build_ver="${BUILD_VER}"
 
-# add required packages
-RUN apk add --update rsync openssh-client supervisor curl rsyslog sudo docker
 
-# temporary add build dependencies
-RUN apk add --no-cache --virtual .build-deps-full \
-        binutils-gold \
-        g++ \
-        gcc \
-        gnupg \
-        libgcc \
-        linux-headers \
-        make \
-        python3
+# install linux packages
+RUN apt-get -y update
+RUN apt install -y \
+    curl \
+    supervisor \
+    rsyslog \
+    vim \
+    iputils-ping \
+    telnet \
+    dnsutils \
+    net-tools \
+    openssh-client \
+    rsync \
+    lib32stdc++6 \
+    lib32z1 \
+    zip \
+    unzip \
+    default-jre \
+    sudo
+
+#install node js 14.x
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+RUN apt install -y nodejs
+
+#install docker-ce-cli
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+RUN echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+RUN apt update -y ; apt install -y docker-ce-cli
 
 # # configure files
 ADD docker_build/etc /etc
@@ -38,19 +56,20 @@ ADD scripts ${TARGET_DIR}/scripts
 ADD utils ${TARGET_DIR}/utils
 WORKDIR ${TARGET_DIR}
 
-RUN npm --version && node --version
+# RUN npm --version && node --version
+
+# add build essential
+RUN apt install -y build-essential
 
 # prepare the mobile/enterprise packages link
 RUN ./scripts/attachEnterpriseMobileModule.sh
 
+# remove build-essntial
+RUN apt-get --purge autoremove -y build-essential
 
 # build the dist folder
 RUN npm run build
 RUN rm -rf src webpack.config.js nubo-management-enterprise/src nubo-management-mobile/src
-
-# remove build dependencies
-RUN apk del .build-deps-full
-
 
 
 # Docker config

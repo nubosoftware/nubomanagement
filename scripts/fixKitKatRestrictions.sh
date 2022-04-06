@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ "$1" != "1" ] ; then
     read -p "This should be run with sudo under the NFS folder. Press any key..." -n1 -s

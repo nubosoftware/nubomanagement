@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Script must be run in management dir
 # Accepts parameter for apk file (full path)

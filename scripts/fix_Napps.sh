@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 if [ $# -eq 0 ]; then
 	echo "Wrong count of arguments"
 	echo "Usage: sudo fix_apps <user's dir> <path to packages.list>"
