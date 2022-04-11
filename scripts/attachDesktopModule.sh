@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 npm install --only=dev
 if [ ! -d "./nubo-management-desktop" ]

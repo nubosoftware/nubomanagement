@@ -103,7 +103,30 @@ docker: debs
 	sudo docker build -t nubomanagement:$(serv_version)-$(serv_buildid) docker_build/.
 
 docker-mobile:
-	docker build -t nubomanagement-mobile:$(serv_version)-$(serv_buildid) -f docker_build/Dockerfile-mobile .
+	docker build -t nubomanagement-mobile:$(serv_version)-$(serv_buildid) --no-cache --pull -f docker_build/Dockerfile-mobile .
+
+push-mobile: docker-mobile
+	docker tag nubomanagement-mobile:$(serv_version)-$(serv_buildid) docker.nubosoftware.com:5000/nubo/nubomanagement-mobile:$(serv_version)-$(serv_buildid)
+	docker push docker.nubosoftware.com:5000/nubo/nubomanagement-mobile:$(serv_version)-$(serv_buildid)
+	docker tag nubomanagement-mobile:$(serv_version)-$(serv_buildid) docker.nubosoftware.com:5000/nubo/nubomanagement-mobile:$(serv_version)
+	docker push docker.nubosoftware.com:5000/nubo/nubomanagement-mobile:$(serv_version)
+
+push-mobile-latest: push-mobile
+	docker tag nubomanagement-mobile:$(serv_version)-$(serv_buildid) docker.nubosoftware.com:5000/nubo/nubomanagement-mobile
+	docker push docker.nubosoftware.com:5000/nubo/nubomanagement-mobile
+
+docker-desktop:
+	docker build -t nubomanagement:$(serv_version)-$(serv_buildid) --no-cache --pull -f docker_build/Dockerfile-desktop .
+
+push-desktop: docker-desktop
+	docker tag nubomanagement:$(serv_version)-$(serv_buildid) nubosoftware/nubomanagement:$(serv_version)-$(serv_buildid)
+	docker push nubosoftware/nubomanagement:$(serv_version)-$(serv_buildid)
+	docker tag nubomanagement:$(serv_version)-$(serv_buildid) nubosoftware/nubomanagement:$(serv_version)
+	docker push nubosoftware/nubomanagement:$(serv_version)
+
+push-desktop-latest: push-desktop
+	docker tag nubomanagement:$(serv_version)-$(serv_buildid) nubosoftware/nubomanagement
+	docker push nubosoftware/nubomanagement
 
 debs rpms: versions
 
