@@ -11,7 +11,7 @@ var noFilterList = {
     '/validate': 1,
     '/activationLink': 1,
     '/activate': 1,
-    
+
     '/startsession': 1,
     '/resetPasscode': 1,
     '/logoutUser': 1,
@@ -23,27 +23,27 @@ var noFilterList = {
     '/updateUserConnectionStatics': 1,
     '/getResourceListByDevice': 1,
     '/receiveSMS': 1,
-    
+
     '/closeOtherSessions': 1,
     '/loginWebAdmin': 1,
     '/api/auth': 1,
     '/api/auth/activate': 1,
     '/api/auth/validate': 1,
     '/api/auth/reset': 1,
-    
+
 };
 
 var settingsList = {
     '/settings/changePasscode': 1,
     '/settings/checkPasscode': 1,
-    '/settings/setLanguage': 1,    
+    '/settings/setLanguage': 1,
     '/settings/getSessionDetails': 1,
     '/settings/changeExpiredPassword': 1,
     '/settings/setNotificationStatusForApp': 1,
     '/settings/getNotificationsStatusForAllApps': 1,
     '/settings/setNotificationVibrate': 1,
     '/settings/setNotificationSound': 1,
-    '/settings/getNuboSettingsSecurityPasscode': 1,    
+    '/settings/getNuboSettingsSecurityPasscode': 1,
     '/changeExpiredPassword': 1,
     '/notifyWindowAction': 1,
     '/platformUserNotification': 1,
@@ -64,7 +64,7 @@ var controlPanelList = {
     '/cp/deleteProfiles': 1,
     '/cp/activateProfiles': 1,
     '/cp/activateDevice': 1,
-    '/cp/checkCertificate': 1,    
+    '/cp/checkCertificate': 1,
     '/cp/inviteProfiles': 1,
     '/cp/deleteAppFromProfiles': 1,
     '/cp/deleteApps': 1,
@@ -78,7 +78,7 @@ var controlPanelList = {
     '/cp/getAllApps': 1,
     '/cp/getGroupDetails': 1,
     '/cp/deleteGroups': 1,
-    '/cp/getCompanyDetails': 1,    
+    '/cp/getCompanyDetails': 1,
     '/cp/deleteApk': 1,
     '/cp/setSecurityPasscode': 1,
     '/cp/getSecurityPasscode': 1,
@@ -104,8 +104,8 @@ var controlPanelList = {
     '/cp/setNetwotkAccessStatus': 1,
     '/cp/getLastSessionsDashboard': 1,
     '/cp/getMainDashboard': 1,
-    '/cp/getTabletDashboard': 1,    
-    '/cp/getOnlineUsersGroupDashboard': 1,    
+    '/cp/getTabletDashboard': 1,
+    '/cp/getOnlineUsersGroupDashboard': 1,
     '/cp/runAdSync': 1,
     '/api/profiles': 1,
 };
@@ -137,21 +137,21 @@ var excludeList = {
         '/file/uploadToLoginToken': 1,
         '/Notifications/notifyExchangeClient': 1,
         '/Notifications/pushNotification': 1,
-        '/Notifications/sendNotificationFromRemoteServer': 1,                
+        '/Notifications/sendNotificationFromRemoteServer': 1,
         '/getNuboRecordings': 1,
         '/getResource': 1,
         '/validateAuthentication': 1,
         '/createUserFolders': 1,
-        '/updateUserAccount': 1,        
+        '/updateUserAccount': 1,
         '/checkPasscode': 1,
         '/setPasscode': 1,
-        '/resetPasscode': 1,        
+        '/resetPasscode': 1,
         '/notificationPolling': 1,
         '/checkOtpAuth': 1,
         '/resendOtpCode': 1,
         '/getClientConf': 1,
         '/checkStatus': 1,
-        '/receiveSMS': 1,        
+        '/receiveSMS': 1,
         '/checkBiometric': 1,
         '/recheckValidate': 1,
     },
@@ -162,21 +162,21 @@ var excludeList = {
         '/Notifications/notifyClient': 1,
         '/Notifications/notifyExchangeClient': 1,
         '/Notifications/pushNotification': 1,
-        '/Notifications/sendNotificationFromRemoteServer': 1,               
+        '/Notifications/sendNotificationFromRemoteServer': 1,
         '/getResource': 1,
         '/validateAuthentication': 1,
         '/createUserFolders': 1,
-        '/updateUserAccount': 1,        
+        '/updateUserAccount': 1,
         '/checkPasscode': 1,
         '/setPasscode': 1,
         '/resetPasscode': 1,
-        '/captureDeviceDetails': 1,               
-        '/notificationPolling': 1,        
+        '/captureDeviceDetails': 1,
+        '/notificationPolling': 1,
         '/checkOtpAuth': 1,
         '/resendOtpCode': 1,
         '/getClientConf': 1,
         '/checkStatus': 1,
-        '/receiveSMS': 1,       
+        '/receiveSMS': 1,
         '/checkBiometric': 1,
         '/recheckValidate': 1,
     },
@@ -187,73 +187,74 @@ var excludeList = {
         '/Notifications/notifyClient': 1,
         '/Notifications/notifyExchangeClient': 1,
         '/Notifications/pushNotification': 1,
-        '/Notifications/sendNotificationFromRemoteServer': 1,               
+        '/Notifications/sendNotificationFromRemoteServer': 1,
         '/getNuboRecordings': 1,
         '/getResource': 1,
         '/validateAuthentication': 1,
         '/createUserFolders': 1,
         '/updateUserAccount': 1,
-        
+
         '/captureDeviceDetails': 1,
         '/notificationPolling': 1,
         '/notificationPolling': 1,
         '/checkStatus': 1,
         '/receiveSMS': 1,
     },
+    'NOLOGIN_REGEX': /^\/appstore\//,
     'PLATUID': {
         '/createOrReturnUserAndDomain': 1,
         '/createDomainForUser': 1,
         '/file/uploadToLoginToken': 1,
         '/Notifications/notifyExchangeClient': 1,
         '/Notifications/pushNotification': 1,
-        '/Notifications/sendNotificationFromRemoteServer': 1,               
+        '/Notifications/sendNotificationFromRemoteServer': 1,
         '/getNuboRecordings': 1,
         '/getResource': 1,
         '/validateAuthentication': 1,
         '/createUserFolders': 1,
         '/updateUserAccount': 1,
         'Notifications/notifyClient': 1,
-        '/file/uploadToSession': 1,                
+        '/file/uploadToSession': 1,
         '/checkPasscode': 1,
         '/setPasscode': 1,
         '/resetPasscode': 1,
-        '/captureDeviceDetails': 1,             
-        '/notificationPolling': 1,        
+        '/captureDeviceDetails': 1,
+        '/notificationPolling': 1,
         '/checkOtpAuth': 1,
         '/resendOtpCode': 1,
         '/getClientConf': 1,
         '/checkStatus': 1,
         '/receiveSMS': 1,
-       
+
         '/checkBiometric': 1,
         '/recheckValidate': 1,
     },
-    'CONTROL_PANEL_ID': {        
+    'CONTROL_PANEL_ID': {
         '/checkPasscode': 1,
         '/setPasscode': 1,
         '/resetPasscode': 1,
-        '/captureDeviceDetails': 1,        
+        '/captureDeviceDetails': 1,
         '/checkOtpAuth': 1,
         '/getClientConf': 1,
         '/checkStatus': 1,
-        '/file/uploadToSession': 1,        
+        '/file/uploadToSession': 1,
         '/checkBiometric': 1,
         '/recheckValidate': 1,
     },
-    'NUBO_SETTINGS_ID': {        
+    'NUBO_SETTINGS_ID': {
         '/checkPasscode': 1,
         '/setPasscode': 1,
         '/resetPasscode': 1,
-        '/captureDeviceDetails': 1,           
+        '/captureDeviceDetails': 1,
         '/checkOtpAuth': 1,
         '/resendOtpCode': 1,
         '/getClientConf': 1,
         '/checkStatus': 1,
-        '/file/uploadToSession': 1,        
+        '/file/uploadToSession': 1,
         '/checkBiometric': 1,
         '/recheckValidate': 1,
     },
-    'FRONTEND_AUTH': {        
+    'FRONTEND_AUTH': {
         '/SmsNotification/sendSmsNotification': 1,
         '/Notifications/pushNotification': 1,
         '/receiveSMS': 1,
@@ -281,7 +282,7 @@ function getExcludeList() {
         _.extend(excludeList['CONTROL_PANEL_ID'],entExcludes['CONTROL_PANEL_ID']);
         _.extend(excludeList['NUBO_SETTINGS_ID'],entExcludes['NUBO_SETTINGS_ID']);
         _.extend(excludeList['FRONTEND_AUTH'],entExcludes['FRONTEND_AUTH']);
-        _.extend(excludeList['LOGINTOKEN'],entExcludes['LOGINTOKEN']);        
+        _.extend(excludeList['LOGINTOKEN'],entExcludes['LOGINTOKEN']);
     }
     if (Common.isMobile()) {
         const mExcludes = Common.getMobile().parametersMap.getAuthFilterExcludes();
@@ -291,9 +292,9 @@ function getExcludeList() {
         _.extend(excludeList['CONTROL_PANEL_ID'],mExcludes['CONTROL_PANEL_ID']);
         _.extend(excludeList['NUBO_SETTINGS_ID'],mExcludes['NUBO_SETTINGS_ID']);
         _.extend(excludeList['FRONTEND_AUTH'],mExcludes['FRONTEND_AUTH']);
-        _.extend(excludeList['LOGINTOKEN'],mExcludes['LOGINTOKEN']);        
-    }   
-    
+        _.extend(excludeList['LOGINTOKEN'],mExcludes['LOGINTOKEN']);
+    }
+
 
     for (var key in settingsList) {
         excludeList['ISADMIN'][key] = settingsList[key];

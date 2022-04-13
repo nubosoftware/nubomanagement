@@ -60,6 +60,15 @@ function sessionIdFilter(req, excludeList, callback) {
         callback(null);
         return;
     }
+
+    let excRegEx =  excludeList['NOLOGIN_REGEX'];
+    if (excRegEx) {
+        let m = reqPath.match(excRegEx);
+        if (m) {
+            callback(null);
+            return;
+        }
+    }
     // pass validation if already authneticated dor web admin
     if (req.nubodata.adminLogin) {
         callback(null);
@@ -89,6 +98,15 @@ function isAdminFilter(req, excludeList, callback) {
     if (isAdminExclude && isAdminExclude[reqPath]) {
         callback(null);
         return;
+    }
+
+    let excRegEx =  excludeList['NOLOGIN_REGEX'];
+    if (excRegEx) {
+        let m = reqPath.match(excRegEx);
+        if (m) {
+            callback(null);
+            return;
+        }
     }
 
     var adminLogin = req.nubodata.adminLogin;
@@ -137,6 +155,14 @@ function loginTokenFIlter(req, excludeList, callback) {
         callback(null);
         return;
     }
+    let excRegEx =  excludeList['NOLOGIN_REGEX'];
+    if (excRegEx) {
+        let m = reqPath.match(excRegEx);
+        if (m) {
+            callback(null);
+            return;
+        }
+    }
 
     var adminLogin = req.nubodata.adminLogin;
     if (adminLogin) {
@@ -175,6 +201,15 @@ function platUIDFilter(req, excludeList, callback) {
         return;
     }
 
+    let excRegEx =  excludeList['NOLOGIN_REGEX'];
+    if (excRegEx) {
+        let m = reqPath.match(excRegEx);
+        if (m) {
+            callback(null);
+            return;
+        }
+    }
+
     // pass validation if already authneticated dor web admin
     if (req.nubodata.adminLogin) {
         callback(null);
@@ -211,6 +246,14 @@ function controlPanelIDFilter(req, excludeList, callback) {
         callback(null);
         return;
     }
+    let excRegEx =  excludeList['NOLOGIN_REGEX'];
+    if (excRegEx) {
+        let m = reqPath.match(excRegEx);
+        if (m) {
+            callback(null);
+            return;
+        }
+    }
 
     // pass validation if already authneticated dor web admin
     if (req.nubodata.adminLogin) {
@@ -246,6 +289,14 @@ function nuboSettingsIDFilter(req, excludeList, callback) {
     if (nuboSettingsIDExclude && nuboSettingsIDExclude[reqPath]) {
         callback(null);
         return;
+    }
+    let excRegEx =  excludeList['NOLOGIN_REGEX'];
+    if (excRegEx) {
+        let m = reqPath.match(excRegEx);
+        if (m) {
+            callback(null);
+            return;
+        }
     }
 
      // pass validation if already authneticated dor web admin

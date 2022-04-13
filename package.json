@@ -28,6 +28,7 @@
         "mysql2": "^2.3.3",
         "netmask": "2.0.2",
         "node-pdu": "^1.0.15",
+        "node-static": "^0.7.11",
         "nodemailer": "^6.4.17",
         "pem": "^1.14.4",
         "prompt": "^1.1.0",

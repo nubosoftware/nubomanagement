@@ -159,7 +159,7 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
         function(callback) {
             loadRequires();
             return callback(null)
-        },        
+        },
         function(callback){
             var rules;
 
@@ -186,7 +186,7 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
             bodyFilterObj = new filterModule.filter(rules, bodyFilterOpts,validate);
             return callback(null);
         },
-        function(callback){            
+        function(callback){
             if (Common.isEnterpriseEdition()) {
                     Otp.getOtpConf(logger, function(err, retries, timeout){
                         if(err){
@@ -323,7 +323,7 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
                     Common.getEnterprise().dataCenter.stopRestServer(callback);
                 } else {
                     callback(null);
-                }                
+                }
             },
             function(callback) {
                 async.each(
@@ -517,7 +517,7 @@ function setPublicServiceServer(server) {
     server.get('/closeOtherSessions', StartSession.closeOtherSessions);
     server.get('/declineCall', StartSession.declineCall);
     server.get('/SmsNotification/sendSmsNotification', SmsNotification.sendSmsNotification);
-    
+
 
     server.get('/notificationPolling', NotificationPolling.func);
     server.post('/Notifications/pushNotification', Notifications.pushNotification);
@@ -540,9 +540,9 @@ function setPublicServiceServer(server) {
     const platSelfReg = require('./platformSelfReg');
     server.get('/selfRegisterPlatform', platSelfReg.selfRegisterPlatform);
     server.get('/selfRegisterPlatformTtl', platSelfReg.selfRegisterPlatformTtl);
-    
-    
-    
+
+
+
 
     server.get('/getNuboRecordings', getNuboRecordings.func);
     server.get('/getResource', getResource.getResource);
@@ -559,9 +559,47 @@ function setPublicServiceServer(server) {
     server.post("/addMissingResource", addMissingResource);
     server.get('/getResourceListByDevice', getResourceListByDevice);
     server.post('/updateUserConnectionStatics', updateUserConnectionStatics);
-    
+    if (Common.appstore && Common.appstore.enable === true) {
+        let appStorePath = Common.appstore.path;
+        if (appStorePath.endsWith("/appstore")) {
+            let pathS = appStorePath.split("/");
+            appStorePath = pathS.slice(0, pathS.length-1).join("/");
+        }
+        const nodestatic = require('node-static');
+        var appStoreServer = new nodestatic.Server(appStorePath, {
+            cache: 3600
+        });
+        server.get("/appstore/*/repo/*", function (req, res, next) {
+            appStoreServer.serve(req, res, (err, result) => {
+                if (err) {
+                    logger.error("Error serving appstore url " + req.url + " - " + err.message);
+                    res.writeHead(404, {
+                        "Content-Type": "text/plain"
+                    });
+                    res.end("404 Not Found\n");
+                    return;
+                }
+                logger.info("Served HEAD app store file: " + req.url);
+            });
+        });
+        server.head("/appstore/*/repo/*", function (req, res, next) {
+            logger.info("HEAD request: " + req.url);
+            appStoreServer.serve(req, res, (err, result) => {
+                if (err) {
+                    logger.error("Error serving appstore url " + req.url + " - " + err.message);
+                    res.writeHead(404, {
+                        "Content-Type": "text/plain"
+                    });
+                    res.end("404 Not Found\n");
+                    return;
+                }
+                logger.info("Served app store file: " + req.url);
+            });
+        });
+    }
 
-    
+
+
 }
 
 function presetPlatformServiceServer(server) {
@@ -623,7 +661,7 @@ function setPlatformServiceServer(server) {
 
     server.post('/settings/canInstallListForUser', Settings.canInstallListForUser);
     server.post('/settings/factoryReset', Settings.factoryReset);
-    
+
     server.post('/settings/setLanguage', Settings.setLanguage);
     server.post('/settings/setNotificationStatusForApp', Settings.setNotificationStatusForApp);
     server.post('/settings/setNotificationSound', Settings.setNotificationSound);
@@ -633,12 +671,12 @@ function setPlatformServiceServer(server) {
     if (Common.isEnterpriseEdition()) {
         Common.getEnterprise().addPlatformServiceHandlers(server);
     }
-  
+
     if (Common.isMobile()) {
         Common.getMobile().addPlatformServiceHandlers(server);
     }
 
-    
+
     server.post('/notifyWindowAction', require("./notifyWindowAction.js").get);
     server.post('/platformUserNotification', require("./platformUserNotification.js").post);
     server.post('/sendSMS', SmsNotification.platformUserSendSms);
@@ -646,7 +684,7 @@ function setPlatformServiceServer(server) {
     server.use(yescache);
 
 
-    
+
 }
 
 function addMissingResource(req, res, next) {
