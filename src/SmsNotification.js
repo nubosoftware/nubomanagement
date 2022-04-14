@@ -115,7 +115,7 @@ function deliverSMSToNuboUser(toAssigned,toLocal, fromLocal, fromAssigned, text,
     let platform;
     let device;
     let to,from;
-    logger.info("deliverSMSToNuboUser");
+    logger.info(`deliverSMSToNuboUser. toAssigned: ${toAssigned}, toLocal: ${toLocal}, fromLocal: ${fromLocal}, fromAssigned: ${fromAssigned}`);
     let where;
     if (toAssigned && toLocal) {
         //where = [' assigned_phone_number = ?  or local_extension = ?', toAssigned, toLocal];
@@ -173,6 +173,28 @@ function deliverSMSToNuboUser(toAssigned,toLocal, fromLocal, fromAssigned, text,
                 });
             },
             function (callback) {
+                // find final to and from numbers based on the found device and parameters
+                if (toAssigned && toLocal) {
+                    //logger.info(`deliverSMSToNuboUser. device.assigned_phone_number: ${device.assigned_phone_number}, toAssigned: ${toAssigned}`);
+                    if (device.assigned_phone_number == toAssigned) {
+                        to = toAssigned;
+                        from = fromAssigned;
+                        logger.info(`deliverSMSToNuboUser. toAssigned: ${toAssigned}, fromAssigned: ${fromAssigned}`);
+                    } else {
+                        to = toLocal;
+                        from = fromLocal;
+                        logger.info(`deliverSMSToNuboUser. toLocal: ${toLocal}, fromLocal: ${fromLocal}`);
+                    }
+
+                } else if (toLocal) {
+                    to = toLocal;
+                    from = fromLocal;
+                    logger.info(`deliverSMSToNuboUser (local). to: ${to}, from: ${from}`);
+                } else {
+                    to = toAssigned;
+                    from = fromAssigned;
+                    logger.info(`deliverSMSToNuboUser (assigned). to: ${to}, from: ${from}`);
+                }
                 sessionModule.getSessionOfUserDevice(email, imei, function (err, sess) {
                     if (err) {
                         logger.error("deliverSMSToNuboUser: Error getSessionOfUserDevice: " + err);
@@ -216,27 +238,7 @@ function deliverSMSToNuboUser(toAssigned,toLocal, fromLocal, fromAssigned, text,
                     callback(null);
                 });
             }, function (callback) {
-                if (toAssigned && toLocal) {
-                    //logger.info(`deliverSMSToNuboUser. device.assigned_phone_number: ${device.assigned_phone_number}, toAssigned: ${toAssigned}`);
-                    if (device.assigned_phone_number == toAssigned) {
-                        to = toAssigned;
-                        from = fromAssigned;
-                        //logger.info(`deliverSMSToNuboUser. toAssigned: ${toAssigned}, fromAssigned: ${fromAssigned}`);
-                    } else {
-                        to = toLocal;
-                        from = fromLocal;
-                        //logger.info(`deliverSMSToNuboUser. toLocal: ${toLocal}, fromLocal: ${fromLocal}`);
-                    }
 
-                } else if (toLocal) {
-                    to = toLocal;
-                    from = fromLocal;
-                    //logger.info(`deliverSMSToNuboUser (local). to: ${to}, from: ${from}`);
-                } else {
-                    to = toAssigned;
-                    from = fromAssigned;
-                    //ogger.info(`deliverSMSToNuboUser (assigned). to: ${to}, from: ${from}`);
-                }
                 logger.info("Sending SMS to platform: " + platid + ", localid: " + localid + ", from: " + from + ", to: "+ to +", text: " + text);
                 platform.receiveSMS(to, from, text, localid, (err) => {
                     if (err) {
