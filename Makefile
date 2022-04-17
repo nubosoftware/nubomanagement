@@ -102,6 +102,11 @@ docker: debs
 	cp $(nubo_proj_dir)/debs/latest/nubo-common-3.0-1.deb docker_build/debs/nubo-common.deb
 	sudo docker build -t nubomanagement:$(serv_version)-$(serv_buildid) docker_build/.
 
+docker-mobile-test:
+	docker build -t nubomanagement-mobile:$(serv_version)-$(serv_buildid) -f docker_build/Dockerfile-mobile .
+	docker tag nubomanagement-mobile:$(serv_version)-$(serv_buildid) docker.nubosoftware.com:5000/nubo/nubomanagement-mobile:test
+	docker push docker.nubosoftware.com:5000/nubo/nubomanagement-mobile:test
+
 docker-mobile:
 	docker build -t nubomanagement-mobile:$(serv_version)-$(serv_buildid) --no-cache --pull -f docker_build/Dockerfile-mobile .
 
