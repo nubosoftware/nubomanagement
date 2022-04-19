@@ -12,6 +12,7 @@ var config = require('./config.js');
 var SysConf = require('./sysConf.js');
 const {promisify} = require('util');
 const mkdirp = require('mkdirp');
+const os = require('os');
 const enterpriseLoader = require('./enterpriseLoader');
 
 var Common = {
@@ -224,44 +225,88 @@ const myFormat = printf(info => {
     return `${info.timestamp} [${info.label}] ${info.level}: ${info.message}`;
 });
 
-require('winston-syslog').Syslog;
-let scriptBaseName = Common.path.basename(scriptName, '.js');
-let syslogAppName;
-if (scriptBaseName == "multithreadserver" || scriptBaseName == "restserver") {
-    syslogAppName = "nubomanagement";
-} else {
-    syslogAppName = `nubomanagement-${scriptBaseName}`;
-}
-console.log(`syslogAppName: ${syslogAppName}`);
+
+function createIntLogger() {
+
+    let scriptBaseName = Common.path.basename(scriptName, '.js');
+    let syslogAppName;
+    if (scriptBaseName == "multithreadserver" || scriptBaseName == "restserver") {
+        syslogAppName = "nubomanagement";
+    } else {
+        syslogAppName = `nubomanagement-${scriptBaseName}`;
+    }
+    console.log(`syslogAppName: ${syslogAppName}`);
 
 
-let logTransports = [
-    new (transports.Console)({
-        name: 'console',
-        json : true,
-        handleExceptions : true,
-        timestamp: true,
-        colorize: true
-    }),
-    new transports.File({
-        name: 'file',
-        filename : Common.rootDir + '/log/' + loggerName,
-        handleExceptions : true,
-        maxsize: 100*1024*1024, //100MB
-        maxFiles: 4,
-    }),
-    new transports.Syslog({
+    let logTransports = [
+        new (transports.Console)({
+            name: 'console',
+            json: true,
+            handleExceptions: true,
+            timestamp: true,
+            colorize: true
+        }),
+        new transports.File({
+            name: 'file',
+            filename: Common.rootDir + '/log/' + loggerName,
+            handleExceptions: true,
+            maxsize: 100 * 1024 * 1024, //100MB
+            maxFiles: 4,
+        })
+    ];
+    if (scriptBaseName == "nuboConfig") {
+        logTransports.shift();
+    }
+
+
+
+    let syslogParams = {
         app_name : syslogAppName,
         handleExceptions : true,
-        localhost: null,
-        protocol: "unix",
-        path: "/dev/log",
+        localhost: os.hostname(),
+        type: "RFC5424",
+        //protocol: "unix",
+        //path: "/dev/log",
+        protocol: 'udp',
+        host: 'nubo-rsyslog',
+        port: 5514,
         format: format.json()
-    })
-];
-if (scriptBaseName == "nuboConfig") {
-    logTransports.shift();
+    };
+    if (Common.syslogParams) {
+        _.extend(syslogParams,Common.syslogParams);
+    } else {
+        syslogParams.disable = true;
+    }
+    if (!syslogParams.disable) {
+        let Syslog = require('@nubosoftware/winston-syslog').Syslog;
+        let syslogTransport = new Syslog(syslogParams);
+        logTransports.push(syslogTransport);
+    }
+
+    Common.intLogger = createLogger({
+        format: combine(
+            //label({ label:  Common.path.basename(scriptName, '.js') }),
+            timestamp(),
+            myFormat
+        ),
+        transports: logTransports,
+        exceptionHandlers: [
+            new (transports.Console)({
+                json: false,
+                timestamp: true
+            }),
+            new transports.File({
+                filename: Common.rootDir + '/log/' + exceptionLoggerName,
+                json: false
+            })
+        ],
+        exitOnError: false
+    });
+
 }
+
+// temporary create logger before loading settings
+createIntLogger();
 
 
 
@@ -307,25 +352,7 @@ Common.getDeviceTypes = function() {
     }
     return deviceTypes;
 }
-Common.intLogger = createLogger({
-    format: combine(
-        //label({ label:  Common.path.basename(scriptName, '.js') }),
-        timestamp(),
-        myFormat
-    ),
-    transports : logTransports,
-    exceptionHandlers : [
-        new (transports.Console)({
-            json : false,
-            timestamp : true
-        }),
-        new transports.File({
-            filename : Common.rootDir + '/log/' + exceptionLoggerName,
-            json : false
-        })
-    ],
-    exitOnError : false
-});
+
 
 let cacheLoggers = {};
 Common.getLogger = (fileName) => {
@@ -816,12 +843,15 @@ function parse_configs(parseConfigCB) {
             return;
         }
 
+        if (myFirstTimeLoad) {
+            // re-create logger after  settings load
+            createIntLogger();
+            initCB.resolve();
+        }
         if (Common.loadCallback) {
             Common.loadCallback(null, myFirstTimeLoad);
         }
-        if (myFirstTimeLoad) {
-            initCB.resolve();
-        }
+
         if (parseConfigCB) {
             parseConfigCB();
         }

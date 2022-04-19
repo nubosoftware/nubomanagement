@@ -9,7 +9,6 @@ RUN apt-get -y update
 RUN apt install -y \
     curl \
     supervisor \
-    rsyslog \
     vim \
     iputils-ping \
     telnet \
@@ -21,7 +20,7 @@ RUN apt install -y \
     lib32z1 \
     zip \
     unzip \
-    default-jre \
+    openjdk-8-jdk \
     sudo
 
 #install node js 14.x
@@ -39,7 +38,6 @@ RUN apt update -y ; apt install -y docker-ce-cli
 ADD docker_build/etc /etc
 ADD docker_build/bin /usr/local/bin
 RUN mkdir -p /var/log/supervisor/
-#RUN sed -i /imklog/s/module/#module/ /etc/rsyslog.conf
 
 # mark this as docker installation
 RUN mkdir -p /etc/.nubo/ && \
@@ -69,7 +67,10 @@ RUN apt-get --purge autoremove -y build-essential
 
 # build the dist folder
 RUN npm run build
-RUN rm -rf src webpack.config.js nubo-management-enterprise/src nubo-management-mobile/src
+
+# delete the sources
+RUN if [[ -z "$dev" ]] ; then rm -rf src webpack.config.js nubo-management-enterprise/src nubo-management-mobile/src ; else echo "Development build - not deleting sources" ; fi
+#RUN rm -rf src webpack.config.js nubo-management-enterprise/src nubo-management-mobile/src
 
 
 # Docker config
