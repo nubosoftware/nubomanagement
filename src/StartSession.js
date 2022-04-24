@@ -168,6 +168,8 @@ function startSessionByDevice(email,imei,userDeviceData,cb) {
             login.loginParams.exchangeencoding = userData.org.exchangeencoding;
             login.setSecondFactorAuth(Common.secondFactorAuthType.NONE);
             login.loginParams.secondAuthRegistred = activationData.secondAuthRegistred;
+            login.loginParams.recording = userData.recording || userData.org.recordingall || 0 ;
+            login.loginParams.docker_image = userData.docker_image;
 
             login.save(function (err, login) {
                 if (err) {
@@ -1131,7 +1133,7 @@ function endSession(sessionID, callback, closeSessionMsg) {
                 }
             }
             logger.info(`Session totalActiveSeconds: ${totalActiveSeconds}`);
-            Common.db.SessionHistory.create({
+            Common.db.SessionHistory.upsert({
                 session_id : session.params.sessid,
                 email : session.params.email,
                 device_id : session.params.deviceid,
@@ -1143,9 +1145,9 @@ function endSession(sessionID, callback, closeSessionMsg) {
                 gateway : session.params.gatewayIndex,
                 active_seconds: totalActiveSeconds
             }).then(function() {
-                logger.info(`SessionHistory added`);
+                logger.info(`SessionHistory updated`);
             }).catch(function(err) {
-                logger.error('SessionHistory Error: Cannot Insert to table: ' +  err);
+                logger.error('SessionHistory Error: Cannot update table: ' +  err);
             });
 
             if (errMsg) {
@@ -1665,6 +1667,13 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                                 session.params.appName = Common.defaultAppName;
                             }
 
+                            if (login.loginParams.recording == 1) {
+                                session.params.recording = login.loginParams.recording;
+                                session.params.recording_path = Common.recording_path;
+                                session.params.recording_name = `recording_${session.params.sessid}_0`;
+                                logger.info(`recording: ${login.loginParams.recording}, recording_path: ${Common.recording_path}`);
+                            }
+
                             callback();
                         });
                     },
@@ -1974,9 +1983,27 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             callback(null);
                         }
                     },
-                    //update user-device connected platform and gw
+                    // update some database tables
                     function(callback) {
-                        //login.getDeviceID(): because withService changes the device ID we need the real device ID to set platform and GW on DB
+                        // create SessionHistory - do not wait to response
+                        Common.db.SessionHistory.create({
+                            session_id : session.params.sessid,
+                            email : session.params.email,
+                            device_id : session.params.deviceid,
+                            maindomain : session.params.maindomain,
+                            devicename : session.params.devicename,
+                            start_time: new Date(session.params.startTime),
+                            end_time : new Date(),
+                            platform : session.params.platid,
+                            gateway : session.params.gatewayIndex,
+                            active_seconds: 0
+                        }).then(function() {
+                            logger.info(`SessionHistory added`);
+                        }).catch(function(err) {
+                            logger.error('SessionHistory Error: Cannot Insert to table: ' +  err);
+                        });
+
+                        //update user-device connected platform and gw
                         User.updateUserConnectedDevice(email, login.getDeviceID(), session.params.platid, session.params.gatewayIndex, logger, function(err) {
                             if (err) {
                                 callback("failed updating connected platform and gateway of the session")

@@ -103,7 +103,7 @@ docker: debs
 	sudo docker build -t nubomanagement:$(serv_version)-$(serv_buildid) docker_build/.
 
 docker-mobile-test:
-	docker build -t nubomanagement-mobile:$(serv_version)-$(serv_buildid) --build-arg dev=TRUE --build-arg dev=TRUE --build-arg BUILD_VER=$(serv_version)-$(serv_buildid) -f docker_build/Dockerfile-mobile .
+	docker build -t nubomanagement-mobile:$(serv_version)-$(serv_buildid) --build-arg dev=TRUE --build-arg BUILD_VER=$(serv_version)-$(serv_buildid) -f docker_build/Dockerfile-mobile .
 	docker tag nubomanagement-mobile:$(serv_version)-$(serv_buildid) docker.nubosoftware.com:5000/nubo/nubomanagement-mobile:test
 	docker push docker.nubosoftware.com:5000/nubo/nubomanagement-mobile:test
 

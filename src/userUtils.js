@@ -210,7 +210,8 @@ function createDomainForUser(domain, logger, callback) {
                     orgname: '',
                     serverurl: '',
                     securessl: '1',
-                    signature: ''
+                    signature: '',
+                    recordingall: '0'
                 }
 
                 if (Common.virtualKeyboardEnabled) {
@@ -267,6 +268,8 @@ function createDomainForUser(domain, logger, callback) {
                 org_obj.owaurl = results[0].owaurl != null ? results[0].owaurl : '';
                 org_obj.owaurlpostauth = results[0].owaurlpostauth != null ? results[0].owaurlpostauth : '';
                 org_obj.refererurl = results[0].refererurl != null ? results[0].refererurl : '';
+                org_obj.recordingall = results[0].recordingall || 0;
+                //logger.info(`recordingall: ${org_obj.recordingall}, domain: ${domain}`);
                 callback(null, org_obj);
                 // return existing domain settings
             }
@@ -335,6 +338,7 @@ function createOrReturnUserAndDomain(email, logger, callback,userDomain) {
                     ldap_dn: user_fixed_obj.ldap_dn,
                     addomain: user_fixed_obj.addomain,
                     docker_image: user_fixed_obj.docker_image,
+                    recording: user_fixed_obj.recording,
 
                 }
                 callback(null, callback_obj, user_fixed_obj, org_fixed_obj);
@@ -345,6 +349,7 @@ function createOrReturnUserAndDomain(email, logger, callback,userDomain) {
     });
 
 } // createOrReturnUserAndDomain
+
 
 function createUser(regEmail, org_obj, logger, callback) {
     var domain = org_obj.maindomain;
@@ -428,6 +433,7 @@ function createUser(regEmail, org_obj, logger, callback) {
                 user_obj.dcurl = results[0].dcurl;
                 user_obj.orgdomain = results[0].orgdomain;
                 user_obj.docker_image = results[0].docker_image;
+                user_obj.recording = results[0].recording;
                 //logger.info("Loaded user %s %s %s %s %s %s %s %s", lpasscode, lorgEmail, lorgUser, lorgPassword, lserverURL, lsecureSSL, lsignature, lauthType);
                 callback(null, user_obj);
             },

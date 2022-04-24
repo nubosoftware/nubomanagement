@@ -33,6 +33,7 @@ function updateProfileDetails(req, res, next) {
     var mobilePhone = req.params.mobilePhone;
     var manager = req.params.manager;
     var country = req.params.country;
+    var recording = req.params.country;
 
     if (status != 1) {
         res.send({
@@ -57,20 +58,24 @@ function updateProfileDetails(req, res, next) {
             var domain = "nubosoftware.com";
         }
 
-        updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, manager, country, email, domain);
+        updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, manager, country, email, domain,recording);
     });
 }
 
-function updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, manager, country, email, domain) {
+function updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, manager, country, email, domain,recording) {
 
-    Common.db.User.update({
+    let obj = {
         firstname : first,
         lastname : last,
         officephone : officePhone,
         mobilephone : mobilePhone,
         manager : manager,
         country : country
-    }, {
+    };
+    if (typeof recording !== 'undefined' && !isNaN(recording)) {
+        obj.recording = recording;
+    }
+    Common.db.User.update(obj , {
         where : {
             email : email,
             orgdomain : domain

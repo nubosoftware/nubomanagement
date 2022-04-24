@@ -695,13 +695,13 @@ var adminLoginActivate = function(email,deviceid,deviceName,resetPassword,oldAct
                 };
                 var newres = {
                     send: function () {
-                        logger.info("Autoactivation: \n", arguments);                       
+                        logger.info("Autoactivation: \n", arguments);
                         // if this is a one time only activation for first admin delete this settings
-                        logger.info(`After first admin activation. delete autoActivationOnce setings`);                                            
+                        logger.info(`After first admin activation. delete autoActivationOnce setings`);
                         Common.updateSettingsJSON({
                             autoActivationOnce : false
                         });
-                        
+
                     }
                 };
                 require('../activationLink.js').func(newreq, newres, null);
@@ -710,7 +710,7 @@ var adminLoginActivate = function(email,deviceid,deviceName,resetPassword,oldAct
                 cb();
             }
         },
-        (cb) => {   
+        (cb) => {
             // send email to admin
             var activationLinkURL = Common.controlPanelURL + "api/auth/activate?token=" + encodeURIComponent(emailtoken) + "&email=" + encodeURIComponent(email);
             logger.info(`Activation Link: ${activationLinkURL}, email: ${email}`);
@@ -862,8 +862,8 @@ var apiAccess = function(req, res) {
                 requestType = 'getAllApps';
             }
         } else {
-            if (arg1 == "debs" || arg1 == "webapp") {    
-                // this is desktop or mobile command do not change  requestType           
+            if (arg1 == "debs" || arg1 == "webapp") {
+                // this is desktop or mobile command do not change  requestType
             } else {
                 req.params.packageName = arg1;
                 if (!arg2) {
@@ -992,7 +992,7 @@ var apiAccess = function(req, res) {
                 req.params.approve = "N";
             }
             requestType = "approveUsers";
-        }   
+        }
     } else if (objectType == "security") {
         if (!checkPerm('/','w')) return;
         if (arg1 == "deviceApproval") {
@@ -1029,6 +1029,27 @@ var apiAccess = function(req, res) {
         if (arg1 && req.method == "GET") {
             requestType = "generateReports";
             req.params.reportId = arg1;
+        }
+    } else if (objectType == "recordings") {
+        if (!checkPerm('/','w')) return;
+        if (!arg1 && req.method == "GET") {
+            // get recording list
+            require('./recordings').getRecordings(req,res);
+            return;
+        } else if (arg1 == "profiles" && req.method == "GET" ) {
+            require('./recordings').getProfiles(req,res);
+            return;
+        } else if (arg1 == "profiles" && (req.method == "PUT" || req.method == "DELETE") ) {
+            require('./recordings').addRemoveProfiles(req,res);
+            return;
+        } else if (arg1 && arg2 && req.method == "POST") {
+            // prepare video file
+            require('./recordings').prepareVideoFile(req,res,arg1,arg2);
+            return;
+        } else if (arg1 && arg2 && req.method == "GET") {
+            // get video file
+            require('./recordings').getVideo(req,res,arg1,arg2);
+            return;
         }
     } else if (objectType == "platforms") {
         if (!checkPerm('@/','w')) return;
@@ -1106,7 +1127,7 @@ var apiAccess = function(req, res) {
             }
         }
     }
-    
+
 
 
     if (requestType) {
@@ -1205,7 +1226,7 @@ var restGet = function(req, res) {
                     installAppsModule.get(req,res);
                     resDone = true;
                 }
-                
+
                 if(req.params.requestType === 'getAllApps') {
                     getAllAppsModule.get(req,res);
                     resDone = true;
@@ -1246,8 +1267,8 @@ var restGet = function(req, res) {
                     getProfilesFromAppModule.get(req,res);
                     resDone = true;
                 }
-                
-                
+
+
                 if(req.params.requestType === 'checkApkStatus') {
                     checkApkStatusModule.get(req,res);
                     resDone = true;
@@ -1292,7 +1313,7 @@ var restGet = function(req, res) {
                     checkCertificateModule.get(req,res);
                     resDone = true;
                 }
-                
+
                 if(req.params.requestType === 'addAppsToProfiles') {
                     addAppsToProfilesModule.get(req,res);
                     resDone = true;
@@ -1373,7 +1394,7 @@ var restGet = function(req, res) {
                     getAppUsageWeeklyDashboardModule.get(req, res, domain);
                     resDone = true;
                 }
-                
+
                 if(req.params.requestType === 'resetLoginAttemptsToUser') {
                     resetLoginAttemptsToUserModule.get(req, res);
                     resDone = true;
@@ -1386,7 +1407,7 @@ var restGet = function(req, res) {
                 }
 
                 if(!resDone) {
-                    logger.info(`Not found requestType: ${req.params.requestType }`)  
+                    logger.info(`Not found requestType: ${req.params.requestType }`)
                     res.end({
                         status: 0,
                         message: "Request type not found"

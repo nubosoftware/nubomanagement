@@ -120,6 +120,7 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         ldap_dn: Sequelize.STRING,
         exchange_domain: Sequelize.STRING,
         docker_image: Sequelize.STRING,
+        recording: Sequelize.INTEGER,
     }, {
         timestamps: false
     });
@@ -195,6 +196,8 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         secondauthmethod: Sequelize.INTEGER, // 1 - biometric only, 2 - otp only, 3 - biometric or otp
         otptype: Sequelize.INTEGER, // 0 - TOTP, 1 - SMS
         watermark: Sequelize.STRING,
+        recordingall: Sequelize.INTEGER, // enable recording to all users
+        recordingretentiondays: Sequelize.INTEGER, // number of days to keep recordings
         im_phone_verification_needed: {
             type: Sequelize.INTEGER,
             defaultValue: 0
@@ -280,7 +283,8 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         status: Sequelize.STRING,
         type: Sequelize.STRING,
         adsync: Sequelize.STRING,
-        distinguishedname: Sequelize.STRING
+        distinguishedname: Sequelize.STRING,
+        recording: Sequelize.INTEGER,
     }, {
         timestamps: false
     });
@@ -496,6 +500,33 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         timestamps: false,
         freezeTableName: true
     });
+
+    db.User.hasMany(db.SessionHistory, {foreignKey: 'email'});
+    db.SessionHistory.belongsTo(db.User, {foreignKey: 'email'});
+
+    // define SessionHistory
+    db.SessionRecordings = sequelize.define('session_recordings', {
+        session_id: {
+            type: Sequelize.STRING,
+            primaryKey: true
+        },
+        maindomain: Sequelize.STRING,
+        start_time: {
+            type: Sequelize.DATE,
+            primaryKey: true
+        },
+        end_time: Sequelize.DATE,
+        active_seconds: Sequelize.INTEGER,
+        file_name: Sequelize.STRING,
+    }, {
+        timestamps: false,
+        freezeTableName: true
+    });
+
+    db.SessionHistory.hasMany(db.SessionRecordings, {foreignKey: 'session_id'});
+    db.SessionRecordings.belongsTo(db.SessionHistory, {foreignKey: 'session_id'});
+
+
 
     // define Ldap Object
     db.Ldap = sequelize.define('ldaps', {

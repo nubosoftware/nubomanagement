@@ -230,7 +230,7 @@ function getUsersOfPrivateApp(packageName, domain, isPrivate, extendedData, call
         }
 
         if (!results || results == "") {
-            logger.info('There are no users with the app: ' + packageName);
+            //logger.info('There are no users with the app: ' + packageName);
             callback(null, emails);
             return;
         }
@@ -270,7 +270,7 @@ function getGroupsOfApp(packageName, domain, callback) {
         }
 
         if (!results || results == "") {
-            logger.info('There are no groups with the app: ' + packageName);
+            //logger.info('There are no groups with the app: ' + packageName);
             callback(null, groups);
             return;
         }

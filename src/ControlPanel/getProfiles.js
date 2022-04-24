@@ -216,7 +216,7 @@ function getProfilesFromDB(res, nextEmailToken, myUser, onlineUsers, bringOnline
 
 
     Common.db.User.findAndCountAll({
-        attributes : ['email', 'username', 'firstname', 'lastname', 'isactive', 'imageurl', 'isadmin'],
+        attributes : ['email', 'username', 'firstname', 'lastname', 'isactive', 'imageurl', 'isadmin','recording'],
         where : whereClause,
         offset: offset,
         limit: limit,
@@ -284,7 +284,8 @@ function getProfilesFromDB(res, nextEmailToken, myUser, onlineUsers, bringOnline
                 isOnline : isOnline,
                 deviceType1 : deviceType1,
                 deviceType2 : deviceType2,
-                isAdmin : isAdmin
+                isAdmin : isAdmin,
+                recording: row.recording,
             };
 
             // separates every jsonUser

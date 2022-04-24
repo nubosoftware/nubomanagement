@@ -38,7 +38,7 @@ async function updateStaticPlatform(req,res) {
         }
         let ip = req.params.ip;
         let vmname = req.params.vmname;
-        
+
         await Common.db.StaticPlatforms.upsert({
             platid: platID,
             ip: ip,
@@ -104,7 +104,7 @@ function platformCommand(req, res, next) {
         }
         var domain = login.getPlatformDomain();
         let notif = new LongOperationNotif();
-        logger.info("Notif token: "+notif.getToken());
+        //logger.info("Notif token: "+notif.getToken());
         if (cmd == "stop") {
             let isGracefullyStr = req.params.gracefully;
 
@@ -333,12 +333,12 @@ async function getStaticPlatformParams(platID) {
     let selfRegisterIP = await require('../platformSelfReg').getSelfRegisterPlatformIP(platID);
 
     let staticPlatform = await Common.db.StaticPlatforms.findByPk(platID);
-    let params;    
+    let params;
     if (!staticPlatform || (selfRegisterIP && selfRegisterIP != staticPlatform.ip) ) {
         if (!selfRegisterIP) {
             try {
                 // try to get paramter from old file
-                params = await getStaticParamsFromMachinesFile(platID);            
+                params = await getStaticParamsFromMachinesFile(platID);
             } catch (err) {
                 logger.info(`Error getting platform parameters from machines file: ${err}`);
                 params = {
@@ -374,7 +374,7 @@ async function getStaticPlatformParams(platID) {
         }
     }
     return params;
-    
+
 }
 
 async function getPlatformDetails(req, res) {
@@ -452,10 +452,10 @@ async function getPlatformDetails(req, res) {
             params = {};
         }
 
-        
+
         let staticParams = await getStaticPlatformParams(platID);
         params = _.extend(params,staticParams);
-        
+
 
         res.send({
             status : 1,

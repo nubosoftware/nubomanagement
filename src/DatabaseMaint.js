@@ -10,7 +10,12 @@ var Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 
 function databaseMaint(logger,callback) {
-    checkOrphanSessions(logger,callback);
+    require('./ControlPanel/recordings').deleteOldRecordings().then(() => {
+        checkOrphanSessions(logger,callback);
+    } ).catch (err => {
+        logger.error(`databaseMaint error`,err);
+    });
+
 }
 function checkOrphanSessions(logger,callback) {
 

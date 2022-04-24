@@ -728,6 +728,9 @@ function parse_configs(parseConfigCB) {
                     Common.controlPanelURL = urlObj.href;
                     //logger.info(`Default controlPanelURL: ${Common.controlPanelURL}`);
                 }
+                if (!Common.recording_path) {
+                    Common.recording_path =  Common.path.join(Common.nfshomefolder,"recording");
+                }
             }
             callback(null, settings, sysConf);
         },

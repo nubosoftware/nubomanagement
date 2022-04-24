@@ -837,6 +837,9 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                 login.loginParams.watermark = userData.org.watermark;
                 login.loginParams.pushregid = activationData.pushregid;
                 login.loginParams.docker_image = userData.docker_image;
+                login.loginParams.recording = userData.recording || userData.org.recordingall || 0 ;
+                //logger.info(`userData.recording: ${userData.recording}, userData.org.recordingall: ${userData.org.recordingall}, login.loginParams.recording: ${login.loginParams.recording}`);
+
                 let canSetBiometricToken;
                 if (activationData.biometric_token == "") {
                     //logger.info("Biometric token can be set!");

@@ -146,21 +146,46 @@ function validateUpdSession(req, res) {
                 let totalActiveSeconds = parseInt(session["totalActiveSeconds"]);
                 if (suspend == 1 && session["suspend"] == 0 && session["suspendtime"]) {
                     // calculate the number of active session
-                    let activetime =  parseInt( (new Date().getTime() - new Date(session["suspendtime"]).getTime()) / 1000 );
+                    let startTime = new Date(session["suspendtime"]);
+                    let endTime = new Date();
+                    let activetime =  parseInt( (endTime.getTime() - startTime.getTime()) / 1000 );
                     if (activetime > 0) {
                         totalActiveSeconds = totalActiveSeconds + activetime;
                         logger.info(`Session active Time: ${activetime}, totalActiveSeconds: ${totalActiveSeconds}`);
+                        if (session.recording) {
+                            // insert recording record in DB
+                            const fileName = session["recording_name"];
+                            Common.db.SessionRecordings.create({
+                                session_id : sessionID,
+                                maindomain: session.maindomain,
+                                start_time : startTime,
+                                end_time : endTime,
+                                active_seconds : activetime,
+                                file_name : fileName,
+                            }).then(function(results) {
+                                logger.info(`Added session recording record. file_name: ${fileName}`);
+                            }).catch(function(err) {
+                                logger.error(`Error adding session recording record`,err);
+                            });
+                        }
                     }
                 }
                 session["suspend"] = suspend;
                 session["suspendtime"] = d;
                 session["totalActiveSeconds"] = totalActiveSeconds;
+                if (session.recording) {
+                    session["recording_name"] = `recording_${sessionID}_${totalActiveSeconds}`;
+                }
+                logger.info(`validateUpdSession. suspend: ${suspend},  totalActiveSeconds: ${totalActiveSeconds}, recording_name: ${session["recording_name"]}`);
 
                 var data = {
                     "suspend": suspend,
                     "suspendtime": d,
                     "totalActiveSeconds": totalActiveSeconds
                 };
+                if (session["recording_name"]) {
+                    data["recording_name"] = session["recording_name"];
+                }
 
                 Common.redisClient.hmset("sess_" + sessionID, data, function (err, obj) {
                     if (err) {

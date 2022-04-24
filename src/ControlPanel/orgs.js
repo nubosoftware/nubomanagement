@@ -31,7 +31,7 @@ function get(req,res) {
     async.series([
         (cb) => {
             let qOptions = {
-                attributes : ['maindomain','orgname','inviteurl',"watermark"],
+                attributes : ['maindomain','orgname','inviteurl',"watermark","recordingall","recordingretentiondays"],
                 order: [["orgname","ASC"],["maindomain", "ASC"]]
             };
             if (selectedDomain) {
@@ -106,6 +106,12 @@ function post(req,res) {
         fields.watermark = req.params.watermark;
     } else {
         fields.watermark = "";
+    }
+    if (req.params.recordingall) {
+        fields.recordingall = ( req.params.recordingall != 0 ? 1 : 0 );
+    }
+    if (req.params.recordingretentiondays && !isNaN(req.params.recordingretentiondays)) {
+        fields.recordingretentiondays = req.params.recordingretentiondays;
     }
 
     async.series([
