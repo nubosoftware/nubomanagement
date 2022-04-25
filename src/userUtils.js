@@ -211,7 +211,7 @@ function createDomainForUser(domain, logger, callback) {
                     serverurl: '',
                     securessl: '1',
                     signature: '',
-                    recordingall: '0'
+                    recordingall: Common.defaultRecording || '0'
                 }
 
                 if (Common.virtualKeyboardEnabled) {
