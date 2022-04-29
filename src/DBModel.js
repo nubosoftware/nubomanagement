@@ -526,6 +526,97 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
     db.SessionHistory.hasMany(db.SessionRecordings, {foreignKey: 'session_id'});
     db.SessionRecordings.belongsTo(db.SessionHistory, {foreignKey: 'session_id'});
 
+    // define Firewalls
+    db.Firewall = sequelize.define('firewalls', {
+        maindomain: {
+            type: Sequelize.STRING
+        },
+        firewall_id: {
+            autoIncrement: true,
+            type: Sequelize.INTEGER,
+            primaryKey: true
+        },
+        firewall_name: Sequelize.STRING,
+    }, {
+        timestamps: false,
+        freezeTableName: true
+    });
+
+    // define FirewallRules
+    db.FirewallRule = sequelize.define('firewall_rules', {
+        maindomain: {
+            type: Sequelize.STRING
+        },
+        firewall_id: {
+            type: Sequelize.INTEGER
+        },
+        rule_id: {
+            autoIncrement: true,
+            type: Sequelize.INTEGER,
+            primaryKey: true
+        },
+        destination: Sequelize.STRING,
+        prot: Sequelize.STRING,
+        dport: Sequelize.INTEGER,
+        description: Sequelize.STRING,
+    }, {
+        timestamps: false,
+        freezeTableName: true
+    });
+
+    db.Firewall.hasMany(db.FirewallRule, {foreignKey: 'firewall_id'});
+    db.FirewallRule.belongsTo(db.Firewall, {foreignKey: 'firewall_id'});
+
+    // define FirewallUsers
+    db.FirewallUser = sequelize.define('firewall_users', {
+        maindomain: {
+            type: Sequelize.STRING
+        },
+        firewall_id: {
+            type: Sequelize.INTEGER,
+            primaryKey: true
+        },
+        email: {
+            type: Sequelize.STRING,
+            primaryKey: true
+        },
+    }, {
+        timestamps: false,
+        freezeTableName: true
+    });
+
+    db.Firewall.hasMany(db.FirewallUser, {foreignKey: 'firewall_id'});
+    db.FirewallUser.belongsTo(db.Firewall, {foreignKey: 'firewall_id'});
+    db.User.hasMany(db.FirewallUser, {foreignKey: 'email'});
+    db.FirewallUser.belongsTo(db.User, {foreignKey: 'email'});
+
+    // define Firewalls
+    db.FirewallGroup = sequelize.define('firewall_groups', {
+        maindomain: {
+            type: Sequelize.STRING
+        },
+        firewall_id: {
+            type: Sequelize.INTEGER,
+            primaryKey: true
+        },
+        groupname: {
+            type: Sequelize.STRING,
+            primaryKey: true
+        },
+        addomain: {
+            type: Sequelize.STRING,
+            primaryKey: true
+        },
+    }, {
+        timestamps: false,
+        freezeTableName: true
+    });
+
+    db.Firewall.hasMany(db.FirewallGroup, {foreignKey: 'firewall_id'});
+    db.FirewallGroup.belongsTo(db.Firewall, {foreignKey: 'firewall_id'});
+
+
+
 
 
     // define Ldap Object

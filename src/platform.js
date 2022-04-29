@@ -316,14 +316,14 @@ var Platform = function(platid, platType, callback, newplatid) {
             http.doGetRequest(options, function(err, data) {
                 if (err) {
                     logger.error("Cannot connect to platform " + self.params.platid + ", err: " + err); // Keep this log
-                    
+
                 }
                 arg2(err, data);
             });
         } else if (options.method === "POST") {
             http.doPostRequest(options, arg2, function(err, data) {
                 if (err) {
-                    logger.error("Cannot connect to platform " + self.params.platid + ", err: " + err); // Keep this log                    
+                    logger.error("Cannot connect to platform " + self.params.platid + ", err: " + err); // Keep this log
                 }
                 arg3(err, data);
             });
@@ -490,19 +490,35 @@ var Platform = function(platid, platType, callback, newplatid) {
             }
         };
         logger.info("attachUser...");
+        let firewall;
 
         async.waterfall([
             // install apps
             function(callback) {
                 if (!Common.isMobile() || Common.platformType == "docker") {
                     callback(null);
-                    return;        
+                    return;
                 }
                 Common.getMobile().appMgmt.installUserAppsToPlatform(
                     session.login.loginParams.email,
                     session.login.loginParams.deviceID,
                     self,callback
                 );
+            },
+            // get firewall rules
+            function(callback) {
+                if (!Common.isDesktop() || !Common.isEnterpriseEdition()) {
+                    callback(null);
+                    return;
+                }
+                Common.getEnterprise().firewall.getFirewallRulesForUser(session.login.loginParams.email,session.login.loginParams.mainDomain)
+                    .then( firewallObj => {
+                        firewall = firewallObj;
+                        callback(null);
+                    }). catch (err => {
+                        logger.error(`getFirewallRulesForUser error: ${err}`,err);
+                        callback(null);
+                    })
             },
             // get mounts
             function(callback) {
@@ -538,9 +554,10 @@ var Platform = function(platid, platType, callback, newplatid) {
                     nfs: _.pick(nfs.params, "nfs_ip", "nfs_path", "nfs_path_slow"),
                     timeZone: timeZone,
                     mounts: mounts,
+                    firewall,
                     //xml_file_content: session.xml_file_content
                 });
-                //logger.info(`attachUser. postData: ${postData}`);
+                logger.info(`attachUser. postData: ${postData}`);
                 logger.info(`Attach user: ${session.params.email} ${session.params.deviceid}`);
                 var options = {
                     path: "/attachUser",
@@ -1436,7 +1453,7 @@ var registerPlatformNum = function(_opts, callbackMain) {
     var opts = {};
     var maxFailed = isNaN(Common.platformParams.maxFailed) ? 10 : Common.platformParams.maxFailed;
     opts.min = _opts.min || Common.startPlatformNum;
-    opts.max = _opts.max || (Common.startPlatformNum + Common.platformParams.maxCapacity / Common.platformParams.usersPerPlatform - 1 + maxFailed); 
+    opts.max = _opts.max || (Common.startPlatformNum + Common.platformParams.maxCapacity / Common.platformParams.usersPerPlatform - 1 + maxFailed);
     //opts.min//allow upto 10 in bad states
     opts.hostline = (_opts.hostline === undefined) ? Common.hostline : _opts.hostline;
     opts.platType = _opts.platType || "";
@@ -1518,12 +1535,12 @@ var registerPlatformNum = function(_opts, callbackMain) {
  * Get array of all avaialble platform numbers
  */
 async function getAllPlatformNumbers() {
-    
+
     if (Common.platformParams['poolStrategy'] == "calculated" || !Common.platformParams['poolStrategy']) {
         let nums = [];
         let maxFailed = isNaN(Common.platformParams.maxFailed) ? 10 : Common.platformParams.maxFailed;
         let min = Common.startPlatformNum;
-        let max = Common.startPlatformNum + Common.platformParams.maxCapacity / Common.platformParams.usersPerPlatform - 1 + maxFailed;    
+        let max = Common.startPlatformNum + Common.platformParams.maxCapacity / Common.platformParams.usersPerPlatform - 1 + maxFailed;
         //console.log(`listAllPlatforms. min: ${min}, max: ${max}`);
         for (let i=min; i<=max; i++){
             nums.push(i);
@@ -1538,7 +1555,7 @@ async function getAllPlatformNumbers() {
         arr.sort();
         return arr;
     }
-    
+
 }
 
 function listAllPlatforms(domain,cb) {
@@ -1759,7 +1776,7 @@ var registerPlatform = function(platid, hostline, platType, domain, callback) {
                         'sshuser': sshuser
                     });
                 }
-                if (!platformTypeModules[Common.platformType]) {                
+                if (!platformTypeModules[Common.platformType]) {
                     callback("Platform type not found: "+Common.platformType);
                 } else {
                     try {
