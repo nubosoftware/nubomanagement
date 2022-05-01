@@ -2285,6 +2285,9 @@ function response2Client(session, errResObj, res, isLocalIP, logger, loginToken)
         if (session.params.nuboglListenPort) {
             resobj.serverSideOpenGL = true;
         }
+        if (session.params.recording) {
+            resobj.recording = session.params.recording;
+        }
 
         //logger.info("response to client: " + JSON.stringify(resobj, null, 2));
         updateLastActivityInDB(login);

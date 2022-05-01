@@ -138,6 +138,13 @@ docker-desktop-test:
 	docker tag nubomanagement:$(serv_version)-$(serv_buildid) nubosoftware/nubomanagement:test
 	docker push nubosoftware/nubomanagement:test
 
+push-desktop-ent:
+	docker build -t nubomanagement-enterprise:$(serv_version)-$(serv_buildid) --build-arg BUILD_VER=$(serv_version)-$(serv_buildid) -f docker_build/Dockerfile-desktop-ent .
+	docker tag nubomanagement-enterprise:$(serv_version)-$(serv_buildid) nubosoftware/nubomanagement-enterprise:$(serv_version)-$(serv_buildid)
+	docker push nubosoftware/nubomanagement-enterprise:$(serv_version)-$(serv_buildid)
+	docker tag nubomanagement-enterprise:$(serv_version)-$(serv_buildid) nubosoftware/nubomanagement-enterprise:$(serv_version)
+	docker push nubosoftware/nubomanagement-enterprise:$(serv_version)
+
 debs rpms: versions
 
 define make_rpm
