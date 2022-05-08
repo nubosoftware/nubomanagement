@@ -11,6 +11,7 @@ var Session = sessionModule.Session;
 var setting = require('../settings.js');
 var User = require('../user.js');
 var userUtils = require('../userUtils.js');
+var setPasscode = require('../setPasscode.js');
 var EMAIL_SIZE = 255; // this should be the same as in parameters-map --> addProfile --> email size.
 
 function loadAdminParamsFromSession(req, res, callback) {
@@ -50,6 +51,7 @@ function addProfile(req, res, next) {
     var country = req.params.country;
     var officePhone = req.params.officePhone;
     var mobilePhone = req.params.mobilePhone;
+    var password = req.params.password;
 
     if (status != 1) {
         res.send({
@@ -74,7 +76,7 @@ function addProfile(req, res, next) {
             var domain = "nubosoftware.com";
         }
 
-        addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain);
+        addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain,password);
 
     });
 
@@ -89,7 +91,7 @@ function validateEmail(email) {
     return re.test(email);
 }
 
-function addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain) {
+function addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain,password) {
     var errorMsg = "Failed to add profile";
 	email = email.toLowerCase();
 
@@ -110,6 +112,12 @@ function addProfileToDB(res, first, last, email, manager, country, officePhone, 
 
         if (!results || results == "") {
 
+            let passwordHash = '';
+            let salt = '';
+            if (password) {
+                salt = setPasscode.generateUserSalt(email);
+                passwordHash = setPasscode.hashPassword(password,salt);
+            }
             Common.db.User.create({
                 email : email,
                 username : email,
@@ -125,7 +133,10 @@ function addProfileToDB(res, first, last, email, manager, country, officePhone, 
                 country : country,
                 officephone : officePhone,
                 mobilephone : mobilePhone,
-                passcode : '',
+                passcode : passwordHash,
+                passcodeupdate: new Date(),
+                passcodetypechange: 0,
+                passcodesalt: salt,
                 orgemail : '',
                 orgdomain : domain,
                 lastname : last,
