@@ -135,7 +135,7 @@ async function activate(req, res, next) {
 
         // logger.info('Activation expirationDate:' + expirationDate.getHours());
         var domainEmail;
-        let userObj = User.getUserObjPromise(email);
+        let userObj = await User.getUserObjPromise(email);
 
         if (userObj.orgdomain) {
             domainEmail = userObj.orgdomain;
