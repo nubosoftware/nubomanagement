@@ -1400,7 +1400,6 @@ function enableNewDeviceApps(email, deviceId, time, hrTime, callback) {
         else
             maindomain = email.substr(email.indexOf('@') + 1);
 
-        // Iterate over all user apps
 
         Common.db.UserApps.findAll({
             attributes: ['packagename'],
@@ -1425,9 +1424,21 @@ function enableNewDeviceApps(email, deviceId, time, hrTime, callback) {
             async.each(results, function(result, callback) {
                 var packageName = result.packagename;
                 // Insert app to device_apps
-                insertToDeviceApps(email, deviceId, packageName, maindomain, TO_BE_INSTALLED, time, hrTime, function(err) {
-                    callback(err);
-                });
+                 // Iterate over all user apps
+                Common.db.Apps.findOne({
+                    attributes: ['filename'],
+                    where: {
+                        packagename: packageName,
+                        maindomain: maindomain,
+                    },
+                }).then(app => {
+                    insertToDeviceApps(email, deviceId, packageName, app.filename, maindomain, TO_BE_INSTALLED, time, hrTime, function(err) {
+                        callback(err);
+                    });
+                }).catch (err => {
+                    callback(err)
+                })
+
             }, function(err) {
                 callback(err);
             });

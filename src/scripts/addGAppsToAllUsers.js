@@ -302,7 +302,7 @@ function setInstallationInDB(taskObjs, time, hrTime, callback) {
                     taskObjs,
                     function(task, callback) {
                         addAppsToProfilesModule.insertToDeviceApps(
-                            task.email, task.deviceId, task.packageName, task.domain, 0/*TO_BE_INSTALLED*/, time, hrTime,
+                            task.email, task.deviceId, task.packageName, "", task.domain, 0/*TO_BE_INSTALLED*/, time, hrTime,
                             function(err) {
                                 if(err) logger.error("addAppsToProfilesModule.installAppsForRunningUsers failed with err: " + err);
                                 doneTasks++;

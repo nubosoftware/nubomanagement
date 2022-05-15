@@ -451,7 +451,7 @@ function removeAppFromUserInDB(email, packageName, domain, isPrivateApp, callbac
 
 }
 
-function insertToDeviceApps(email, deviceId, packageName, maindomain, installed, time, hrTime, callback) {
+function insertToDeviceApps(email, deviceId, packageName, filename, maindomain, installed, time, hrTime, callback) {
 
     Common.db.DeviceApps.upsert({
         email : email,
@@ -459,6 +459,7 @@ function insertToDeviceApps(email, deviceId, packageName, maindomain, installed,
         packagename : packageName,
         maindomain : maindomain,
         installed : installed,
+        filename,
         time : time,
         hrtime : hrTime
     }).then(function() {

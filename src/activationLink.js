@@ -513,13 +513,13 @@ function activationLink(req, res, next) {
                         logger.info(`Error in createImageForUser: ${err}`);
                     });
                 }
-                if (deviceType != "Desktop" && Common.isMobile() && Common.platformType == "docker") {
-                    Common.getMobile().apksDocker.createImageForUser(email,userObj.domain).then(() => {
-                        // do nothing
-                    }).catch (err => {
-                        logger.info(`Error in createImageForUser: ${err}`);
-                    });
-                }
+                // if (deviceType != "Desktop" && Common.isMobile() && Common.platformType == "docker") {
+                //     Common.getMobile().apksDocker.createImageForUser(email,userObj.domain).then(() => {
+                //         // do nothing
+                //     }).catch (err => {
+                //         logger.info(`Error in createImageForUser: ${err}`);
+                //     });
+                // }
             } else {
                 // update user device object
                 assignedPhoneNumber = userDevice.assigned_phone_number;

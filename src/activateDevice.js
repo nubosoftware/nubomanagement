@@ -10,6 +10,7 @@ let locale = require('./locale.js').locale;
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 const _ = require('underscore');
+const util = require('util');
 
 const { APIException, RedirectException } = require('./exceptions');
 

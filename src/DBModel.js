@@ -448,7 +448,8 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         hrtime: Sequelize.BIGINT,
         maindomain: Sequelize.STRING,
         time: Sequelize.BIGINT,
-        installed: Sequelize.INTEGER
+        installed: Sequelize.INTEGER,
+        filename: Sequelize.STRING,
     }, {
         timestamps: false
     });

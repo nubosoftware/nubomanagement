@@ -1658,6 +1658,15 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             session.params.email = email;
                             session.params.deviceid = deviceID;
                             session.params.docker_image = login.loginParams.docker_image;
+                            if (Common.isMobile() && Common.platformType == "docker") {
+                                let baseImage = Common.baseImage;
+                                if (!baseImage) {
+                                    const BASE_IMAGE = 'nubo-android-10';
+                                    baseImage = BASE_IMAGE;
+                                }
+                                session.params.docker_image = baseImage;
+                            }
+                            //session.params.docker_image
                             session.params.deviceType = deviceType;
                             session.params.maindomain = login.loginParams.mainDomain;
                             session.params.devicename = login.loginParams.deviceName;
@@ -1731,16 +1740,17 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                                             logger.info(`Error in createImageForUser: ${err}`);
                                             callback(err);
                                         });
-                                    } else {
-                                        Common.getMobile().apksDocker.createImageForUser(email,login.loginParams.mainDomain).then((imageName) => {
-                                            session.params.docker_image = imageName;
-                                            logger.info(`Using created image: ${imageName}`);
-                                            callback(null);
-                                        }).catch (err => {
-                                            logger.info(`Error in createImageForUser: ${err}`);
-                                            callback(err);
-                                        });
                                     }
+                                    // else {
+                                    //     Common.getMobile().apksDocker.createImageForUser(email,login.loginParams.mainDomain).then((imageName) => {
+                                    //         session.params.docker_image = imageName;
+                                    //         logger.info(`Using created image: ${imageName}`);
+                                    //         callback(null);
+                                    //     }).catch (err => {
+                                    //         logger.info(`Error in createImageForUser: ${err}`);
+                                    //         callback(err);
+                                    //     });
+                                    // }
                                 }
                             }).catch (err => {
                                 logger.error("Error reading docker_image",err);
