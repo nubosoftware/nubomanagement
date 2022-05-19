@@ -150,6 +150,27 @@ function platformUserNotificationInternal(opts, callback) {
             },
             function(callback) {
                 // get the app name
+                Common.db.Apps.findOne({
+                    attributes: ['appname'],
+                    where: {
+                        packagename: opts.urlparams.pkg,
+                        maindomain: maindomain,
+                    },
+                }).then(app => {
+                    appname = app.appname;
+                    logger.info("platformUserNotificationInternal. Appname: "+appname);
+                    callback(null);
+                }).catch (err => {
+                    logger.info(`platformUserNotificationInternal. Common.db.Apps.findOne error: ${err}`);
+                    callback(null);
+                });
+            },
+            function(callback) {
+                if (appname) {
+                    callback(null);
+                    return;
+                }
+                // get the app name
                 var query = 'select appname from apks where packagename = :packagename ';
                 var queryParams = { packagename: opts.urlparams.pkg};
                 Common.sequelize.query(query, { replacements: queryParams, type: QueryTypes.SELECT}).then(function(results) {

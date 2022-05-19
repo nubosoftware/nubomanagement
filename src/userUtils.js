@@ -846,6 +846,57 @@ function updateDeviceTelephonySettings(regEmail, deviceid, assigned_phone_number
     });
 }
 
+
+/**
+ *
+ * @param {*} email
+ * @param {*} deviceId
+ */
+async function resizeUserData(email, deviceId) {
+    let dockerPlatform = (Common.platformType == "docker");
+    if (!dockerPlatform || !Common.isMobile()) {
+        // currently image resize avaialble onle in docker mobile
+        return;
+    }
+    const LockAsync = require('./lock-async');
+    var userFolder = commonUtils.buildPath(Common.nfshomefolder, userModule.getUserDeviceDataFolder(email, deviceId));
+    let pathToDataImg = commonUtils.buildPath(userFolder,"data.img");
+    let lock = new LockAsync(`lock_mount_${pathToDataImg}`);
+    await lock.acquire();
+    try {
+        // read file system information on image
+        let tunefsRes = await commonUtils.execCmd('tune2fs',["-l",pathToDataImg]);
+        let tunefsObj = {};
+        const lines = tunefsRes.stdout.split("\n");
+        for (const line of lines) {
+            let ind = line.indexOf(":");
+            let key = line.substring(0, ind).toLowerCase().trim();
+            let value = line.substring(ind + 1).trim();
+            if (key)
+                tunefsObj[key] = value;
+
+        }
+        //logger.info(`resizeUserData. Image tune2fs: ${JSON.stringify(tunefsObj,null,2)}`);
+        let blockCount = tunefsObj["block count"];
+        let freeBlocks = tunefsObj["free blocks"];
+        let blockSize = tunefsObj["block size"];
+        let free = (freeBlocks / blockCount);
+        logger.info(`resizeUserData. Image free space: ${(free * 100).toFixed(0)}%,  ${(freeBlocks * blockSize / 1024 / 1024).toFixed(0)} MB.`);
+        //
+
+        if (free < 0.5) {
+            let newBlock = Math.ceil(blockCount * 1.5);
+            logger.info(`resizeUserData. Resize image to ${(newBlock * blockSize / 1024 / 1024).toFixed(0)} MB (${newBlock}) blocks`);
+            let checkRes = await commonUtils.execCmd('e2fsck',["-fy",pathToDataImg]);
+            let resizeRes = await commonUtils.execCmd('resize2fs',[pathToDataImg,newBlock]);
+            logger.info(`resizeUserData. Resize finished!`);
+        }
+
+    } finally {
+        lock.release();
+    }
+}
+
 /**
  * Mount user data.ing into temporary location
  * return folderParams object with refereneces to folders
@@ -874,9 +925,22 @@ function updateDeviceTelephonySettings(regEmail, deviceid, assigned_phone_number
         }
         if (!mountExists) {
             logger.info(`Mounting user data img: ${pathToDataImg}, mount: ${dataTempFolder}`);
-            await fsp.mkdir(dataTempFolder,{recursive: true});
-            await commonUtils.execCmd('mount',[pathToDataImg,dataTempFolder]);
-            folderParams.mounted = true;
+            const LockAsync = require('./lock-async');
+            folderParams.mountLock = new LockAsync(`lock_mount_${pathToDataImg}`);
+            await folderParams.mountLock.acquire();
+            try {
+                await fsp.mkdir(dataTempFolder,{recursive: true});
+                await commonUtils.execCmd('mount',[pathToDataImg,dataTempFolder]);
+                folderParams.mounted = true;
+            } catch (err) {
+                try {
+                    logger.info(`Mount error (${err}), release lock and throw error`);
+                    await folderParams.mountLock.release();
+                } catch (e) {
+                    logger(`mountUserData. release lock error :${e}`);
+                }
+                throw err;
+            }
         } else {
             logger.info(`User data image already mounted. img: ${pathToDataImg} mount: ${dataTempFolder}`);
         }
@@ -894,6 +958,11 @@ async function unMountUserData(folderParams) {
     if (folderParams.mounted) {
         logger.info(`Unmounting user data. mount: ${folderParams.dataTempFolder}`);
         await commonUtils.execCmd('umount',[folderParams.dataTempFolder]);
+        folderParams.mounted = false;
+        if (folderParams.mountLock) {
+            await folderParams.mountLock.release();
+            folderParams.mountLock = null
+        }
     }
 }
 
@@ -1044,13 +1113,17 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
     var fs = Common.fs;
 
     var folderName;
+    let uid;
     if (dockerPlatform) {
         folderName = commonUtils.buildPath(folderParams.dataTempFolder,"data");
+        uid = 1000;
     } else {
         folderName = commonUtils.buildPath(folderParams.userFolder,"user");
+        uid = 101000;
     }
     var settingsFolder = commonUtils.buildPath(folderName, Common.settingsfolder);
-    var fileName = settingsFolder + settingsFileName;
+    var fileName = commonUtils.buildPath(settingsFolder,settingsFileName);
+    logger.info(`saveSettingsUpdateFile. fileName: ${fileName}`);
     async.series(
         [
             function(callback) {
@@ -1059,7 +1132,7 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
                 });
             },
             function(callback) {
-                fs.mkdir(settingsFolder, function(err) {
+                fs.mkdir(settingsFolder, { recursive: true }, function(err) {
                     if (err && err.code == 'EEXIST') {
                         callback(null);
                     } else {
@@ -1071,8 +1144,8 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
                 var opts = {
                     mode: "751",
                     owner: {
-                        uid: 101000,
-                        gid: 101000
+                        uid: uid,
+                        gid: uid
                     }
                 };
                 changeModeOwner(settingsFolder, opts, callback);
@@ -1084,8 +1157,8 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
                 var opts = {
                     mode: "640",
                     owner: {
-                        uid: 101000,
-                        gid: 101000
+                        uid: uid,
+                        gid: uid
                     }
                 };
                 changeModeOwner(fileName, opts, callback);
@@ -1093,7 +1166,9 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
         ],
         function(err) {
             if (err) {
-                //logger.error("saveSettingsUpdateFile failed with err:" + JSON.stringify(err));
+                logger.error("saveSettingsUpdateFile failed with err:" + JSON.stringify(err));
+            } else {
+                logger.info(`saveSettingsUpdateFile finished`);
             }
             callback(err);
         }
@@ -1879,7 +1954,7 @@ function loadSettingsUpdateFile(userName, deviceID, settingsFileName,  dockerPla
     } else {
         folderName = commonUtils.buildPath(folderParams.userFolder,"user");
     }
-    var fileName = commonUtils.buildPath(folderName, settingsFileName);
+    var fileName = commonUtils.buildPath(folderName, Common.settingsfolder,settingsFileName);
     //logger.info("loadSettingsUpdateFile: fileName = " + fileName);
     Common.fs.readFile(fileName, function(err, data) {
         if (err) {
@@ -2192,6 +2267,7 @@ module.exports = {
     getDefaultApps,
     mountUserData,
     unMountUserData,
+    resizeUserData,
 
 };
 

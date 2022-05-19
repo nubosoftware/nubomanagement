@@ -1062,6 +1062,19 @@ function endSession(sessionID, callback, closeSessionMsg) {
                                 });
                             }
                         },
+                        // resize image
+                        function(callback) {
+                            if (!Common.isMobile() || Common.platformType != "docker" || session.params.tempUserDataFlag == "1") {
+                                callback(null);
+                            } else {
+                                require('./userUtils.js').resizeUserData(session.params.email,realDeviceID).then(() => {
+                                    callback();
+                                }).catch(err => {
+                                    logger.error(`Error in resizeUserData: ${err}`,err);
+                                    callback();
+                                });
+                            }
+                        },
                         function(callback) {
                             if (!Common.dcName || !Common.dcURL) {
                                 callback(null);

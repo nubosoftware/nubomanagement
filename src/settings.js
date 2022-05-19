@@ -937,10 +937,11 @@ function uninstallApkForUser(req, res, next) {
         var packageName = req.params.packageName;
         var platid = sess.params.platid;
         var localid = sess.params.localid;
+        var mainDomain = login.getMainDomain();
 
         logger.info("uninstallApkForUser. email: "+email+", deviceID: "+deviceID+", packageName: "+packageName);
         if (Common.isMobile()) {
-            Common.getMobile().appMgmt.uninstallAPKToUser(email,deviceID,packageName,platid,localid,function(err){
+            Common.getMobile().appMgmt.uninstallAPKToUser(email,mainDomain,deviceID,packageName,platid,localid,function(err){
                 if (err) {
                     logger.error(`Error uninstallApkForUser. status: ${err.status}, message: ${err.message}`);
                     res.send(err);
@@ -1021,7 +1022,7 @@ function installApkForUser(req, res, next) {
         } else {
             logger.info("installApkForUser. Not mobile platform");
             res.send({
-                status : '0', 
+                status : '0',
                 message : 'Not mobile platform'
             });
         }
