@@ -548,16 +548,20 @@ var Platform = function(platid, platType, callback, newplatid) {
             },
             function(mounts,callback) {
                 //logger.info("Starting doPlatformRequest...");
-                var postData = JSON.stringify({
+                var postObj = {
                     login: _.pick(session.login.loginParams, "userName", "email", "lang", "countrylang", "localevar", "deviceType"),
-                    session: _.pick(session.params, "email", "deviceid","appName","docker_image"),
+                    session: _.pick(session.params, "email", "deviceid","appName","docker_image","audioStreamParams","platid"),
                     nfs: _.pick(nfs.params, "nfs_ip", "nfs_path", "nfs_path_slow"),
                     timeZone: timeZone,
                     mounts: mounts,
                     firewall,
                     //xml_file_content: session.xml_file_content
-                });
-                logger.info(`attachUser. postData: ${postData}`);
+                };
+                if (Common.platformSettings && Common.isMobile() && Common.platformType == "docker") {
+                    postObj.platformSettings = Common.platformSettings;
+                }
+                var postData = JSON.stringify(postObj);
+                //logger.info(`attachUser. postData: ${postData}`);
                 logger.info(`Attach user: ${session.params.email} ${session.params.deviceid}`);
                 var options = {
                     path: "/attachUser",

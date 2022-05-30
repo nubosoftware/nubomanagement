@@ -1688,6 +1688,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             } else {
                                 session.params.appName = Common.defaultAppName;
                             }
+                            session.params.tz = timeZone;
 
                             if (login.loginParams.recording == 1) {
                                 session.params.recording = login.loginParams.recording;

@@ -194,11 +194,18 @@ function upload (email, deviceID, req, res) {
             },
             function(callback) {
                 var saveToPath;
+                let dockerPlatform = (Common.platformType == "docker");
+                logger.info(`Upload. existsOnSDcard: ${existsOnSDcard}, destPath: ${destPath}`);
                 if (existsOnSDcard && destPath) {
                     dontChangeName = true;
                     if (existsOnSDcard === "external://") {
-                        saveToPath = 'media/'+ destPath;
-                        folder = commonUtils.buildPath((nfs.params.nfs_path_slow || nfs.params.nfs_path), User.getUserStorageFolder(email), saveToPath);
+                        if (dockerPlatform) {
+                            saveToPath = '0/'+ destPath;
+                        } else {
+                            saveToPath = 'media/'+ destPath;
+                        }
+
+                        folder = commonUtils.buildPath(Common.nfshomefolder, User.getUserStorageFolder(email), saveToPath);
                     } else if (existsOnSDcard === "internal://") {
                         //TODO need to get user deviceID
                         folder = commonUtils.buildPath(nfs.params.nfs_path, User.getUserDeviceDataFolder(email, deviceID), destPath);
@@ -207,8 +214,14 @@ function upload (email, deviceID, req, res) {
                         logger.error(msg);
                     }
                 } else {
-                    saveToPath = 'media/'+ destPath;
-                    folder = commonUtils.buildPath((nfs.params.nfs_path_slow || nfs.params.nfs_path), User.getUserStorageFolder(email), saveToPath);
+                    if (dockerPlatform) {
+                        saveToPath = '0/'+ destPath;
+                        ///Android/data/com.nubo.camera.test/files/Pictures
+                    } else {
+                        saveToPath = 'media/'+ destPath;
+                    }
+                    folder = commonUtils.buildPath(Common.nfshomefolder, User.getUserStorageFolder(email), saveToPath);
+                    logger.info(`Upload folder: ${folder}`);
                 }
                 callback(msg);
             },

@@ -23,7 +23,7 @@ let appCommands = {
     },
     "3.0.0.1.2": (cb) => {
         let dir = "/opt/nubo-appstore/nuboApps";
-        require('./scripts/installNuboApps.js').installNuboApps(dir,(err) => {
+        require('./scripts/installNuboApps.js').installNuboApps(dir,null,(err) => {
             cb(err);
         });
     }

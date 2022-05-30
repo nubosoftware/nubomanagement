@@ -7,13 +7,14 @@ const logger = Common.getLogger(__filename);
 let argv = require('yargs/yargs')(process.argv.slice(2))
     .usage('Usage: $0  [options]')
     .describe('dir', 'Nubo Apps Folder')
+    .describe('domain', 'Domain')
     .argv;
 
 
 
-function installNuboApps(nuboAppsFolder,cb) {
+function installNuboApps(nuboAppsFolder,domain,cb) {
     if (Common.isMobile()) {
-        Common.getMobile().installNuboApps(nuboAppsFolder,cb);
+        Common.getMobile().installNuboApps(nuboAppsFolder,domain,cb);
     } else {
         logger.info("installNuboApps. Mobile module not found.");
         cb();
@@ -40,7 +41,7 @@ if (!Common.loadCallback) {
             dir = "/opt/nubo-appstore/nuboApps"
         }
         logger.info("Loading apks from folder: "+dir);
-        installNuboApps(dir,(err) => {
+        installNuboApps(dir,argv.domain,(err) => {
             Common.quit();
         });
     };
