@@ -211,6 +211,7 @@ function createDomainForUser(domain, logger, callback) {
                     serverurl: '',
                     securessl: '1',
                     signature: '',
+                    watermark: '',
                     recordingall: Common.defaultRecording || '0'
                 }
 

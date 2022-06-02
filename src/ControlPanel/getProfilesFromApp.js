@@ -285,7 +285,6 @@ function getGroupsOfApp(packageName, domain, callback) {
             groups.push(jsonGroup);
         });
 
-        logger.info('groups= ' + groups);
         callback(null, groups);
     });
 }

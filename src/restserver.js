@@ -565,11 +565,12 @@ function setPublicServiceServer(server) {
             let pathS = appStorePath.split("/");
             appStorePath = pathS.slice(0, pathS.length-1).join("/");
         }
-        const nodestatic = require('node-static');
+        const nodestatic = require('@nubosoftware/node-static');
         var appStoreServer = new nodestatic.Server(appStorePath, {
             cache: 3600
         });
         server.get("/appstore/*/repo/*", function (req, res, next) {
+            // logger.info("GET app store file: " + req.url);
             appStoreServer.serve(req, res, (err, result) => {
                 if (err) {
                     logger.error("Error serving appstore url " + req.url + " - " + err.message);
@@ -579,7 +580,7 @@ function setPublicServiceServer(server) {
                     res.end("404 Not Found\n");
                     return;
                 }
-                logger.info("Served HEAD app store file: " + req.url);
+                // logger.info("Served GET app store file: " + req.url);
             });
         });
         server.head("/appstore/*/repo/*", function (req, res, next) {
@@ -593,7 +594,7 @@ function setPublicServiceServer(server) {
                     res.end("404 Not Found\n");
                     return;
                 }
-                logger.info("Served app store file: " + req.url);
+                // logger.info("Served HEAD store file: " + req.url);
             });
         });
     }
