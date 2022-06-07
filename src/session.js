@@ -37,6 +37,13 @@ var Session = function(sessid, opts, callback) {
     this.platform = [];
     this.logger = logger;
 
+
+    this.setParam = function(paramName,paramValue,callback) {
+        let sess = this;
+        sess.params[paramName] = paramValue;
+        Common.redisClient.hset(`sess_${sess.params.sessid}`, paramName, paramValue,callback);
+    }
+
     this.save = function(callback) {
         (function(sess) {
             if (Object.keys(sess.params).length <= 1) {
@@ -735,5 +742,5 @@ module.exports = {
     getSessionFromPlatformReference: getSessionFromPlatformReference,
     unsubscribeFromGatewayChannel: unsubscribeFromGatewayChannel,
     subscribeToGatewayChannel: subscribeToGatewayChannel,
-    gatewayChannelMonitorService: gatewayChannelMonitorService
+    gatewayChannelMonitorService: gatewayChannelMonitorService,
 };

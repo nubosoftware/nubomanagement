@@ -665,6 +665,7 @@ var Platform = function(platid, platType, callback, newplatid) {
     };
 
     this.attachApps = function(tasks, callback) {
+        let plat = this;
         var postData = JSON.stringify({
             tasks: tasks
         });
@@ -693,8 +694,20 @@ var Platform = function(platid, platType, callback, newplatid) {
                 }
                 if (resObj.status === 1)
                     callback(null, resObj);
-                else
+                else {
+                    if (typeof resData === 'string' && resData.indexOf("INSTALL_FAILED_INSUFFICIENT_STORAGE") >= 0) {
+                        // mark the session so nubo will try to add storage after session close
+                        if (tasks.length = 1) {
+                            sessionModule.getSessionFromPlatformReference(plat.params.platid,tasks[0].unum,function(err,sess) {
+                                if (!err && sess) {
+                                    logger.info(`Mark session to increase storage. sessid: ${sess.params.sessid}`);
+                                    sess.setParam("inc_storage","1",function(err) {});
+                                }
+                            });
+                        }
+                    }
                     callback("Request return error " + resData);
+                }
             }
         });
     };

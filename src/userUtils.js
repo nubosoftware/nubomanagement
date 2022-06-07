@@ -853,7 +853,7 @@ function updateDeviceTelephonySettings(regEmail, deviceid, assigned_phone_number
  * @param {*} email
  * @param {*} deviceId
  */
-async function resizeUserData(email, deviceId) {
+async function resizeUserData(email, deviceId,inc_storage) {
     let dockerPlatform = (Common.platformType == "docker");
     if (!dockerPlatform || !Common.isMobile()) {
         // currently image resize avaialble onle in docker mobile
@@ -882,10 +882,10 @@ async function resizeUserData(email, deviceId) {
         let freeBlocks = tunefsObj["free blocks"];
         let blockSize = tunefsObj["block size"];
         let free = (freeBlocks / blockCount);
-        logger.info(`resizeUserData. Image free space: ${(free * 100).toFixed(0)}%,  ${(freeBlocks * blockSize / 1024 / 1024).toFixed(0)} MB.`);
+        logger.info(`resizeUserData. Image free space: ${(free * 100).toFixed(0)}%,  ${(freeBlocks * blockSize / 1024 / 1024).toFixed(0)} MB. inc_storage: ${inc_storage}`);
         //
 
-        if (free < 0.5) {
+        if (free < 0.5 || inc_storage) {
             let newBlock = Math.ceil(blockCount * 1.5);
             logger.info(`resizeUserData. Resize image to ${(newBlock * blockSize / 1024 / 1024).toFixed(0)} MB (${newBlock}) blocks`);
             let checkRes = await commonUtils.execCmd('e2fsck',["-fy",pathToDataImg]);

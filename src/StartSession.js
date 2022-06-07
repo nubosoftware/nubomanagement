@@ -1067,7 +1067,7 @@ function endSession(sessionID, callback, closeSessionMsg) {
                             if (!Common.isMobile() || Common.platformType != "docker" || session.params.tempUserDataFlag == "1") {
                                 callback(null);
                             } else {
-                                require('./userUtils.js').resizeUserData(session.params.email,realDeviceID).then(() => {
+                                require('./userUtils.js').resizeUserData(session.params.email,realDeviceID,session.params["inc_storage"]).then(() => {
                                     callback();
                                 }).catch(err => {
                                     logger.error(`Error in resizeUserData: ${err}`,err);
