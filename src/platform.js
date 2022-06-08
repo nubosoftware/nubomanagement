@@ -550,7 +550,7 @@ var Platform = function(platid, platType, callback, newplatid) {
                 //logger.info("Starting doPlatformRequest...");
                 var postObj = {
                     login: _.pick(session.login.loginParams, "userName", "email", "lang", "countrylang", "localevar", "deviceType"),
-                    session: _.pick(session.params, "email", "deviceid","appName","docker_image","audioStreamParams","platid"),
+                    session: _.pick(session.params, "email", "deviceid","appName","docker_image","audioStreamParams","platid","recording","recording_path"),
                     nfs: _.pick(nfs.params, "nfs_ip", "nfs_path", "nfs_path_slow"),
                     timeZone: timeZone,
                     mounts: mounts,
