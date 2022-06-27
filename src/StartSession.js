@@ -22,6 +22,7 @@ var _ = require('underscore');
 var CommonUtils = require("./commonUtils.js");
 var path = require('path');
 const { l } = require('accesslog/lib/tokens');
+const { Op } = require('sequelize');
 
 
 var StartSession = {
@@ -1621,6 +1622,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
     if (deviceType == "Desktop") {
         desktopDevice = true;
     }
+    let appParams = null;
 
     sessionModule.getSessionOfUserDevice(email, deviceID, function(err, sessobj) {
         if (err) {
@@ -1860,6 +1862,43 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             }
                         });
                     },
+                    // create app params
+                    function(callback) {
+                        appParams = Common.appParams;
+                        if (desktopDevice || !Common.isMobile() || !Common.platformType == "docker") {
+                            callback(null);
+                            return;
+                        }
+
+                        Common.db.Apps.findAll({
+                            attributes: ['packagename','displayprotocol'],
+                            where: {
+                                maindomain: login.loginParams.mainDomain,
+                                displayprotocol: {
+                                    [Op.ne]: 0
+                                }
+                            },
+                        }).then( results => {
+                            if (results && results.length > 0) {
+                                if (!appParams) {
+                                    appParams = {};
+                                }
+                                for (const app of results) {
+                                    let item = appParams[app.packagename];
+                                    if (!item) {
+                                        item = {};
+                                    }
+                                    item.displayprotocol = app.displayprotocol;
+                                    appParams[app.packagename] = item;
+                                }
+                                logger.info(`appParams: ${JSON.stringify(appParams,null,2)}`);
+                            }
+                            callback(null);
+                        }).catch(err => {
+                            logger.info(`Error getting app params: ${err}`);
+                            callback(null);
+                        })
+                    },
                     // create session files
                     function(callback) {
                         if (desktopDevice || !Common.isMobile()) {
@@ -1867,7 +1906,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             return;
                         }
 
-                        Common.getMobile().mobileUserUtils.createSessionFiles(session, deviceParams, function(err) {
+                        Common.getMobile().mobileUserUtils.createSessionFiles(session, deviceParams, appParams, function(err) {
                             callback(err);
                         });
                     },

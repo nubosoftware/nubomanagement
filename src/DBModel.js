@@ -236,6 +236,7 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         versionname : Sequelize.STRING,
         versioncode : Sequelize.STRING,
         appname : Sequelize.STRING,
+        displayprotocol: Sequelize.INTEGER, // 0 - Auto detect, 1 - Server-rendering, 2 - Client-rendering
         description : Sequelize.STRING,
         summary: Sequelize.STRING,
         categories: Sequelize.STRING,

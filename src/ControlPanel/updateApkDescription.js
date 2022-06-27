@@ -65,6 +65,9 @@ function updateApkDescription(req, res, next) {
         if (req.params.appCategories) {
             data.categories = req.params.appCategories;
         }
+        if (req.params.displayprotocol) {
+            data.displayprotocol = req.params.displayprotocol;
+        }
 
         logger.info("updateApkDescription: "+JSON.stringify(data,null,2));
 

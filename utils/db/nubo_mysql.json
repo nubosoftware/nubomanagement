@@ -914,4 +914,5 @@ PRIMARY KEY (hardwaredesc, devicemodel));"
     );"
 , "1.5.0.0.128" : "create index firewall_groups_idx_1 on firewall_groups (maindomain);"
 , "1.5.0.0.129" : "ALTER TABLE device_apps ADD COLUMN filename varchar(150) default '' AFTER installed;"
+, "1.5.0.0.130" : "ALTER TABLE apps ADD COLUMN displayprotocol int default 0 AFTER appname;"
 }
