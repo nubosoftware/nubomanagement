@@ -886,7 +886,7 @@ async function resizeUserData(email, deviceId,inc_storage) {
         //
 
         if (free < 0.5 || inc_storage) {
-            let newBlock = Math.ceil(blockCount * 1.5);
+            let newBlock = Math.ceil(blockCount * 2);
             logger.info(`resizeUserData. Resize image to ${(newBlock * blockSize / 1024 / 1024).toFixed(0)} MB (${newBlock}) blocks`);
             let checkRes = await commonUtils.execCmd('e2fsck',["-fy",pathToDataImg]);
             let resizeRes = await commonUtils.execCmd('resize2fs',[pathToDataImg,newBlock]);
