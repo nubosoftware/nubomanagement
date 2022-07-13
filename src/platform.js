@@ -958,6 +958,8 @@ var Platform = function(platid, platType, callback, newplatid) {
                     return;
                 }
 
+                // logger.info(`checkPlatform: ${JSON.stringify(resObj,null,2)}`);
+
                 if (resObj.status === 1) {
                     if (resObj.performance && resObj.performance.mem) {
                         plat.params.memTotal = resObj.performance.mem.total;
@@ -982,6 +984,13 @@ var Platform = function(platid, platType, callback, newplatid) {
                 plat.params.lastCheckStatus = (error ? "error" : "ok");
                 plat.params.lastCheckMsg = (resObj ? resObj.msg : error.message);
                 plat.save(err => {
+                    if (resObj.sessions) {
+                        require('./cleaner').checkAndCleanPlatformSessions(plat,resObj.sessions).then(() => {
+                            // logger.info("checkAndCleanPlatformSessions finished");
+                        }).catch(err => {
+                            logger.error("checkAndCleanPlatformSessions error",err);
+                        });
+                    }
                     callback(error, resObj);
                 });
             }

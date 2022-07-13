@@ -250,7 +250,7 @@ function loadRequires() {
     schedulerService = require('./nubocronScheduler.js');
     ThreadedLogger = require('./ThreadedLogger.js');
     nubocronAPI = require('./nubocronAPI.js');
-    cleanerService = require('./cleaner.js');
+    cleanerService = require('./cleaner.js').cleanerService;
     updateLoginTTLService = require('./updateLoginTTL.js');
     Service = require("./service.js");
     gatewayModule = require('./Gateway.js');

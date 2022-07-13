@@ -1517,7 +1517,8 @@ var filter = {
     {
         "path": "/logoutUser",
         "constraints": {
-            "loginToken": constraints.requestedLoginTokenConstr
+            "loginToken": constraints.requestedLoginTokenConstr,
+            "deleteCacheDeviceData": constraints.Y_N_boolConstrOptional,
         },
         "headerConstraints": {
             'x-client-ip': constraints.ipConstrRequested,

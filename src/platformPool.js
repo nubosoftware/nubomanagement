@@ -51,7 +51,7 @@ function startNPlatforms(n, opts, callback) {
         for (var i = 0; i < n; i++) {
             poolQueue.push(
                 function(cb) {
-                    
+
                     platformModule.registerPlatformNum(opts, function(err) {
                         if (err) {
                             logger.error("ERROR: " + err);
@@ -183,7 +183,7 @@ function refreshHelper(domain, callback) {
 }
 
 
-function refresh(callback) {   
+function refresh(callback) {
     // last command in q is refresh, so the task already exist in q
     if (poolQueue.running()) {
         logger.info("platformPool: Not runnig refresh because poolQueue is already running task(s).");
@@ -211,7 +211,7 @@ function refresh(callback) {
             });
         }
 
-        async.eachSeries(domains, function(domain, callback) {            
+        async.eachSeries(domains, function(domain, callback) {
             refreshHelper(domain, function(err) {
                 if (err) {
                     logger.error("refresh: failed refreshing platforms for \'" + domain + "\' domain");
@@ -309,7 +309,7 @@ function platformChannelMonitorService() {
         period: 30
     });
     var checkPlatformsService = new Service(platformModule.checkPlatforms, {
-        period: 300
+        period: 45
     });
 
 

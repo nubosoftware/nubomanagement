@@ -338,8 +338,22 @@ function startSessionImp(startSessionParams) {
                                 timeZone = startSessionParams.deviceParams.timeZone;
                             }
                             //logger.info("start session. Read session_cache_params: "+result.session_cache_params);
+                            callback();
+                        } else {
+                            if (startSessionParams.fastConnection) {
+                                // we cannot proceed with fast connection if deviceParams are missing
+                                resObj = {
+                                    status: 2,
+                                    message: "Cannot proceed with fast connection when deviceParams are missing",
+                                    loginToken: 'notValid'
+                                };
+                                logger.info("startSession: " + resObj.message);
+                                callback(resObj);
+                            } else {
+                                callback();
+                            }
                         }
-                        callback();
+
                     }).catch(function (err) {
                         logger.info("Error reading UserDevice: " + err);
                         callback();
@@ -389,7 +403,6 @@ function startSessionImp(startSessionParams) {
                 });
             }
         ], function(err, session) {
-
             let retParams = {
                 err: err,
                 session: session,
@@ -2113,10 +2126,11 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             callback(null);
                             return;
                         }
-
+                        logger.info("startSessionInstallations...")
                         Common.getMobile().appMgmt.startSessionInstallations(session, time, hrTime, uninstallFunc, function(err) {
-                            callback(null);
+                            logger.info(`Finished startSessionInstallations. err: ${err}`);
                         });
+                        callback(null);
                     }
                 ], function(err) {
                     if (err) {
@@ -2525,6 +2539,13 @@ function logoutUser(req, res, next) {
     var clientIP = req.headers["x-client-ip"];
     var isLocalIP = clientIP.indexOf(Common.internal_network) == 0 ? true : false;
     var loginToken = req.params.loginToken;
+    var deleteCacheDeviceDataStr =  req.params.deleteCacheDeviceData;
+    var deleteCacheDeviceData;
+    if (deleteCacheDeviceDataStr != undefined && deleteCacheDeviceDataStr == "N" || deleteCacheDeviceDataStr == "n") {
+        deleteCacheDeviceData = false;
+    } else {
+        deleteCacheDeviceData = true;
+    }
     var loginData;
     var session;
     var resObj;
@@ -2583,6 +2604,11 @@ function logoutUser(req, res, next) {
         },
         function (callback ) {
             // delete session_cache_params, so session will not start without user re-configure itself
+            if (!deleteCacheDeviceData) {
+                logger.info(`logoutUser. Keep session_cache_params`);
+                callback();
+                return;
+            }
             Common.db.UserDevices.update({
                 session_cache_params: null
             }, {

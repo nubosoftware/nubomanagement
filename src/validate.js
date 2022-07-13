@@ -910,14 +910,14 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
             }
         ], function(finish) {
             callback(error, response);
-
+            logger.info(`validate. Common.fastConnection: ${Common.fastConnection}, activationData.firstlogin: ${activationData.firstlogin}`);
             if (hideNuboAppPackageName != "" && newProcess && login && activationData && activationData.deviceid) {
                 var email = activationData.email;
                 var deviceid = activationData.deviceid;
                 require('./StartSession.js').closeSessionOfUserDevice(email,deviceid,function(err,closedSession) {
                     logger.info("Close session for hideNuboAppPackageName");
                 });
-            } else if (Common.fastConnection && activationData.firstlogin == 0 && loginToken) {
+            } else if (Common.fastConnection && /*activationData.firstlogin == 0 &&*/ loginToken) {
             //optimistic login - starting user session...
 
                 logger.info("fast connection enabled, optimistic startsession");
@@ -928,9 +928,9 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                     fastConnection: true
                 }
                 require('./StartSession.js').startSessionImp(startSessionParams).then( respParams => {
-                    //logger.info("Optimistic Start session completed");
+                    // logger.info(`Optimistic Start session completed. err: ${JSON.stringify(respParams.err,null,2)}, resObj: ${JSON.stringify(respParams.resObj,null,2)} `);
                 }).catch(respParams => {
-                    //logger.info("Optimistic start session failed");
+                    // logger.info(`Optimistic start session failed. err: ${JSON.stringify(respParams.err,null,2)} , resObj: ${JSON.stringify(respParams.resObj,null,2)}`);
                 });
             }
         });
