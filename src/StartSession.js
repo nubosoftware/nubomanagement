@@ -1011,25 +1011,38 @@ function endSession(sessionID, callback, closeSessionMsg) {
                         },
                         function(callback) {
                             sessLogger.logTime("Closing session on platform");
-                            var platLock = new Lock({
-                                key: "lock_platform_" + platform.params.platid,
-                                logger: sessLogger,
-                                numOfRetries: 60, // wait for 30 seconds max
-                                waitInterval: 500,
-                                lockTimeout: 1000 * 60 * 10 // 10 minutes max lock
-                            });
+                            if (Common.platformType != "docker") {
 
-                            platLock.cs(
-                                function(callback) {
-                                    endSessionLocked(session, platform, function(err) {
-                                        if (err) {
-                                            sessLogger.error("error in endSessionLocked err: " + err);
+                                var platLock = new Lock({
+                                    key: "lock_platform_" + platform.params.platid,
+                                    logger: sessLogger,
+                                    numOfRetries: 60, // wait for 30 seconds max
+                                    waitInterval: 500,
+                                    lockTimeout: 1000 * 60 * 10 // 10 minutes max lock
+                                });
+
+                                platLock.cs(
+                                    function(callback) {
+                                        endSessionLocked(session, platform, function(err) {
+                                            if (err) {
+                                                sessLogger.error("error in endSessionLocked err: " + err);
+                                                callback(null);
+                                                return;
+                                            }
                                             callback(null);
-                                            return;
-                                        }
+                                        });
+                                    }, callback);
+                            } else {
+                                // platform not required in docker platforms
+                                endSessionLocked(session, platform, function(err) {
+                                    if (err) {
+                                        sessLogger.error("error in endSessionLocked err: " + err);
                                         callback(null);
-                                    });
-                                }, callback);
+                                        return;
+                                    }
+                                    callback(null);
+                                });
+                            }
                         },
                         // remove platform/gateway assosiation to user device
                         function(callback) {
@@ -2201,15 +2214,19 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         }
 
                         session.platform = obj;
-                        lock.release(function(err, replay) {
-                            if (err) {
-                                callback("cannot remove lock on platform");
-                                return;
-                            }
+                        if (lock) {
+                            lock.release(function(err, replay) {
+                                if (err) {
+                                    callback("cannot remove lock on platform");
+                                    return;
+                                }
 
 
+                                callback(null);
+                            });
+                        } else {
                             callback(null);
-                        });
+                        }
                     });
                 },
                 // validate folders of the user

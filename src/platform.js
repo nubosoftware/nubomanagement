@@ -984,7 +984,7 @@ var Platform = function(platid, platType, callback, newplatid) {
                 plat.params.lastCheckStatus = (error ? "error" : "ok");
                 plat.params.lastCheckMsg = (resObj ? resObj.msg : error.message);
                 plat.save(err => {
-                    if (resObj.sessions) {
+                    if (resObj && resObj.sessions) {
                         require('./cleaner').checkAndCleanPlatformSessions(plat,resObj.sessions).then(() => {
                             // logger.info("checkAndCleanPlatformSessions finished");
                         }).catch(err => {
@@ -1185,7 +1185,8 @@ var getAvailablePlatform = function(platType, dedicatedPlatID, domain, logger, c
                     callback("Empty pool");
                     return;
                 }
-                if (platType === "ex") {
+                if (Common.platformType == "docker" || platType === "ex") {
+                    // not need to lock platform - get random value from avialble platform list
                     var platId = platIds[Math.floor(Math.random() * platIds.length)];
                     callback(null, platId);
                 } else {
@@ -1246,23 +1247,27 @@ var getAvailablePlatform = function(platType, dedicatedPlatID, domain, logger, c
     } else {
         async.waterfall([
             function(callback) {
-                lock = new Lock({
-                    key: 'lock_platform_' + dedicatedPlatID,
-                    logger: logger,
-                    numberOfRetries: 60,
-                    waitInterval: 500,
-                    lockTimeout: 1000 * 60 * 5 // 5 minutes
-                });
+                if (!Common.platformType == "docker") {
+                    lock = new Lock({
+                        key: 'lock_platform_' + dedicatedPlatID,
+                        logger: logger,
+                        numberOfRetries: 60,
+                        waitInterval: 500,
+                        lockTimeout: 1000 * 60 * 5 // 5 minutes
+                    });
 
-                lock.acquire(function(err, replay) {
-                    if (err) {
-                        callback(err);
-                    } else if (!replay) {
-                        callback('couldn\'t lock dedicated platform ID');
-                    } else {
-                        callback(null, dedicatedPlatID);
-                    }
-                });
+                    lock.acquire(function(err, replay) {
+                        if (err) {
+                            callback(err);
+                        } else if (!replay) {
+                            callback('couldn\'t lock dedicated platform ID');
+                        } else {
+                            callback(null, dedicatedPlatID);
+                        }
+                    });
+                } else {
+                    callback(null, dedicatedPlatID);
+                }
             },
             function(platId, callback) {
                 new Platform(platId, platType, function(err, obj) {
