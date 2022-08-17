@@ -22,4 +22,7 @@ html/player/out.js
 mgmt.json
 machines.csv
 package-lock.json
+docker_temp
+nubo-management-desktop/
+nubo-management-enterprise/
 

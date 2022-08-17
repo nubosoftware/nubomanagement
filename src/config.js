@@ -149,11 +149,11 @@ function getPlatParamsSchema(Common,prompt) {
             },
             concurrencyDelay: {
                 description: 'Wait internval between platform start:',
-                default: Common.platformParams.concurrencyDelay
+                default: "" + Common.platformParams.concurrencyDelay
             },            
             platformPoolSize: {
                 description: 'Platform pool size:',
-                default: Common.platformParams.platformPoolSize,
+                default: "" + Common.platformParams.platformPoolSize,
                 ask: function() {
                     var calculated = (prompt.history('poolStrategy').value == 'calculated');
                     return calculated;
@@ -169,7 +169,7 @@ function getPlatParamsSchema(Common,prompt) {
             },
             bottomCapacityLevel: {
                 description: 'Min ratio of users per platform before removeing platform:',
-                default: Common.platformParams.bottomCapacityLevel,
+                default: "" + Common.platformParams.bottomCapacityLevel,
                 ask: function() {
                     var calculated = (prompt.history('poolStrategy').value == 'calculated');
                     return calculated;
@@ -197,7 +197,7 @@ function getPlatParamsSchema(Common,prompt) {
             },
             maxFails: {
                 description: 'Number of max fails before stoping loading specific platform:',
-                default: Common.platformParams.maxFails
+                default: "" + Common.platformParams.maxFails
             },
             fixedPool: {
                 description: 'Include platforms in error state for calculation of capacity level?',
