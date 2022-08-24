@@ -67,6 +67,7 @@ function killDeviceSessionImp(email,imei,domain, callback) {
                 }
                 if (!reply) {
                     callback(new Error("Session not found for device"));
+                    return;
                 }
                 sessId = reply;
                 callback(null);
