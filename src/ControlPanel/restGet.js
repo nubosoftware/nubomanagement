@@ -1056,7 +1056,7 @@ var apiAccess = function(req, res) {
         if (!arg1 && req.method == "GET") {
             require('./platformControl').getPlatformList(req,res);
             return;
-        } else if (arg1) {
+        } else if (arg1 && !arg2) {
             req.params.platID = arg1;
             if ( req.method == "GET") {
                 require('./platformControl').getPlatformDetails(req,res);
@@ -1073,6 +1073,11 @@ var apiAccess = function(req, res) {
                 require('./platformControl').updateStaticPlatform(req,res);
                 return;
             }
+        } else if (arg1 && arg2) {
+            req.params.platID = arg1;
+            req.params.cmd = arg2;
+            require('./platformControl').platformCommand(req,res);
+            return;
         }
     } else if (objectType == "longOperations") {
         if (arg1 && req.method == "GET") {

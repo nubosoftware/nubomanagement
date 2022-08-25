@@ -14,6 +14,7 @@ var Service = require("./service.js");
 var path = require('path');
 var commonUtils = require('./commonUtils.js');
 const { sessionTimeout } = require('./common.js');
+const { nextTick } = require('process');
 
 const MAX_SESSIONS_IN_PARALLEL = 20;
 
@@ -491,6 +492,11 @@ function reconnectSessions(messsage) {
 
 function reconnectSessionsHelper(callback) {
 
+    let dockerPlatform = (Common.platformType == "docker");
+    if (dockerPlatform) {
+        process.nextTick(callback);
+        return;
+    }
     var disconnectedSessionsLock = new Lock({
         key: "lock_disconnected_sessions",
         logger: logger,

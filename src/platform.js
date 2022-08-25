@@ -560,8 +560,11 @@ var Platform = function(platid, platType, callback, newplatid) {
                 if (Common.platformSettings && Common.isMobile() && Common.platformType == "docker") {
                     postObj.platformSettings = Common.platformSettings;
                 }
+                if (Common.isMobile() && Common.platformType == "docker" && session.xml_file_content) {
+                    postObj.xml_file_content = session.xml_file_content;
+                }
                 var postData = JSON.stringify(postObj);
-                //logger.info(`attachUser. postData: ${postData}`);
+                // logger.info(`attachUser. postData: ${postData}`);
                 logger.info(`Attach user: ${session.params.email} ${session.params.deviceid}`);
                 var options = {
                     path: "/attachUser",

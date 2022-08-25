@@ -1103,6 +1103,7 @@ function endSession(sessionID, callback, closeSessionMsg) {
                             }
                         },
                         function(callback) {
+                            // logger.error(`***** Session closed: ${sessionID}`);
                             if (!Common.dcName || !Common.dcURL) {
                                 callback(null);
                                 return;
@@ -1931,8 +1932,11 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             callback(null);
                             return;
                         }
-
-                        Common.getMobile().mobileUserUtils.createSessionFiles(session, deviceParams, appParams, function(err) {
+                        // logger.error(`***** Session create. createSessionFiles: ${session.params.sessid}`);
+                        Common.getMobile().mobileUserUtils.createSessionFiles(session, deviceParams, appParams, function(err,_xml_file_content) {
+                            if (_xml_file_content) {
+                                session.xml_file_content = _xml_file_content;
+                            }
                             callback(err);
                         });
                     },

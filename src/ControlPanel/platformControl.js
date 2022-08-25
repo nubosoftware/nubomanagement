@@ -72,7 +72,7 @@ function platformCommand(req, res, next) {
         msg = "Invalid parameters";
     }
     var cmd = req.params.cmd;
-    if (cmd != "start" && cmd != "stop") {
+    if (cmd != "start" && cmd != "stop" && cmd != "disable" && cmd != "enable") {
         logger.info("platformCommand. Invalid cmd " + cmd);
         status = 0;
         msg = "Invalid parameters";
@@ -127,7 +127,7 @@ function platformCommand(req, res, next) {
                     notifToken: notif.getToken()
                 });
             });
-        } else {
+        } else if (cmd == "start") {
             startPlatform(platID,domain,notif,function(err){
                 if (err) {
                     res.send({
@@ -142,9 +142,43 @@ function platformCommand(req, res, next) {
                     notifToken: notif.getToken()
                 });
             });
+        } else if (cmd == "disable") {
+            disablePlatform(platID).then(() => {
+                res.send({
+                    status : '1',
+                    message : "Request was fulfilled",
+                });
+            }).catch(err => {
+                res.send({
+                    status : '0',
+                    message : "Error: "+err
+                });
+            });
+        } else if (cmd == "enable") {
+            enablePlatform(platID).then(() => {
+                res.send({
+                    status : '1',
+                    message : "Request was fulfilled",
+                });
+            }).catch(err => {
+                res.send({
+                    status : '0',
+                    message : "Error: "+err
+                });
+            });
         }
 
     });
+}
+
+async function disablePlatform(platID) {
+    const redis = Common.redisClient;
+    await redis.zadd("platforms_fails",Common.platformParams.maxFails,platID);
+}
+
+async function enablePlatform(platID) {
+    const redis = Common.redisClient;
+    await redis.zrem("platforms_fails",platID);
 }
 
 
