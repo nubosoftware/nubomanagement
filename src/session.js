@@ -51,6 +51,13 @@ var Session = function(sessid, opts, callback) {
                 var stack = new Error().stack;
                 console.log("Save session with one param: " + stack);
             }
+            // console.log(`Save session: ${JSON.stringify(sess.params,null,2)}`);
+            for (const key in sess.params) {
+                if (sess.params[key] == undefined) {
+                    // console.log(`Remove undefined key: ${key}, value: ${sess.params[key]}`);
+                    delete sess.params[key];
+                }
+            }
             Common.redisClient.hmset('sess_' + sess.params.sessid, sess.params, function(err, obj) {
                 if (err) {
                     logger.info("Error in save hmset:" + err);

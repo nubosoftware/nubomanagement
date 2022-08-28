@@ -203,6 +203,7 @@ function startSessionImp(startSessionParams) {
 
     // https://login.nubosoftware.com/startsession?loginToken=[loginToken]?timeZone=[timeZome]
     var logger = new ThreadedLogger(Common.getLogger(__filename));
+    logger.logTime(`startSessionImp start`);
 
     var msg = "";
     var status = 100; //unknown
@@ -382,6 +383,7 @@ function startSessionImp(startSessionParams) {
                     });
             },
             function(callback) {
+                logger.logTime(`startSessionImp before startOrJoinSession`);
                 startOrJoinSession(startSessionParams, loginData, 1, platid, timeZone, logger, function(err, session) {
                     if (err) {
                         resObj = {
@@ -398,6 +400,7 @@ function startSessionImp(startSessionParams) {
                         logger.info("startSession: user session started succefully",{
                             mtype: "important"
                         });
+                        logger.logTime(`startSessionImp finished`);
                     }
                     callback(null, session);
                 });
@@ -1473,6 +1476,7 @@ function startOrJoinSession(startSessionParams, login, retryCnt, dedicatedPlatID
 
     userDeviceLock.cs(
         function(callback) {
+            sessLogger.logTime(`startSessionImp before buildUserSession`);
             buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, sessLogger, startSessionParams.deviceParams, callback);
         },
         function(err, session, isOldSession) {
@@ -1482,6 +1486,7 @@ function startOrJoinSession(startSessionParams, login, retryCnt, dedicatedPlatID
             } else {
                 //success
                 oldSession = isOldSession;
+                sessLogger.logTime(`startSessionImp before postStartSessionProcedure`);
                 postStartSessionProcedure(session, time, hrTime, sessLogger);
                 callback(null, session);
             }
@@ -1763,6 +1768,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     function (callback) {
                         if (Common.platformType == "docker" && !session.params.docker_image) {
                             // reading docker_image from database
+                            logger.logTime(`startSessionImp before load docker image`);
                             Common.db.User.findOne({
                                 attributes: ['docker_image'],
                                 where: {
@@ -1805,10 +1811,12 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     },
                     //validate user folders
                     function(callback) {
+                        logger.logTime(`startSessionImp before validateUserFoldersExist`);
                         validateUserFoldersExist(session, keys, time, hrTime, callback);
                     },
                     // nfs
                     function(callback) {
+                        logger.logTime(`startSessionImp before nfsModule`);
                         nfsModule({
                                 UserName: email,
                                 logger: logger,
@@ -1834,6 +1842,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         } else {
                             session.params.platDomain = 'common';
                         }
+                        logger.logTime(`startSessionImp before getAvailablePlatform`);
 
                         platformModule.getAvailablePlatform(null, dedicatedPlatID, session.params.platDomain, logger, function(err, obj, lock) {
                             if (err) {
@@ -1870,6 +1879,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         var gwObj = {
                             index: -1
                         };
+                        logger.logTime(`startSessionImp before gatewayModule`);
                         new gatewayModule.Gateway(gwObj, {
                             logger: logger
                         }, function(err, gateway) {
@@ -1891,12 +1901,13 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     },
                     // create app params
                     function(callback) {
+
                         appParams = Common.appParams;
                         if (desktopDevice || !Common.isMobile() || !Common.platformType == "docker") {
                             callback(null);
                             return;
                         }
-
+                        logger.logTime(`startSessionImp before appParams`);
                         Common.db.Apps.findAll({
                             attributes: ['packagename','displayprotocol'],
                             where: {
@@ -1932,6 +1943,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             callback(null);
                             return;
                         }
+                        logger.logTime(`startSessionImp before createSessionFiles`);
                         // logger.error(`***** Session create. createSessionFiles: ${session.params.sessid}`);
                         Common.getMobile().mobileUserUtils.createSessionFiles(session, deviceParams, appParams, function(err,_xml_file_content) {
                             if (_xml_file_content) {
@@ -1942,6 +1954,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     },
                     //attach user to platform
                     function(callback) {
+                        logger.logTime(`startSessionImp before attachUser`);
                         session.platform.attachUser(session, timeZone, function(err, res) {
                             if (err) {
                                 buildStatus.addToErrorsPlatforms = true;
@@ -1967,6 +1980,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     },
                      // start server side openGL
                      function(callback) {
+                        logger.logTime(`startSessionImp before openGL`);
                         if (Common.isEnterpriseEdition() && !desktopDevice) {
                             Common.getEnterprise().nuboGL.startNuboGL(session,function(err) {
                                 callback();
@@ -1977,6 +1991,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     },
                     // update gateway Reference
                     function(callback) {
+                        logger.logTime(`startSessionImp before updateGWSessionScore`);
                         gatewayModule.updateGWSessionScore(session.params.gatewayIndex, 1, session.params.sessid, session.logger, function(err) {
                             if (err) {
                                 callback("failed increasing gateway reference");
@@ -2065,6 +2080,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             callback(null);
                             return;
                         }
+                        logger.logTime(`startSessionImp before updateUserDataCenter`);
 
                         var dcname = login.getDcname() != '' ? login.getDcname() : null;
                         var dcurl = login.getDcurl() != '' ? login.getDcurl() : null;
@@ -2079,6 +2095,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     // update some database tables
                     function(callback) {
                         // create SessionHistory - do not wait to response
+                        logger.logTime(`startSessionImp before SessionHistory`);
                         Common.db.SessionHistory.create({
                             session_id : session.params.sessid,
                             email : session.params.email,
@@ -2109,6 +2126,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                     },
                     // validate folders of the user
                     function(callback) {
+                        logger.logTime(`startSessionImp before validateUserFolders`);
                         validateUserFolders(email, deviceID, deviceType, function(err) {
                             if (err) {
                                 callback("failed validating user folders " + err);
@@ -2123,6 +2141,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             callback(null);
                             return;
                         }
+                        logger.logTime(`startSessionImp before firewall`);
                         const firewall = Common.getMobile().firewall;
                         firewall.generateUserRules(session.params.email, session.params.localid, session.params.platid, firewall.Firewall.add, function(err, tasks) {
                             if (err || !tasks || tasks.length == 0) {
@@ -2143,7 +2162,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             callback(null);
                             return;
                         }
-                        logger.info("startSessionInstallations...")
+                        logger.logTime(`startSessionImp before startSessionInstallations`);
                         Common.getMobile().appMgmt.startSessionInstallations(session, time, hrTime, uninstallFunc, function(err) {
                             logger.info(`Finished startSessionInstallations. err: ${err}`);
                         });

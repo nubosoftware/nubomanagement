@@ -235,7 +235,7 @@ function notifyOnPlatformClose(curPlatID,notif) {
             return;
         }
 
-        if ( (!r[0] || r[0] == 0) && (!r[1] || r[1] == 0) && (!r[2] || r[2] == 0) && (!r[3] || r[3] == 0) && (r[4] < Common.platformParams.maxFails || !r[4] )) {
+        if ( (!r[0] || r[0] == 0) && (!r[1] || r[1] == 0) && (!r[2] || r[2] == 0) && (!r[3] || r[3] == 0) /*&& (r[4] < Common.platformParams.maxFails || !r[4] ) */) {
             //status = "available";
             notif.set({
                 status: Common.STATUS_OK,
