@@ -16,6 +16,7 @@ var _ = require('underscore');
 var execFile = require('child_process').execFile;
 var commonUtils = require('./commonUtils.js');
 const { Op } = require('sequelize');
+const { syncBuiltinESMExports } = require('module');
 const fsp = fs.promises;
 
 function changeModeOwner(file, opts, callback) {
@@ -887,15 +888,50 @@ async function resizeUserData(email, deviceId,inc_storage) {
 
         if (free < 0.5 || inc_storage) {
             let newBlock = Math.ceil(blockCount * 2);
-            logger.info(`resizeUserData. Resize image to ${(newBlock * blockSize / 1024 / 1024).toFixed(0)} MB (${newBlock}) blocks`);
-            let checkRes = await commonUtils.execCmd('e2fsck',["-fy",pathToDataImg]);
-            let resizeRes = await commonUtils.execCmd('resize2fs',[pathToDataImg,newBlock]);
+            let finished = false;
+            let tries = 0;
+            while (!finished) {
+                try {
+                    logger.info(`resizeUserData. Resize image to ${(newBlock * blockSize / 1024 / 1024).toFixed(0)} MB (${newBlock}) blocks`);
+                    await sleep(1000);
+                    tries++;
+                    let checkRes = await commonUtils.execCmd('e2fsck',["-fy",pathToDataImg]);
+                    logger.info(`resizeUserData. e2fsck. stdout: ${checkRes.stdout}, stderr: ${checkRes.stderr}`);
+                    if (checkRes.stdout.indexOf("FILE SYSTEM WAS MODIFIED") >= 0 || checkRes.stderr.indexOf("FILE SYSTEM WAS MODIFIED") >= 0) {
+                        logger.info("File system fixed. re-running check..");
+                        await sleep(1000);
+                        continue;
+                    }
+                    let resizeRes = await commonUtils.execCmd('resize2fs',[pathToDataImg,newBlock]);
+                    logger.info(`resizeUserData. resize2fs. stdout: ${resizeRes.stdout}, stderr: ${resizeRes.stderr}`);
+                    if (resizeRes.stdout.indexOf("e2fsck") >= 0 || resizeRes.stderr.indexOf("e2fsck") >= 0) {
+                        logger.info("e2fsck needed before resize2fs. re-running check..");
+                        await sleep(1000);
+                        continue;
+                    }
+                    checkRes = await commonUtils.execCmd('e2fsck',["-fy",pathToDataImg]);
+                    logger.info(`resizeUserData. e2fsck. stdout: ${checkRes.stdout}, stderr: ${checkRes.stderr}`);
+                    finished = true;
+                } catch (err) {
+                    logger.info(`resizeUserData. error: ${err} stdout: ${err.stdout}, stderr: ${err.stderr}`);
+                    if (tries < 5) {
+                        await sleep(1000);
+                    } else {
+                        throw err;
+                    }
+                }
+            }
+
             logger.info(`resizeUserData. Resize finished!`);
         }
 
     } finally {
         lock.release();
     }
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
@@ -912,42 +948,42 @@ async function resizeUserData(email, deviceId,inc_storage) {
         userFolder
     };
 
-    if (dockerPlatform) {
-        let pathToDataImg = commonUtils.buildPath(userFolder,"data.img");
-        let dataTempFolder = commonUtils.buildPath(userFolder,"mnt");
-        // check if mount exists
-        let mountExists = false;
-        try {
-            let testDir = commonUtils.buildPath(dataTempFolder,"data");
-            const stats = await fsp.stat(testDir);
-            mountExists = stats.isDirectory();
-        } catch (e) {
-            //logger.error(`mountUserData fsp.stat error`,e);
-        }
-        if (!mountExists) {
-            logger.info(`Mounting user data img: ${pathToDataImg}, mount: ${dataTempFolder}`);
-            const LockAsync = require('./lock-async');
-            folderParams.mountLock = new LockAsync(`lock_mount_${pathToDataImg}`);
-            await folderParams.mountLock.acquire();
-            try {
-                await fsp.mkdir(dataTempFolder,{recursive: true});
-                await commonUtils.execCmd('mount',[pathToDataImg,dataTempFolder]);
-                folderParams.mounted = true;
-            } catch (err) {
-                try {
-                    logger.info(`Mount error (${err}), release lock and throw error`);
-                    await folderParams.mountLock.release();
-                } catch (e) {
-                    logger(`mountUserData. release lock error :${e}`);
-                }
-                throw err;
-            }
-        } else {
-            logger.info(`User data image already mounted. img: ${pathToDataImg} mount: ${dataTempFolder}`);
-        }
-        folderParams.dataTempFolder = dataTempFolder;
-        folderParams.pathToDataImg = pathToDataImg;
-    }
+    // if (dockerPlatform) {
+    //     let pathToDataImg = commonUtils.buildPath(userFolder,"data.img");
+    //     let dataTempFolder = commonUtils.buildPath(userFolder,"mnt");
+    //     // check if mount exists
+    //     let mountExists = false;
+    //     try {
+    //         let testDir = commonUtils.buildPath(dataTempFolder,"data");
+    //         const stats = await fsp.stat(testDir);
+    //         mountExists = stats.isDirectory();
+    //     } catch (e) {
+    //         //logger.error(`mountUserData fsp.stat error`,e);
+    //     }
+    //     if (!mountExists) {
+    //         logger.info(`Mounting user data img: ${pathToDataImg}, mount: ${dataTempFolder}`);
+    //         const LockAsync = require('./lock-async');
+    //         folderParams.mountLock = new LockAsync(`lock_mount_${pathToDataImg}`);
+    //         await folderParams.mountLock.acquire();
+    //         try {
+    //             await fsp.mkdir(dataTempFolder,{recursive: true});
+    //             await commonUtils.execCmd('mount',[pathToDataImg,dataTempFolder]);
+    //             folderParams.mounted = true;
+    //         } catch (err) {
+    //             try {
+    //                 logger.info(`Mount error (${err}), release lock and throw error`);
+    //                 await folderParams.mountLock.release();
+    //             } catch (e) {
+    //                 logger(`mountUserData. release lock error :${e}`);
+    //             }
+    //             throw err;
+    //         }
+    //     } else {
+    //         logger.info(`User data image already mounted. img: ${pathToDataImg} mount: ${dataTempFolder}`);
+    //     }
+    //     folderParams.dataTempFolder = dataTempFolder;
+    //     folderParams.pathToDataImg = pathToDataImg;
+    // }
     return folderParams;
 }
 
@@ -1115,7 +1151,7 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
 
     var folderName;
     let uid;
-    if (dockerPlatform) {
+    if (dockerPlatform && folderParams.mounted) {
         folderName = commonUtils.buildPath(folderParams.dataTempFolder,"data");
         uid = 1000;
     } else {
@@ -1291,15 +1327,17 @@ function createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime,
 
 
                 if (newUserFile.endsWith(".img")) {
-                    const imgFile = commonUtils.buildPath(dataFolder,"data.img");
-                    fs.copyFile(newUserFile,imgFile,function(err) {
-                        if (err) {
-                            logger.error(`Copy img file error: ${err}`,err);
-                            callback(err);
-                        } else {
-                            callback(null, exists);
-                        }
-                    });
+                    logger.info(`Docker android platform - no need for new user file`);
+                    callback(null, exists);
+                    // const imgFile = commonUtils.buildPath(dataFolder,"data.img");
+                    // fs.copyFile(newUserFile,imgFile,function(err) {
+                    //     if (err) {
+                    //         logger.error(`Copy img file error: ${err}`,err);
+                    //         callback(err);
+                    //     } else {
+                    //         callback(null, exists);
+                    //     }
+                    // });
                 } else {
                 var tarParams = ["xvzf", newUserFile, "-C", dataFolder];
                     execFile(Common.globals.TAR, tarParams, function(err, stdout, stderr) {
@@ -1564,7 +1602,10 @@ function validateUserFolders(UserName, deviceID, deviceType, keys, callback) {
             if (deviceType == "Desktop") {
                 chfolder = folder;
             } else if (Common.platformType == "docker") {
-                chfolder = folder + '/data.img';
+                //chfolder = folder + '/data.img';
+                // no need to validate user folder in docker mobile platform
+                callback(null);
+                return;
             }
             Common.fs.exists(chfolder, function(exists) {
                 if (!exists) {
@@ -1950,7 +1991,7 @@ function loadSettingsUpdateFile(userName, deviceID, settingsFileName,  dockerPla
     }
 
     var folderName;
-    if (dockerPlatform) {
+    if (dockerPlatform && folderParams.mounted) {
         folderName = commonUtils.buildPath(folderParams.dataTempFolder,"data");
     } else {
         folderName = commonUtils.buildPath(folderParams.userFolder,"user");
@@ -2267,7 +2308,7 @@ module.exports = {
     updateAppProgress,
     getDefaultApps,
     mountUserData,
-    unMountUserData,
+    // unMountUserData,
     resizeUserData,
 
 };

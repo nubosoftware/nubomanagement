@@ -1093,18 +1093,18 @@ function endSession(sessionID, callback, closeSessionMsg) {
                             }
                         },
                         // resize image
-                        function(callback) {
-                            if (!Common.isMobile() || Common.platformType != "docker" || session.params.tempUserDataFlag == "1") {
-                                callback(null);
-                            } else {
-                                require('./userUtils.js').resizeUserData(session.params.email,realDeviceID,session.params["inc_storage"]).then(() => {
-                                    callback();
-                                }).catch(err => {
-                                    logger.error(`Error in resizeUserData: ${err}`,err);
-                                    callback();
-                                });
-                            }
-                        },
+                        // function(callback) {
+                        //     if (!Common.isMobile() || Common.platformType != "docker" || session.params.tempUserDataFlag == "1") {
+                        //         callback(null);
+                        //     } else {
+                        //         require('./userUtils.js').resizeUserData(session.params.email,realDeviceID,session.params["inc_storage"]).then(() => {
+                        //             callback();
+                        //         }).catch(err => {
+                        //             logger.error(`Error in resizeUserData: ${err}`,err);
+                        //             callback();
+                        //         });
+                        //     }
+                        // },
                         function(callback) {
                             // logger.error(`***** Session closed: ${sessionID}`);
                             if (!Common.dcName || !Common.dcURL) {
@@ -1706,12 +1706,13 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                             session.params.deviceid = deviceID;
                             session.params.docker_image = login.loginParams.docker_image;
                             if (Common.isMobile() && Common.platformType == "docker") {
-                                let baseImage = Common.baseImage;
-                                if (!baseImage) {
-                                    const BASE_IMAGE = 'nubo-android-10';
-                                    baseImage = BASE_IMAGE;
-                                }
-                                session.params.docker_image = baseImage;
+                                // let baseImage = Common.baseImage;
+                                // if (!baseImage) {
+                                //     const BASE_IMAGE = 'nubo-android-10';
+                                //     baseImage = BASE_IMAGE;
+                                // }
+                                // session.params.docker_image = baseImage;
+                                session.params.docker_image = `domain_${login.loginParams.mainDomain}`;;
                             }
                             //session.params.docker_image
                             session.params.deviceType = deviceType;
@@ -2438,30 +2439,31 @@ function postStartSessionProcedure(session, time, hrTime, logger) {
     if (Common.isEnterpriseEdition()) {
         Common.getEnterprise().settings.postStartSessionProcedure(session.params.email);
     }
-    async.series([
-        // Install/Uninstall new apps to user if needed
-        function(callback) {
-            // Install/Uninstall new apps to user if needed
-            if (!Common.isMobile()) {
-                callback(null);
-                return;
-            }
-            Common.getMobile().appMgmt.startSessionInstallations(session, time, hrTime, uninstallFunc, function(err) {
-                if (err) {
-                    callback(err);
-                    return;
-                }
+    Common.redisClient.publish("platformChannel", "refresh");
+    // async.series([
+    //     // Install/Uninstall new apps to user if needed
+    //     function(callback) {
+    //         // Install/Uninstall new apps to user if needed
+    //         if (!Common.isMobile()) {
+    //             callback(null);
+    //             return;
+    //         }
+    //         Common.getMobile().appMgmt.startSessionInstallations(session, time, hrTime, uninstallFunc, function(err) {
+    //             if (err) {
+    //                 callback(err);
+    //                 return;
+    //             }
 
-                callback(null);
-            });
-        },
-    ], function(err, results) {
-        if (err) {
-            session.logger.error("postStartSessionProcedure: " + err);
-        }
-        Common.redisClient.publish("platformChannel", "refresh");
-        return;
-    });
+    //             callback(null);
+    //         });
+    //     },
+    // ], function(err, results) {
+    //     if (err) {
+    //         session.logger.error("postStartSessionProcedure: " + err);
+    //     }
+    //     Common.redisClient.publish("platformChannel", "refresh");
+    //     return;
+    // });
 }
 
 function declineCall(req, res, next) {

@@ -158,6 +158,19 @@ function deleteAppFromDB(packagename, domain,cb) {
                 });
             }
         });
+    }, function(callback) {
+        // delete the app from image.
+        // avialble only in mobile and docker
+        if (Common.isMobile()) {
+            Common.getMobile().appMgmt.deleteAppFromDomain(domain,packagename).then(() => {
+                callback(null);
+            }).catch(err => {
+                logger.error(`deleteAppFromDomain error`,err);
+                callback(err);
+            });
+        } else {
+            callback(null);
+        }
 
     } ], function(err, results) {
         cb(err,status);

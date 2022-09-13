@@ -199,11 +199,11 @@ function upload (email, deviceID, req, res) {
                 if (existsOnSDcard && destPath) {
                     dontChangeName = true;
                     if (existsOnSDcard === "external://") {
-                        if (dockerPlatform) {
-                            saveToPath = '0/'+ destPath;
-                        } else {
-                            saveToPath = 'media/'+ destPath;
-                        }
+                        // if (dockerPlatform) {
+                        //     saveToPath = '0/'+ destPath;
+                        // } else {
+                        saveToPath = 'media/'+ destPath;
+                        // }
 
                         folder = commonUtils.buildPath(Common.nfshomefolder, User.getUserStorageFolder(email), saveToPath);
                     } else if (existsOnSDcard === "internal://") {
@@ -214,12 +214,12 @@ function upload (email, deviceID, req, res) {
                         logger.error(msg);
                     }
                 } else {
-                    if (dockerPlatform) {
-                        saveToPath = '0/'+ destPath;
-                        ///Android/data/com.nubo.camera.test/files/Pictures
-                    } else {
-                        saveToPath = 'media/'+ destPath;
-                    }
+                    // if (dockerPlatform) {
+                    //     saveToPath = '0/'+ destPath;
+                    //     ///Android/data/com.nubo.camera.test/files/Pictures
+                    // } else {
+                    saveToPath = 'media/'+ destPath;
+                    // }
                     folder = commonUtils.buildPath(Common.nfshomefolder, User.getUserStorageFolder(email), saveToPath);
                     logger.info(`Upload folder: ${folder}`);
                 }

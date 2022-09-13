@@ -645,6 +645,9 @@ var Platform = function(platid, platType, callback, newplatid) {
             method: "GET",
             dataTimeout: 90 * 1000
         };
+        if (obj.docker_image) {
+            options.path += `&docker_image=${encodeURIComponent(obj.docker_image)}`;
+        }
 
         doPlatformRequest(options, function(err, resData) {
             if (err) {
@@ -792,6 +795,39 @@ var Platform = function(platid, platType, callback, newplatid) {
                 else
                     callback("Request return error: " + resData);
             }
+        });
+    };
+
+    this.getPackagesListDocker = function(imageName) {
+        return new Promise((resolve, reject) => {
+            var options = {
+                path: `/getPackagesList?imageName=${encodeURIComponent(imageName)}`,
+                method: "GET",
+                dataTimeout: 120 * 1000
+            };
+
+            doPlatformRequest(options, function(err, resData) {
+                if (err) {
+                    logger.error('problem with request: ' + err);
+                    reject(err);
+                    return;
+                } else {
+                    var resObj = {};
+                    try {
+                        //logger.info("getPackagesList: "+resData);
+                        resObj = JSON.parse(resData);
+                    } catch (e) {
+                        logger.error("Invalid responce from platform on getPackagesList: " + resData);
+                        reject(e);
+                        return;
+                    }
+                    if (resObj.status === 1) {
+                        resolve(resObj.data);
+                    } else {
+                        reject(new Error("Request return error " + resData));
+                    }
+                }
+            });
         });
     };
 
