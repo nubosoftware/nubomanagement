@@ -862,7 +862,7 @@ async function resizeUserData(email, deviceId,inc_storage) {
     }
     const LockAsync = require('./lock-async');
     var userFolder = commonUtils.buildPath(Common.nfshomefolder, userModule.getUserDeviceDataFolder(email, deviceId));
-    let pathToDataImg = commonUtils.buildPath(userFolder,"data.img");
+    let pathToDataImg = commonUtils.buildPath(userFolder,"user.img");
     let lock = new LockAsync(`lock_mount_${pathToDataImg}`);
     await lock.acquire();
     try {

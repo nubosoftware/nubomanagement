@@ -1093,18 +1093,18 @@ function endSession(sessionID, callback, closeSessionMsg) {
                             }
                         },
                         // resize image
-                        // function(callback) {
-                        //     if (!Common.isMobile() || Common.platformType != "docker" || session.params.tempUserDataFlag == "1") {
-                        //         callback(null);
-                        //     } else {
-                        //         require('./userUtils.js').resizeUserData(session.params.email,realDeviceID,session.params["inc_storage"]).then(() => {
-                        //             callback();
-                        //         }).catch(err => {
-                        //             logger.error(`Error in resizeUserData: ${err}`,err);
-                        //             callback();
-                        //         });
-                        //     }
-                        // },
+                        function(callback) {
+                            if (!Common.isMobile() || Common.platformType != "docker" || session.params.tempUserDataFlag == "1") {
+                                callback(null);
+                            } else {
+                                require('./userUtils.js').resizeUserData(session.params.email,realDeviceID,session.params["inc_storage"]).then(() => {
+                                    callback();
+                                }).catch(err => {
+                                    logger.error(`Error in resizeUserData: ${err}`,err);
+                                    callback();
+                                });
+                            }
+                        },
                         function(callback) {
                             // logger.error(`***** Session closed: ${sessionID}`);
                             if (!Common.dcName || !Common.dcURL) {
