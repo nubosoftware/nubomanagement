@@ -934,6 +934,16 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+
+async function fileExists(filepath) {
+    try {
+        await fsp.access(filepath);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 /**
  * Mount user data.ing into temporary location
  * return folderParams object with refereneces to folders
@@ -947,43 +957,18 @@ function sleep(ms) {
     let folderParams = {
         userFolder
     };
-
-    // if (dockerPlatform) {
-    //     let pathToDataImg = commonUtils.buildPath(userFolder,"data.img");
-    //     let dataTempFolder = commonUtils.buildPath(userFolder,"mnt");
-    //     // check if mount exists
-    //     let mountExists = false;
-    //     try {
-    //         let testDir = commonUtils.buildPath(dataTempFolder,"data");
-    //         const stats = await fsp.stat(testDir);
-    //         mountExists = stats.isDirectory();
-    //     } catch (e) {
-    //         //logger.error(`mountUserData fsp.stat error`,e);
-    //     }
-    //     if (!mountExists) {
-    //         logger.info(`Mounting user data img: ${pathToDataImg}, mount: ${dataTempFolder}`);
-    //         const LockAsync = require('./lock-async');
-    //         folderParams.mountLock = new LockAsync(`lock_mount_${pathToDataImg}`);
-    //         await folderParams.mountLock.acquire();
-    //         try {
-    //             await fsp.mkdir(dataTempFolder,{recursive: true});
-    //             await commonUtils.execCmd('mount',[pathToDataImg,dataTempFolder]);
-    //             folderParams.mounted = true;
-    //         } catch (err) {
-    //             try {
-    //                 logger.info(`Mount error (${err}), release lock and throw error`);
-    //                 await folderParams.mountLock.release();
-    //             } catch (e) {
-    //                 logger(`mountUserData. release lock error :${e}`);
-    //             }
-    //             throw err;
-    //         }
-    //     } else {
-    //         logger.info(`User data image already mounted. img: ${pathToDataImg} mount: ${dataTempFolder}`);
-    //     }
-    //     folderParams.dataTempFolder = dataTempFolder;
-    //     folderParams.pathToDataImg = pathToDataImg;
-    // }
+    if (dockerPlatform) {
+        let updatesFolder = commonUtils.buildPath(userFolder,"updates");
+        await fsp.mkdir(updatesFolder,{recursive: true});
+        folderParams.updatesFolder  = updatesFolder;
+        folderParams.updateFiles = [];
+        const file = commonUtils.buildPath(folderParams.updatesFolder,"updates.json");
+        if (await fileExists(file)) {
+            const str = await fsp.readFile(file,"utf8");
+            folderParams.updateFiles = JSON.parse(str);
+        }
+        // logger.info(`mountUserData. updateFiles: ${JSON.stringify(folderParams.updateFiles,null,2)}`);
+    }
     return folderParams;
 }
 
@@ -992,13 +977,13 @@ function sleep(ms) {
  * @param {*} folderParams
  */
 async function unMountUserData(folderParams) {
-    if (folderParams.mounted) {
-        logger.info(`Unmounting user data. mount: ${folderParams.dataTempFolder}`);
-        await commonUtils.execCmd('umount',[folderParams.dataTempFolder]);
-        folderParams.mounted = false;
-        if (folderParams.mountLock) {
-            await folderParams.mountLock.release();
-            folderParams.mountLock = null
+    if (folderParams.updatesFolder) {
+        let updateFiles = folderParams.updateFiles;
+        if (updateFiles && updateFiles.length > 0) {
+            const str = JSON.stringify(updateFiles);
+            logger.info(`Unmounting user data. save updates folder: ${folderParams.updatesFolder}, updateFiles: ${str}`);
+            const file = commonUtils.buildPath(folderParams.updatesFolder,"updates.json");
+            await fsp.writeFile(file,str);
         }
     }
 }
@@ -1051,7 +1036,7 @@ function addSettingsToSpecificDevice(regEmail, deviceid, paramName, paramValues,
             });
         }
     ],function(err){
-        if (folderParams && folderParams.mounted) {
+        if (folderParams && folderParams.updatesFolder) {
             unMountUserData(folderParams).then(() => {
                 callback(err);
             }).catch(errUn => {
@@ -1151,9 +1136,10 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
 
     var folderName;
     let uid;
-    if (dockerPlatform && folderParams.mounted) {
-        folderName = commonUtils.buildPath(folderParams.dataTempFolder,"data");
-        uid = 1000;
+    if (dockerPlatform && folderParams.updatesFolder) {
+        folderName = commonUtils.buildPath(folderParams.updatesFolder,"user","10");
+        // uid = 1000;
+        uid = 1001000;
     } else {
         folderName = commonUtils.buildPath(folderParams.userFolder,"user");
         uid = 101000;
@@ -1163,12 +1149,15 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
     logger.info(`saveSettingsUpdateFile. fileName: ${fileName}`);
     async.series(
         [
+            // function(callback) {
+            //     fs.stat(folderName, function(err, stat) {
+            //         callback(err);
+            //     });
+            // },
             function(callback) {
-                fs.stat(folderName, function(err, stat) {
-                    callback(err);
-                });
-            },
-            function(callback) {
+                if (folderParams.updatesFolder) {
+                    folderParams.updateFiles.push(commonUtils.buildPath("user","10",Common.settingsfolder));
+                }
                 fs.mkdir(settingsFolder, { recursive: true }, function(err) {
                     if (err && err.code == 'EEXIST') {
                         callback(null);
@@ -1188,6 +1177,9 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
                 changeModeOwner(settingsFolder, opts, callback);
             },
             function(callback) {
+                if (folderParams.updatesFolder) {
+                    folderParams.updateFiles.push(commonUtils.buildPath("user","10",Common.settingsfolder,settingsFileName));
+                }
                 fs.writeFile(fileName, str, callback);
             },
             function(callback) {
@@ -1991,8 +1983,8 @@ function loadSettingsUpdateFile(userName, deviceID, settingsFileName,  dockerPla
     }
 
     var folderName;
-    if (dockerPlatform && folderParams.mounted) {
-        folderName = commonUtils.buildPath(folderParams.dataTempFolder,"data");
+    if (dockerPlatform && folderParams.updatesFolderd) {
+        folderName = commonUtils.buildPath(folderParams.updatesFolder,"data","user","10");
     } else {
         folderName = commonUtils.buildPath(folderParams.userFolder,"user");
     }
@@ -2001,7 +1993,7 @@ function loadSettingsUpdateFile(userName, deviceID, settingsFileName,  dockerPla
     Common.fs.readFile(fileName, function(err, data) {
         if (err) {
             //logger.error("Error in loadSettingsUpdateFile: " + err);
-            callback(err, {});
+            callback(null, {}); // ignore error and return empoty object
             return;
         }
         //logger.info("loaded file: " + data.toString());
@@ -2308,7 +2300,7 @@ module.exports = {
     updateAppProgress,
     getDefaultApps,
     mountUserData,
-    // unMountUserData,
+    unMountUserData,
     resizeUserData,
 
 };
