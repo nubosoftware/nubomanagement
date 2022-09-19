@@ -57,9 +57,10 @@ function startNPlatforms(n, opts, callback) {
                             logger.error("ERROR: " + err);
                             logger.error("ERROR: cannot fulfill number of platforms");
                             logger.error("ERROR: fix platformParams.platformPoolSize/platformParams.maxCapacity to meet the reality");
-                            setTimeout(function() {
-                                cb(null);
-                            }, 60 * 1000);
+                            // setTimeout(function() {
+                            //     cb(null);
+                            // }, 60 * 1000);
+                            cb(null);
                         } else {
                             cb(null);
                         }

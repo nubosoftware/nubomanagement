@@ -1321,7 +1321,8 @@ function createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime,
                 if (newUserFile.endsWith(".img")) {
                     logger.info(`Docker android platform - no need for new user file`);
                     callback(null, exists);
-                    // const imgFile = commonUtils.buildPath(dataFolder,"data.img");
+                    // const imgFile = commonUtils.buildPath(dataFolder,"user.img");
+                    // logger.info(`Copy new user image to: ${imgFile}`);
                     // fs.copyFile(newUserFile,imgFile,function(err) {
                     //     if (err) {
                     //         logger.error(`Copy img file error: ${err}`,err);
