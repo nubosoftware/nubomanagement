@@ -7,13 +7,12 @@
         "build": "rm -rf dist && node --max_old_space_size=10240 ./node_modules/webpack/bin/webpack.js --progress=profile --mode production"
     },
     "dependencies": {
+        "@nubosoftware/node-static": "^0.7.11",
         "@nubosoftware/nubo-menu": "^1.0.0",
         "@nubosoftware/nubo-restify-shutdown": "^1.1.0",
         "@nubosoftware/nubo-validateconstraints": "^0.1.11",
         "@nubosoftware/permission-parser": "^0.1.10",
         "@nubosoftware/winston-syslog": "^2.5.0",
-        "@nubosoftware/node-static": "^0.7.11",
-        "ldapjs": "0.7.1",
         "accesslog": "0.0.2",
         "async": "^2.6.1",
         "axios": "^0.24.0",
@@ -25,6 +24,7 @@
         "generic-pool": "2.4.2",
         "html-entities": "2.3.2",
         "jsonwebtoken": "^8.5.1",
+        "ldapjs": "0.7.1",
         "mkdirp": "^1.0.4",
         "moment-timezone": "0.5.34",
         "mysql": "^2.18.1",
