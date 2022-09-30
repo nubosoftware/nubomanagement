@@ -33,7 +33,7 @@ function updateProfileDetails(req, res, next) {
     var mobilePhone = req.params.mobilePhone;
     var manager = req.params.manager;
     var country = req.params.country;
-    var recording = req.params.country;
+    var recording = parseInt(req.params.recording);
 
     if (status != 1) {
         res.send({
@@ -72,7 +72,8 @@ function updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, ma
         manager : manager,
         country : country
     };
-    if (typeof recording !== 'undefined' && !isNaN(recording)) {
+    if (typeof recording !== 'undefined' && !isNaN(recording) && recording != '') {
+        logger.info(`recording: [${recording}]`);
         obj.recording = recording;
     }
     Common.db.User.update(obj , {
@@ -88,9 +89,10 @@ function updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, ma
 
     }).catch(function(err) {
         var errormsg = 'Error on updating profile details: ' + err;
+        logger.error(errormsg,err);
         res.send({
             status : 0,
-            message : err
+            message : errormsg
         });
         return;
     });
