@@ -955,8 +955,8 @@ var apiAccess = function(req, res) {
         if (arg1 && arg2) {
             req.params.email = arg1;
             req.params.imei = arg2;
+            if (!checkPerm('/profiles','w')) return;
             if (req.method == "POST") {
-                if (!checkPerm('/profiles','w')) return;
                 let action = req.params.action;
                 if (action == "endSession") {
                     requestType = "killDeviceSession";
@@ -967,8 +967,14 @@ var apiAccess = function(req, res) {
                     requestType = "activateDevice";
                     req.params.activate = "Y";
                 }
+            } else if (req.method == "PUT") {
+                activateDeviceModule.addDevice(req,res);
+                return;
+            } else if (req.method == "DELETE") {
+                activateDeviceModule.deleteDevice(req,res);
+                return;
             }
-        } else if (req.method == "GET") {
+        } else if (arg1 && req.method == "GET") {
             if (!checkPerm('/profiles','r')) return;
             req.params.email = arg1;
             getProfilesModule.getDevices(req,res);

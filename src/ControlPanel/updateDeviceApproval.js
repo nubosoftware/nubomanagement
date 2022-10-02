@@ -38,6 +38,16 @@ function updateDeviceApproval(req, res, domain) {
         }
     }
 
+    let allowdevicereg = req.params.allowdevicereg;
+    if (allowdevicereg == undefined) {
+        allowdevicereg = 1;
+    }
+    if (allowdevicereg != 1 && allowdevicereg != 0) {
+        logger.info("updateDeviceApproval. Invalid allowdevicereg: "+allowdevicereg);
+        status = 0;
+        msg = "Invalid parameters";
+    }
+
     if (status != 1) {
         res.send({
             status : status,
@@ -45,14 +55,15 @@ function updateDeviceApproval(req, res, domain) {
         });
         return;
     }
-    updateDeviceApprovalToDB(res, deviceApprovalType, notifierAdmin, domain);
+    updateDeviceApprovalToDB(res, deviceApprovalType, notifierAdmin, allowdevicereg, domain);
 }
 
-function updateDeviceApprovalToDB(res, deviceApprovalType, notifierAdmin, domain) {
+function updateDeviceApprovalToDB(res, deviceApprovalType, notifierAdmin, allowdevicereg, domain) {
 
     Common.db.Orgs.update({
         deviceapprovaltype : deviceApprovalType,
-        notifieradmin : notifierAdmin
+        notifieradmin : notifierAdmin,
+        allowdevicereg
     }, {
         where : {
             maindomain : domain

@@ -28,7 +28,7 @@ function getAdminDeviceApproval(req, res, domain) {
 function getAdminDeviceApprovalFromDB(res, domain) {
 
     Common.db.Orgs.findAll({
-        attributes : [ 'deviceapprovaltype', 'notifieradmin' ],
+        attributes : [ 'deviceapprovaltype', 'notifieradmin' , 'allowdevicereg' ],
         where : {
             maindomain : domain
         },
@@ -58,12 +58,14 @@ function getAdminDeviceApprovalFromDB(res, domain) {
             // get all values of current row
             var deviceApprovalType = row.deviceapprovaltype != null ? row.deviceapprovaltype : '';
             var notifierAdmin = row.notifieradmin != null ? row.notifieradmin : '';
+            let allowdevicereg = row.allowdevicereg;
 
             res.send({
                 status : '1',
                 message : "get deviceApprovalType and notifierAdmin successfully",
                 deviceApprovalType : deviceApprovalType,
-                notifierAdmin : notifierAdmin
+                notifierAdmin : notifierAdmin,
+                allowdevicereg
             });
             return;
         }

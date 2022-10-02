@@ -146,6 +146,35 @@ async function activate(req, res, next) {
         email = email.toLowerCase();
         domainEmail = domainEmail.toLowerCase();
 
+        // load organization by domain
+        let org = await Common.db.Orgs.findOne({
+            attributes: ['allowdevicereg','notifieradmin', 'deviceapprovaltype'],
+            where: {
+                maindomain: domainEmail
+            },
+        });
+        if (!org) {
+            // this is a new domain
+            org = {
+                allowdevicereg: 1,
+                notifieradmin: "",
+                deviceapprovaltype: 0
+            };
+        }
+        if (org.allowdevicereg != 1) {
+            // if device registration is not allowed - check that such device exists
+            let userDevice = await Common.db.UserDevices.findOne({
+                attributes : ['email'],
+                where : {
+                    email : email,
+                    imei : deviceid
+                },
+            });
+            if (!userDevice) {
+                throw new APIException("Device doesn't exist", Common.STATUS_DISABLE_USER_DEVICE);
+            }
+        }
+
         // insert activationKey row to db
         await Common.db.Activation.create({
             activationkey: token,
@@ -432,6 +461,7 @@ async function activate(req, res, next) {
     } catch (err) {
         if (!responseSent) {
             if (err instanceof APIException) {
+                logger.info(`Activate request error. status: ${err.status}, message: ${err.message}`);
                 res.send({
                     status: err.status,
                     message: err.message

@@ -11,6 +11,110 @@ function loadAdminParamsFromSession(req, res, callback) {
     setting.loadAdminParamsFromSession(req, res, callback);
 }
 
+
+async function addDevice(req,res) {
+    try {
+        let adminLogin = req.nubodata.adminLogin;
+        if (!adminLogin) {
+            res.writeHead(403, {
+                "Content-Type": "text/plain"
+            });
+            res.end("403 Forbidden\n");
+            return;
+        }
+        const maindomain = adminLogin.loginParams.mainDomain;
+        let email = req.params.email;
+        if (!email) {
+            throw new Error("Invalid email");
+        }
+        let imei = req.params.imei;
+        if (!imei) {
+            throw new Error("Invalid IMEI");
+        }
+        let devicename = req.params.devicename;
+        if (!devicename) {
+            throw new Error("Invalid device name");
+        }
+        let userDevice = await Common.db.UserDevices.findOne({
+            attributes : ['email'],
+            where : {
+                email : email,
+                imei : imei
+            },
+        });
+        if (userDevice) {
+            throw new Error("Device already exist");
+        }
+        userDevice = await Common.db.UserDevices.create({
+            imei,
+            email,
+            devicename,
+            active: 1,
+            maindomain: maindomain,
+            inserttime: new Date()
+        });
+        res.send({
+            status : Common.STATUS_OK,
+            message : `${err}`,
+            device: userDevice
+        });
+
+    } catch (err) {
+        logger.error(`addDevice. Error: ${err} `,err);
+        res.send({
+            status : Common.STATUS_ERROR,
+            message : `${err}`
+        });
+        return;
+    }
+}
+
+async function deleteDevice(req,res) {
+    try {
+        let adminLogin = req.nubodata.adminLogin;
+        if (!adminLogin) {
+            res.writeHead(403, {
+                "Content-Type": "text/plain"
+            });
+            res.end("403 Forbidden\n");
+            return;
+        }
+        const maindomain = adminLogin.loginParams.mainDomain;
+        let email = req.params.email;
+        if (!email) {
+            throw new Error("Invalid email");
+        }
+        let imei = req.params.imei;
+        if (!imei) {
+            throw new Error("Invalid IMEI");
+        }
+
+        logger.info(`Delete device: ${email}`);
+
+        await Common.db.UserDevices.destroy({
+            where : {
+                imei,
+                email,
+                maindomain
+            }
+        });
+
+
+        res.send({
+            status : Common.STATUS_OK,
+            message : "Request was fulfilled"
+        });
+
+    } catch (err) {
+        logger.error(`deleteDevice. Error: ${err} `,err);
+        res.send({
+            status : Common.STATUS_ERROR,
+            message : `${err}`
+        });
+        return;
+    }
+}
+
 function activateDevice(req, res, next) {
     // https://login.nubosoftware.com/activateProfiles?session=[]&email[]&email=[]..
     res.contentType = 'json';
@@ -220,7 +324,9 @@ function addUserDeviceToSuspendList(email, imei) {
 }
 
 var ActivateDevice = {
-    get : activateDevice
+    get : activateDevice,
+    addDevice,
+    deleteDevice
 };
 
 module.exports = ActivateDevice;
