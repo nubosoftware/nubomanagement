@@ -58,11 +58,11 @@ function updateProfileDetails(req, res, next) {
             var domain = "nubosoftware.com";
         }
 
-        updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, manager, country, email, domain,recording);
+        updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, manager, country, email, domain,recording,req.params);
     });
 }
 
-function updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, manager, country, email, domain,recording) {
+function updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, manager, country, email, domain,recording,params) {
 
     let obj = {
         firstname : first,
@@ -73,8 +73,14 @@ function updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, ma
         country : country
     };
     if (typeof recording !== 'undefined' && !isNaN(recording) && recording != '') {
-        logger.info(`recording: [${recording}]`);
+        // logger.info(`recording: [${recording}]`);
         obj.recording = recording;
+    }
+    if (params.orguser != undefined) {
+        obj.orguser = params.orguser;
+    }
+    if (params.orgemail != undefined) {
+        obj.orgemail = params.orgemail;
     }
     Common.db.User.update(obj , {
         where : {
