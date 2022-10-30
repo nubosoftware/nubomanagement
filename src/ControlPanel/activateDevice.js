@@ -55,7 +55,7 @@ async function addDevice(req,res) {
         });
         res.send({
             status : Common.STATUS_OK,
-            message : `${err}`,
+            message : "Request was fulfilled",
             device: userDevice
         });
 

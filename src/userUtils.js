@@ -1581,6 +1581,7 @@ function validateUserFolders(UserName, deviceID, deviceType, keys, callback) {
         },
         function(callback) {
             Common.fs.exists(folder, function(exists) {
+                logger.info(`validateUserFolders. folder: ${folder}, exists: ${exists}`);
                 if (!exists) {
                     var msg = "Folder " + folder + " doesn't exists!";
                     logger.info(msg);
@@ -1595,10 +1596,10 @@ function validateUserFolders(UserName, deviceID, deviceType, keys, callback) {
             if (deviceType == "Desktop") {
                 chfolder = folder;
             } else if (Common.platformType == "docker") {
-                //chfolder = folder + '/data.img';
+                chfolder = folder + '/user.img';
                 // no need to validate user folder in docker mobile platform
-                callback(null);
-                return;
+                // callback(null);
+                // return;
             }
             Common.fs.exists(chfolder, function(exists) {
                 if (!exists) {

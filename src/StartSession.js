@@ -1244,9 +1244,16 @@ function validateUserFoldersExist(session, keys, time, hrTime, callback) {
     } else {
         validateUserFolders(email, deviceID, deviceType, key, function(err) {
             if (err || demo) {
+                logger.info("validateUserFoldersExist. creating user folders");
                 require('./userUtils.js').createUserFolders(email, deviceID, deviceType, true, time, hrTime,
                     function(err) {
-                        validateUserFolders(email, deviceID, deviceType, key, callback);
+                        // validateUserFolders(email, deviceID, deviceType, key, callback);
+                        if (!err) {
+                            logger.info("validateUserFoldersExist. user folders created");
+                        } else {
+                            logger.error(`validateUserFoldersExist. createUserFolders error: ${err}`,err);
+                        }
+                        callback(err);
                     }, demo
                 );
             } else
