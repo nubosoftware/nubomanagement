@@ -563,13 +563,63 @@ function AddAppStoreSettingsToNewDevice(regEmail, deviceid,cb) {
                 repo_address: repo_address
             };
             logger.info("AddAppStoreSettingsToNewDevice. repo_address: "+repo_address);
-            addSettingsToSpecificDevice(regEmail, deviceid, "appstore", values, "appstore.json", () => {
+            addSettingsToSpecificDevice(regEmail, deviceid, "appstore", values, "appstore.json","com.nubo.appstore", () => {
                 cb();
             });
         });
     } else {
         cb();
     }
+}
+
+/**
+ * Add app restriction (app configuration) file to specific device
+ * @param {} email
+ * @param {*} deviceid
+ * @param {*} packageName
+ * @param {*} values
+ */
+async function addAppRestrictionsToDevice(email,deviceid,packageName,values) {
+    const convert = require('xml-js');
+    let entries = [];
+    for (const key in values) {
+        entries.push({
+            _attributes: {
+                key: key,
+                type: "s"
+            },
+            _text: values[key]
+        })
+    }
+    let obj = {
+        "_declaration":{"_attributes":{"version":"1.0","encoding":"utf-8"}},
+        restrictions: {
+            entry: entries
+        }
+    };
+
+    let xmlStr = convert.js2xml(obj, { compact: true, spaces: 2 });
+
+    let folderParams = await mountUserData(email,deviceid,true);
+    //system/users/10/res_com.microsoft.office.outlook.xml
+    let folderLocal = commonUtils.buildPath(folderParams.updatesFolder,"system","users","10");
+    let folderAndroid = commonUtils.buildPath("system","users","10");
+    folderParams.updateFiles.push(folderAndroid);
+    await fsp.mkdir(folderLocal,{recursive: true});
+    await fsp.chown(folderLocal,1000,1000);
+    await fsp.chmod(folderLocal,'700');
+
+    let fileName = `res_${packageName}.xml`;
+    let fileLocal = commonUtils.buildPath(folderLocal,fileName);
+    let fileAndroid = commonUtils.buildPath(folderAndroid,fileName);
+    folderParams.updateFiles.push(fileAndroid);
+    logger.info(`addAppRestrictionsToDevice. ${fileLocal}: ${xmlStr}`);
+    await fsp.writeFile(fileLocal,xmlStr);
+    await fsp.chown(fileLocal,1000,1000);
+    await fsp.chmod(fileLocal,'600');
+
+    await unMountUserData(folderParams);
+
 }
 
 
@@ -988,17 +1038,30 @@ async function unMountUserData(folderParams) {
     }
 }
 
-function addSettingsToSpecificDevice(regEmail, deviceid, paramName, paramValues, settingsFileName, callback) {
+function addSettingsToSpecificDevice(regEmail, deviceid, paramName, paramValues, settingsFileName, packageName, callback ) {
     let settings;
     if (typeof settingsFileName === "function") {
         callback = settingsFileName;
         settingsFileName = "startup.json";
+    }
+    if (typeof packageName === "function") {
+        callback = packageName;
+        packageName = null;
     }
     if (!settingsFileName) {
         settingsFileName = "startup.json";
     }
     let dockerPlatform = (Common.platformType == "docker");
     let folderParams;
+    if (packageName && dockerPlatform) {
+        addAppRestrictionsToDevice(regEmail,deviceid,packageName,paramValues).then(() => {
+            callback();
+        }).catch(err => {
+            logger.error(`addAppRestrictionsToDevice error: ${err}`,err);
+            callback(err);
+        });
+        return;
+    }
 
     async.series([
         function(callback) {
@@ -2239,8 +2302,6 @@ function updateAppProgress(appType,packageName, fileName, versionName, versionCo
         } else {
             // found packagename in db, update result
             Common.db.Apps.update({
-                // TODO - below comment need to be removed when Platform per organization is committed
-                //maindomain : maindomain,
                 apptype: appType,
                 filename: fileName,
                 versionname: versionName,
@@ -2253,8 +2314,7 @@ function updateAppProgress(appType,packageName, fileName, versionName, versionCo
             }, {
                     where: {
                         packagename: packageName,
-                        // TODO - below comment need to be removed when Platform per organization is committed
-                        //maindomain : maindomain
+                        maindomain : maindomain
                     }
                 }).then(function () {
                     callback(null);
