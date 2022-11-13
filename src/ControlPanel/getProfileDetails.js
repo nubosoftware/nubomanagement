@@ -268,7 +268,7 @@ function getProfileDetailsFromDB(res, email, domain,webCP) {
     // get devices
     function(callback) {
         Common.db.UserDevices.findAll({
-            attributes : ['devicename', 'active', 'imei', 'inserttime', 'imsi', 'gateway', 'platform'],
+            attributes : ['devicename', 'active', 'imei', 'inserttime', 'imsi', 'gateway', 'platform','localid'],
             order: [['platform','DESC']],
             where : {
                 email : email,
@@ -292,6 +292,7 @@ function getProfileDetailsFromDB(res, email, domain,webCP) {
                     var imei = row.imei != null ? row.imei : '';
                     var imsi = row.imsi != null ? row.imsi : '';
                     var insertTime = row.inserttime != null ? row.inserttime : '';
+                    var localid = row.localid > 0 ? row.localid : '';
 
                     var isOnline = 0;
                     if (platform && platform.length > 0 && gateway && gateway.length > 0) {
@@ -307,6 +308,7 @@ function getProfileDetailsFromDB(res, email, domain,webCP) {
                             isActive : isActive,
                             gateway : gateway,
                             platform : platform,
+                            localid: localid,
                             IMEI : imei,
                             IMSI : imsi,
                             insertTime : insertTime,

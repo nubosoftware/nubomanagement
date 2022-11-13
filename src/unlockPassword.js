@@ -45,13 +45,20 @@ function resendUnlockPasswordLink(req, res, next) {
             return;
 
         } else {
-            checkPasscode.findUserNameSendEmail(email, deviceid,req);
-            logger.info("resendUnlockPasswordLink: resent unlock email to: " + email);
-            res.send({
-                status : Common.STATUS_OK,
-                message : 'unlock passcode email sent to user'
+            checkPasscode.findUserNameSendEmail(email, deviceid,activationKey,req).then(function(_deviceapprovaltype) {
+                logger.info("resendUnlockPasswordLink: resent unlock email to: " + email);
+                res.send({
+                    status : Common.STATUS_OK,
+                    message : 'unlock passcode email sent to user',
+                    deviceapprovaltype: _deviceapprovaltype
+                });
+            }).catch(function(err) {
+                logger.error("resendUnlockPasswordLink error: " + err,err);
+                res.send({
+                    status : Common.STATUS_ERROR,
+                    message : 'Internal Error'
+                });
             });
-            return;
         }
     });
 

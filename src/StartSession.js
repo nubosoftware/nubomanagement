@@ -1049,7 +1049,7 @@ function endSession(sessionID, callback, closeSessionMsg) {
                         },
                         // remove platform/gateway assosiation to user device
                         function(callback) {
-                            User.updateUserConnectedDevice(email, realDeviceID, null, null, sessLogger, function(err) {
+                            User.updateUserConnectedDevice(email, realDeviceID, null, null,  null, sessLogger, function(err) {
                                 if (err) {
                                     callback("failed removing platform/gateway assosiation of user device")
                                     return;
@@ -1521,7 +1521,7 @@ function cleanUserSessionBuild(buildStatus, email, deviceID, session, callback) 
     async.series([
         function(callback) {
             if (buildStatus.userConnectedDeviceUpdated)
-                User.updateUserConnectedDevice(email, deviceID, null, null, logger, function(err) {
+                User.updateUserConnectedDevice(email, deviceID, null, null,  null, logger, function(err) {
                     if (err)
                         logger.error("cleanUserSessionBuild: failed deleteing platform and gw of user");
                     callback(null);
@@ -1540,7 +1540,7 @@ function cleanUserSessionBuild(buildStatus, email, deviceID, session, callback) 
 
                     //empty list - only one device tried to connect
                     if (userDevices.length == 0) {
-                        User.updateUserConnectedDevice(email, deviceID, null, null, logger, function(err) {
+                        User.updateUserConnectedDevice(email, deviceID, null, null,  null, logger, function(err) {
                             if (err) {
                                 logger.error("cleanUserSessionBuild: failed deleteing user data center");
                             }
@@ -2122,7 +2122,7 @@ function buildUserSession(login, dedicatedPlatID, timeZone, time, hrTime, logger
                         });
 
                         //update user-device connected platform and gw
-                        User.updateUserConnectedDevice(email, login.getDeviceID(), session.params.platid, session.params.gatewayIndex, logger, function(err) {
+                        User.updateUserConnectedDevice(email, login.getDeviceID(), session.params.platid, session.params.gatewayIndex,session.params.localid , logger, function(err) {
                             if (err) {
                                 callback("failed updating connected platform and gateway of the session")
                                 return;

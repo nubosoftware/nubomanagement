@@ -125,6 +125,7 @@ function activationLink(req, res, next) {
         },
         (cb) => {
             // check the validity of the activation row found
+            logger.info(`activationLink: email: ${email} status: ${row.status}, deviceid: ${row.deviceid}`);
             if (row.status == 0) {
                 // valid actication pending row
 
@@ -291,6 +292,24 @@ function activationLink(req, res, next) {
                             cb(err);
                             return;
                         });
+            } else if (row.status == Common.STATUS_OK) {
+                // already activated
+                // unlock pasword
+                status = 0;
+                Common.db.UserDevices.update({
+                    loginattempts : '0'
+                }, {
+                    where : {
+                        email : email,
+                        imei : row.deviceid
+                    }
+                }).then(function () {
+                    logger.info("UserDevices.update success");
+                }).catch(function (err) {
+                    logger.error("UserDevices.update error: "+err);
+                });
+                msg = "Password unlocked!";
+                cb(msg);
             } else {
                 status = 1;
                 // invalid parameter

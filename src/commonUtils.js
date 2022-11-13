@@ -192,6 +192,26 @@ function execCmd(cmd,params,options) {
     });
 }
 
+
+/**
+ * Genrate random X digit number
+ * @param {*} length
+ * @returns
+ */
+function generateRandomSMSCode(length) {
+    if (!length) {
+        length = Common.randomSMSCodeLength;
+        if (!length) {
+            length = 5;
+        }
+    }
+    var code = "";
+    for (var i = 0; i < length; i++) {
+        code += Math.floor(Math.random() * 10);
+    }
+    return code;
+}
+
 module.exports = {
     webclientAllowedToaccess: webclientAllowedToaccess,
     checkDataCenterStatus: checkDataCenterStatus,
@@ -200,5 +220,6 @@ module.exports = {
     getUploadDir: getUploadDir,
     moveFile: moveFile,
     execCmd,
-    ExecCmdError
+    ExecCmdError,
+    generateRandomSMSCode
 }

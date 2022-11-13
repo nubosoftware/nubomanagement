@@ -12,6 +12,7 @@ let locale = require('./locale.js').locale;
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 const _ = require('underscore');
+const commonUtils = require('./commonUtils.js');
 
 var isFirstTime = "";
 
@@ -107,6 +108,7 @@ function resetPasscode(req, res, next) {
                     //var emailToken = results[0].emailtoken != null ? results[0].emailtoken : '';
                     var devicetype = results[0].devicetype != null ? results[0].devicetype : '';
                     var emailDomain = '';
+                    var deviceapprovaltype = 0;
 
                     User.getUserObj(email, function (userObj) {
                         if (userObj.orgdomain) {
@@ -147,12 +149,7 @@ function resetPasscode(req, res, next) {
                                         activationkey: login.getActivationKey()
                                     }
                                 }).then(function () {
-                                    status = Common.STATUS_OK;
-                                    var msg = "Reset passcode sent";
-                                    res.send({
-                                        status: status,
-                                        message: msg
-                                    });
+
 
                                     Common.db.Orgs.findAll({
                                         attributes: ['notifieradmin', 'deviceapprovaltype'],
@@ -161,14 +158,20 @@ function resetPasscode(req, res, next) {
                                         },
                                     }).complete(function (err, results) {
 
-                                        if (!!err) { // error on fetching org
+                                        if (!!err || !results || results == "") { // error on fetching org
                                             logger.error('Error on get orgs details for ' + emailDomain + ', error: ' + err);
-                                        } else if (!results || results == "") { // no org in DB
-                                            logger.error('Cannot find org + ' + emailDomain);
+                                            returnInternalError(new Error('Error on get orgs details'),res);
                                         } else { // get org details and act accordingly
                                             var row = results[0];
                                             var notifieradmin = row.notifieradmin != null ? row.notifieradmin : '';
-                                            var deviceapprovaltype = row.deviceapprovaltype != null ? row.deviceapprovaltype : 0;
+                                            deviceapprovaltype = row.deviceapprovaltype != null ? row.deviceapprovaltype : 0;
+                                            status = Common.STATUS_OK;
+                                            var msg = "Reset passcode sent";
+                                            res.send({
+                                                status: status,
+                                                message: msg,
+                                                deviceapprovaltype: deviceapprovaltype
+                                            });
 
                                             var senderEmail = Common.emailSender.senderEmail;
                                             var senderName = Common.emailSender.senderName;
@@ -204,8 +207,8 @@ function resetPasscode(req, res, next) {
                                                 } else {
                                                     emailSubject = locale.getValue("resetPasscodeEmailSubject");
                                                 }
-                                                
-                                                
+
+
                                             } else if (deviceapprovaltype == 1) { // manually only by admin
                                                 if (notifieradmin == "PUSH@nubo.local") {
                                                     notifyAdminsByNotification = true;
@@ -218,7 +221,7 @@ function resetPasscode(req, res, next) {
                                                     emailSubject =  _.template(locale.getValue("desktopResetPasscodeEmailSubjectToAdmin", Common.defaultLocale))(templateSettings);
                                                 } else {
                                                     emailSubject = locale.format("resetPasscodeEmailSubjectToAdmin",firstName,lastName);
-                                                }                                                                                                
+                                                }
                                             } else if (deviceapprovaltype == 2) { // both for admin and user
                                                 if (notifieradmin == "PUSH@nubo.local") {
                                                     notifyAdminsByNotification = true;
@@ -231,7 +234,7 @@ function resetPasscode(req, res, next) {
                                                     emailSubject =  _.template(locale.getValue("desktopResetPasscodeEmailSubjectToAdmin", Common.defaultLocale))(templateSettings);
                                                 } else {
                                                     emailSubject = locale.format("resetPasscodeEmailSubjectToAdmin",firstName,lastName);
-                                                }                                                
+                                                }
                                             } else if (deviceapprovaltype == 3) { // send SMS
                                                 toEmail = null;
                                             }
@@ -256,16 +259,16 @@ function resetPasscode(req, res, next) {
                                                     fromname: senderName,
                                                     to: toEmail,
                                                     toname: toName,
-                                                    subject: emailSubject,                                                    
+                                                    subject: emailSubject,
                                                 };
 
                                                 if (Common.isDesktop()) {
                                                     templateSettings.link = resetURL;
                                                     mailOptions.text = _.template(locale.getValue("desktopResetPasscodeEmailBody", Common.defaultLocale))(templateSettings);
-                                                    mailOptions.html = _.template(locale.getValue("desktopResetPasscodeEmailBodyHTML", Common.defaultLocale))(templateSettings);                
+                                                    mailOptions.html = _.template(locale.getValue("desktopResetPasscodeEmailBodyHTML", Common.defaultLocale))(templateSettings);
                                                 } else {
                                                     mailOptions.text = locale.format("resetPasscodeEmailBody",firstName,lastName,deviceText,resetURL);
-                                                    mailOptions.html = locale.format("resetPasscodeEmailBodyHTML",firstName,lastName,deviceText,resetURL,firstName,lastName)                                    
+                                                    mailOptions.html = locale.format("resetPasscodeEmailBodyHTML",firstName,lastName,deviceText,resetURL,firstName,lastName)
                                                 }
 
                                                 // send mail with defined transport object
@@ -307,7 +310,7 @@ function resetPasscode(req, res, next) {
                                                     }
                                                 });
                                             }
-                                            if (deviceapprovaltype == 3) { // send SMS to device phone
+                                            if (deviceapprovaltype == 3) { // send SMS code to device phone
                                                 Common.db.UserDevices.findAll({
                                                     attributes: ['reg_phone_number'],
                                                     where: {
@@ -323,21 +326,24 @@ function resetPasscode(req, res, next) {
                                                         logger.info("UserDevices.findAll not found for email: "+email+", deviceid: "+deviceid);
                                                         return;
                                                     }
-                                                    let phoneNumber = results[0].reg_phone_number;
-                                                    if (phoneNumber != null && phoneNumber.length > 0) {
-
-                                                        let val = Math.floor(10000 + Math.random() * 90000);
-                                                        let smscode = val.toString();
-
+                                                    let phoneNumber = userObj.mobilephone;
+                                                    if (!phoneNumber || phoneNumber.length < 4) {
+                                                        phoneNumber = results[0].reg_phone_number;
+                                                    }
+                                                    if (phoneNumber) {
+                                                        let smscode =commonUtils.generateRandomSMSCode();
                                                         Common.db.Activation.update({
-                                                            emailtoken: smscode
+                                                            emailtoken: smscode,
+                                                            deviceapprovaltype: deviceapprovaltype,
                                                         }, {
                                                             where: {
                                                                 activationkey: login.getActivationKey()
                                                             }
                                                         }).then(function () {
                                                             logger.info("Sending reset password code to " + phoneNumber + ". Code: " + smscode);
-                                                            smsNotification.sendSmsNotificationInternal(phoneNumber, 'Your reset password code: ' + smscode, null, function (message, status) {
+                                                            smsNotification.sendSmsNotificationInternal(phoneNumber,
+                                                                locale.format("resetPasscodeSmsMessage",smscode),
+                                                                null, function (message, status) {
                                                                 logger.info(message);
                                                             });
                                                         }).catch(function (err) {

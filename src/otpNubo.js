@@ -71,8 +71,7 @@ function sendUserOtpCode(login, logger, callback) {
             });
         },
         function(callback) {
-            var val = Math.floor(10000 + Math.random() * 90000);
-            otpcode = val.toString();
+            otpcode = commonUtils.generateRandomSMSCode();
             login.loginParams.otpNuboCode = otpcode;
             login.save(callback);
         },
@@ -161,7 +160,7 @@ function checkUserOtpCodeTOTP(login, SMSCode, logger, callback){
                 }
 
                 if (results[0].otp_token == "") {
-                    logger.info(`Adding new otp token ${SMSCode}`,{mtype: "important"});                    
+                    logger.info(`Adding new otp token ${SMSCode}`,{mtype: "important"});
                     try {
                         totp(SMSCode);
                     } catch (err) {

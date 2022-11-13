@@ -28,6 +28,7 @@ function checkPasscode(req, res, next) {
     res.contentType = 'json';
     var status = Common.STATUS_ERROR;
     var message = 'Internal error';
+    var deviceapprovaltype = 0;
 
     var loginToken = req.params.loginToken;
     var passcode = req.params.passcode;
@@ -267,14 +268,15 @@ function checkPasscode(req, res, next) {
                     status = Common.STATUS_PASSWORD_LOCK;
                     message = "You have incorrectly typed your passcode 3 times. An email was sent to you. Open your email to open your passcode.";
 
-                    findUserNameSendEmail(login.getEmail(), login.getDeviceID(),req);
+                    findUserNameSendEmail(login.getEmail(), login.getDeviceID(),login.getActivationKey(),req).then(function(_deviceapprovaltype) {
+                        deviceapprovaltype = _deviceapprovaltype;
+                        callback(finish);
+                    }).catch(function(err) {
+                        logger.error("checkPasscode. Error in findUserNameSendEmail: " + err,err);
+                        callback(err);
+                    });
 
                     Common.redisClient.del('login_' + loginToken, function(err) {
-                        if (err) {
-                            return callback(err);
-                        }
-
-                        return callback(finish);
                     });
                     // Create event in Eventlog
                     var eventLog = require('./eventLog.js');
@@ -379,7 +381,8 @@ function checkPasscode(req, res, next) {
         logger.info(message,{ mtype: "important"});
         var response = {
             status: status,
-            message: message
+            message: message,
+            deviceapprovaltype: deviceapprovaltype
         };
 
         if (userTrId) {
@@ -408,193 +411,188 @@ function isUsersDeviceActive(isUserActive, isDeviceActive) {
 
 
 
-function findUserNameSendEmail(userEmail, deviceID,req) {
+async function findUserNameSendEmail(userEmail, deviceID,activationKey,req) {
 
-    var status;
-    var msg;
-
-    Common.db.User.findAll({
+    let user = await Common.db.User.findOne({
         attributes: ['firstname', 'lastname', 'mobilephone', 'orgdomain','orgemail'],
         where: {
             email: userEmail,
         },
-    }).complete(function(err, results) {
-
-        if (!!err) {
-            status = Common.STATUS_ERROR;
-            msg = "Internal Error: " + err;
-            logger.info("findUserNameSendEmail:" + msg);
-            return;
-        }
-
-        if (!results || results == "") {
-            status = Common.STATUS_ERROR;
-            msg = "Cannot find user " + userEmail;
-            logger.info("findUserNameSendEmail:" + msg);
-            return;
-        }
-
-        var firstname = results[0].firstname != null ? results[0].firstname : '';
-        var lastname = results[0].lastname != null ? results[0].lastname : '';
-        var mobilePhone = results[0].mobilephone != null ? results[0].mobilephone : '';
-        var mainDomain = results[0].orgdomain != null ? results[0].orgdomain : '';
-        var orgemail = results[0].orgemail != null ? results[0].orgemail : '';
-
-        Common.crypto.randomBytes(48, function(ex, buf) {
-            Common.crypto.randomBytes(48, function(ex, buf) {
-                var loginEmailToken = buf.toString('hex');
-                //update loginemailtoken and send unlock email to user
-
-                Common.db.User.update({
-                    loginemailtoken: loginEmailToken
-                }, {
-                    where: {
-                        email: userEmail
-                    }
-                }).then(function() {
-                    sendNotification(userEmail, firstname, lastname, loginEmailToken, mobilePhone, mainDomain, deviceID,orgemail,req);
-                }).catch(function(err) {
-                    status = Common.STATUS_ERROR;
-                    msg = "Internal Error: " + err;
-                    logger.info("findUserNameSendEmail:update loginemailtoken" + msg);
-                    return;
-                });
-
-            });
-        });
     });
+
+    var firstname = user.firstname != null ? user.firstname : '';
+    var lastname = user.lastname != null ? user.lastname : '';
+    var mobilePhone = user.mobilephone != null ? user.mobilephone : '';
+    var mainDomain = user.orgdomain != null ? user.orgdomain : '';
+    var orgemail = user.orgemail != null ? user.orgemail : '';
+
+    var loginEmailToken = Common.crypto.randomBytes(48).toString('hex');
+    //update loginemailtoken and send unlock email to user
+
+    await Common.db.User.update({
+        loginemailtoken: loginEmailToken
+    }, {
+        where: {
+            email: userEmail
+        }
+    });
+    let deviceapprovaltype = await sendNotification(userEmail, firstname, lastname, loginEmailToken, mobilePhone, mainDomain, deviceID,orgemail,activationKey,req);
+    return deviceapprovaltype;
 }
 
-function sendNotification(email, first, last, loginEmailToken, mobilePhone, mainDomain, deviceID,orgemail,req) {
-    Common.db.Orgs.findAll({
-        attributes: ['notifieradmin', 'deviceapprovaltype'],
-        where: {
-            maindomain: mainDomain
-        },
-    }).complete(function(err, results) {
+async function sendNotification(email, first, last, loginEmailToken, mobilePhone, mainDomain, deviceID,orgemail,activationKey,req) {
 
-        if (!!err) { // error on fetching org
-            logger.error('Error on get orgs details for ' + mainDomain + ', error: ' + err);
-        } else if (!results || results == "") { // no org in DB
-            logger.error('Cannot find org + ' + mainDomain);
-        } else { // get org details and act accordingly
-            var row = results[0];
-            var notifieradmin = row.notifieradmin != null ? row.notifieradmin : '';
-            var deviceapprovaltype = row.deviceapprovaltype != null ? row.deviceapprovaltype : 0;
-
-            var senderEmail = Common.emailSender.senderEmail;
-            var senderName = Common.emailSender.senderName;
-
-            // define to recepient and subject based on device approval type
-            var toEmail = '';
-            var emailSubject = '';
-            var toName = '';
-            var notifyAdminsByNotification = false;
-            let templateSettings;
-            if (Common.isDesktop()) {
-                const Bowser = require("bowser");
-                const browser = Bowser.getParser(req.headers['user-agent']).getBrowser();
-                templateSettings = {
-                    first,
-                    last,
-                    email,
-                    browser: `${browser.name} ${browser.version}`,
-                    ip: req.headers['x-client-ip']
-                }
-            }
-            if (deviceapprovaltype == 0) { // default behavior, user approve himself
-                if (orgemail && orgemail.length > 2) {
-                    toEmail = orgemail;
-                } else {
-                    toEmail = email;
-                }
-                toName = first + " " + last;
-                if (Common.isDesktop()) {
-                    emailSubject = locale.getValue("desktopUnlockPasscodeEmailSubject")
-                } else {
-                    emailSubject = locale.getValue("unlockPasscodeEmailSubject");
-                }
+    try {
+        let row = await Common.db.Orgs.findOne({
+            attributes: ['notifieradmin', 'deviceapprovaltype'],
+            where: {
+                maindomain: mainDomain
+            },
+        });
+        if (!row) {
+            throw new Error("Org not found");
+        }
 
 
-            } else if (deviceapprovaltype == 1) { // manually only by admin
-                if (notifieradmin == "PUSH@nubo.local") {
-                    notifyAdminsByNotification = true;
-                    toEmail = "";
-                } else {
-                    toEmail = notifieradmin;
-                }
-                toName = notifieradmin;
-                if (Common.isDesktop()) {
-                    emailSubject =  _.template(locale.getValue("desktopUnlockPasscodeEmailSubjectToAdmin", Common.defaultLocale))(templateSettings);
-                } else {
-                    emailSubject =  locale.format("unlockPasscodeEmailSubjectToAdmin",first ,last);
-                }
-            } else if (deviceapprovaltype == 2) { // both for admin and user
-                if (notifieradmin == "PUSH@nubo.local") {
-                    notifyAdminsByNotification = true;
-                    toEmail = email;
-                } else {
-                    toEmail = [notifieradmin, email];
-                }
-                toName = '';
-                if (Common.isDesktop()) {
-                    emailSubject =  _.template(locale.getValue("desktopUnlockPasscodeEmailSubjectToAdmin", Common.defaultLocale))(templateSettings);
-                } else {
-                    emailSubject =  locale.format("unlockPasscodeEmailSubjectToAdmin",first ,last);
-                }
+        var notifieradmin = row.notifieradmin != null ? row.notifieradmin : '';
+        var deviceapprovaltype = row.deviceapprovaltype != null ? row.deviceapprovaltype : 0;
 
-            }
+        var senderEmail = Common.emailSender.senderEmail;
+        var senderName = Common.emailSender.senderName;
 
-            if (notifyAdminsByNotification == true) { // notify nubo admins by push notifications
-                let pushTitle = locale.getValue("unlockPasscodeNotifTitle");
-                let pushText = locale.format("unlockPasscodeNotifText",first,last,email );
-                Notifications.sendNotificationToAdmins(mainDomain,pushTitle,pushText);
-            }
-
-            // build reset password URL
-            /*var unlockPasswordURL = Common.dcURL + "html/player/login.html#unlockPassword/" + encodeURIComponent(loginEmailToken)
-            + "/" + encodeURIComponent(email)
-            + "/" + encodeURIComponent(mainDomain)
-            + "/" + encodeURIComponent(deviceID);*/
-            var unlockPasswordURL = `${Common.dcURL}unlockPassword?email=${encodeURIComponent(email)}&loginemailtoken=${encodeURIComponent(loginEmailToken)}&mainDomain=${encodeURIComponent(mainDomain)}&deviceID=${encodeURIComponent(deviceID)}`
-            logger.info("Unlock Link: " + unlockPasswordURL);
-
-            if (toEmail != null && toEmail.length > 0) {
-                // setup e-mail data with unicode symbols
-                var mailOptions = {
-                    from: senderEmail,
-                    // sender address
-                    fromname: senderName,
-                    to: toEmail,
-                    // list of receivers
-                    toname: toName,
-                    subject: emailSubject
-                };
-                if (Common.isDesktop()) {
-                    templateSettings.link = unlockPasswordURL;
-                    mailOptions.text = _.template(locale.getValue("desktopUnlockPasscodeEmailBody", Common.defaultLocale))(templateSettings);
-                    mailOptions.html = _.template(locale.getValue("desktopUnlockPasscodeEmailBodyHTML", Common.defaultLocale))(templateSettings);
-                } else {
-                    mailOptions.text = locale.format("unlockPasscodeEmailBody",first,last);
-                    mailOptions.html = locale.format("unlockPasscodeEmailBodyHTML",first,last,unlockPasswordURL)
-                }
-                logger.info("sent " + email + " unlockpassword email");
-                Common.mailer.send(mailOptions, function(success, message) {
-                    if (!success) {
-                        logger.info("sendgrid error: " + message);
-                        return;
-                    }
-                });
-            }
-
-            // send SMS
-            if (Common.activateBySMS && (deviceapprovaltype == 0 || deviceapprovaltype == 2)) {
-                smsNotification.sendSmsNotificationInternal(mobilePhone, 'Click to unlock your Nubo account ' + unlockPasswordURL, null, function(message, status) {
-                    logger.info(message);
-                });
+        // define to recepient and subject based on device approval type
+        var toEmail = '';
+        var emailSubject = '';
+        var toName = '';
+        var notifyAdminsByNotification = false;
+        let templateSettings;
+        if (Common.isDesktop()) {
+            const Bowser = require("bowser");
+            const browser = Bowser.getParser(req.headers['user-agent']).getBrowser();
+            templateSettings = {
+                first,
+                last,
+                email,
+                browser: `${browser.name} ${browser.version}`,
+                ip: req.headers['x-client-ip']
             }
         }
-    });
+        if (deviceapprovaltype == 0) { // default behavior, user approve himself
+            if (orgemail && orgemail.length > 2) {
+                toEmail = orgemail;
+            } else {
+                toEmail = email;
+            }
+            toName = first + " " + last;
+            if (Common.isDesktop()) {
+                emailSubject = locale.getValue("desktopUnlockPasscodeEmailSubject")
+            } else {
+                emailSubject = locale.getValue("unlockPasscodeEmailSubject");
+            }
+
+
+        } else if (deviceapprovaltype == 1) { // manually only by admin
+            if (notifieradmin == "PUSH@nubo.local") {
+                notifyAdminsByNotification = true;
+                toEmail = "";
+            } else {
+                toEmail = notifieradmin;
+            }
+            toName = notifieradmin;
+            if (Common.isDesktop()) {
+                emailSubject =  _.template(locale.getValue("desktopUnlockPasscodeEmailSubjectToAdmin", Common.defaultLocale))(templateSettings);
+            } else {
+                emailSubject =  locale.format("unlockPasscodeEmailSubjectToAdmin",first ,last);
+            }
+        } else if (deviceapprovaltype == 2) { // both for admin and user
+            if (notifieradmin == "PUSH@nubo.local") {
+                notifyAdminsByNotification = true;
+                toEmail = email;
+            } else {
+                toEmail = [notifieradmin, email];
+            }
+            toName = '';
+            if (Common.isDesktop()) {
+                emailSubject =  _.template(locale.getValue("desktopUnlockPasscodeEmailSubjectToAdmin", Common.defaultLocale))(templateSettings);
+            } else {
+                emailSubject =  locale.format("unlockPasscodeEmailSubjectToAdmin",first ,last);
+            }
+
+        }  else if (deviceapprovaltype == 3) { // send SMS code to device phone
+            let smscode = require('./commonUtils').generateRandomSMSCode();
+            await Common.db.Activation.update({
+                emailtoken: smscode,
+                deviceapprovaltype: deviceapprovaltype,
+            }, {
+                where: {
+                    activationkey: activationKey
+                }
+            });
+
+            logger.info("Sending unlock password code to " + mobilePhone + ". Code: " + smscode);
+            smsNotification.sendSmsNotificationInternal(mobilePhone,
+                locale.format("unlockPasscodeSmsMessage",smscode),
+                null, function (message, status) {
+                logger.info(message);
+            });
+        }
+
+        if (notifyAdminsByNotification == true) { // notify nubo admins by push notifications
+            let pushTitle = locale.getValue("unlockPasscodeNotifTitle");
+            let pushText = locale.format("unlockPasscodeNotifText",first,last,email );
+            Notifications.sendNotificationToAdmins(mainDomain,pushTitle,pushText);
+        }
+
+        // build reset password URL
+        /*var unlockPasswordURL = Common.dcURL + "html/player/login.html#unlockPassword/" + encodeURIComponent(loginEmailToken)
+        + "/" + encodeURIComponent(email)
+        + "/" + encodeURIComponent(mainDomain)
+        + "/" + encodeURIComponent(deviceID);*/
+        var unlockPasswordURL = `${Common.dcURL}unlockPassword?email=${encodeURIComponent(email)}&loginemailtoken=${encodeURIComponent(loginEmailToken)}&mainDomain=${encodeURIComponent(mainDomain)}&deviceID=${encodeURIComponent(deviceID)}`
+        logger.info("Unlock Link: " + unlockPasswordURL);
+
+        if (toEmail != null && toEmail.length > 0) {
+            // setup e-mail data with unicode symbols
+            var mailOptions = {
+                from: senderEmail,
+                // sender address
+                fromname: senderName,
+                to: toEmail,
+                // list of receivers
+                toname: toName,
+                subject: emailSubject
+            };
+            if (Common.isDesktop()) {
+                templateSettings.link = unlockPasswordURL;
+                mailOptions.text = _.template(locale.getValue("desktopUnlockPasscodeEmailBody", Common.defaultLocale))(templateSettings);
+                mailOptions.html = _.template(locale.getValue("desktopUnlockPasscodeEmailBodyHTML", Common.defaultLocale))(templateSettings);
+            } else {
+                mailOptions.text = locale.format("unlockPasscodeEmailBody",first,last);
+                mailOptions.html = locale.format("unlockPasscodeEmailBodyHTML",first,last,unlockPasswordURL)
+            }
+            logger.info("sent " + email + " unlockpassword email");
+            Common.mailer.send(mailOptions, function(success, message) {
+                if (!success) {
+                    logger.info("sendgrid error: " + message);
+                    return;
+                }
+            });
+        }
+
+        // send SMS
+        if (Common.activateBySMS && (deviceapprovaltype == 0 || deviceapprovaltype == 2)) {
+            smsNotification.sendSmsNotificationInternal(mobilePhone, 'Click to unlock your Nubo account ' + unlockPasswordURL, null, function(message, status) {
+                logger.info(message);
+            });
+        }
+
+        return deviceapprovaltype;
+    } catch (err) {
+        logger.error("Error in sendNotification: " + err,err);
+        return 0;
+    }
+
+
 }
 
 var checkPasscode = {

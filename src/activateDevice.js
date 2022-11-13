@@ -13,6 +13,7 @@ const _ = require('underscore');
 const util = require('util');
 
 const { APIException, RedirectException } = require('./exceptions');
+const commonUtils = require('./commonUtils.js');
 
 /**
  * Activate new device
@@ -218,6 +219,34 @@ async function activate(req, res, next) {
             }
         });
 
+        // read paramters from organization (if available)
+        let rows = await Common.db.Orgs.findAll({
+            attributes: ['notifieradmin', 'deviceapprovaltype'],
+            where: {
+                maindomain: domainEmail
+            },
+        });
+        let row;
+        if (!rows || !rows[0]) {
+            // default value if org not found in DB
+            logger.info(`activateDevice. org not found in DB: ${domainEmail}`);
+            row = {
+                notifieradmin: "",
+                deviceapprovaltype: 0
+            }
+        } else {
+            row = rows[0];
+        }
+        if (!row.deviceapprovaltype) {
+            logger.info(`row.deviceapprovaltype not found! row: ${row}`);
+        } else {
+            logger.info(`row.deviceapprovaltype: ${row.deviceapprovaltype}`);
+        }
+        var notifieradmin = row.notifieradmin != null ? row.notifieradmin : '';
+        var deviceapprovaltype = row.deviceapprovaltype != null ? row.deviceapprovaltype : 0;
+        logger.info(`activateDevice. deviceapprovaltype: ${deviceapprovaltype}, domainEmail: ${domainEmail}`);
+
+
         logger.log('info',`Added activation. user: ${email}, device: ${deviceid}`,{
             user: email,
             device: deviceid,
@@ -228,6 +257,7 @@ async function activate(req, res, next) {
         let retObj = {
             status: 0,
             activationKey: token,
+            deviceapprovaltype: deviceapprovaltype,
             message: "Activation link has been sent"
         };
         if (Common.changeClientURL && Common.changeClientURL != "") {
@@ -259,34 +289,7 @@ async function activate(req, res, next) {
             return;
         }
 
-        // prepare notification
-
-        // read paramters from organization (if available)
-        let rows = await Common.db.Orgs.findAll({
-            attributes: ['notifieradmin', 'deviceapprovaltype'],
-            where: {
-                maindomain: domainEmail
-            },
-        });
-        let row;
-        if (!rows || !rows[0]) {
-            // default value if org not found in DB
-            logger.info(`activateDevice. org not found in DB: ${domainEmail}`);
-            row = {
-                notifieradmin: "",
-                deviceapprovaltype: 0
-            }
-        } else {
-            row = rows[0];
-        }
-        if (!row.deviceapprovaltype) {
-            logger.info(`row.deviceapprovaltype not found! row: ${row}`);
-        } else {
-            logger.info(`row.deviceapprovaltype: ${row.deviceapprovaltype}`);
-        }
-        var notifieradmin = row.notifieradmin != null ? row.notifieradmin : '';
-        var deviceapprovaltype = row.deviceapprovaltype != null ? row.deviceapprovaltype : 0;
-        logger.info(`activateDevice. deviceapprovaltype: ${deviceapprovaltype}, domainEmail: ${domainEmail}`);
+        // prepare notifications
 
         var senderEmail = Common.emailSender.senderEmail;
         var senderName = Common.emailSender.senderName;
@@ -354,16 +357,22 @@ async function activate(req, res, next) {
 
         } else if (deviceapprovaltype == 3) { // send SMS to subscriber
             if (phoneNumber === "") {
-                let emailArr = email.split("@");
-                phoneNumber = "+" + emailArr[0];
+                // Remove the option to extract the phone number from the email address without masked id
+                // Instead query the user table for the phone number
+                // let emailArr = email.split("@");
+                // phoneNumber = "+" + emailArr[0];
+                phoneNumber =  userObj.mobilephone;
+                if (!phoneNumber) {
+                    throw new Error("No phone number found for user " + email);
+                }
             } else {
                 phoneNumber = "+" + phoneNumber;
             }
-            var val = Math.floor(10000 + Math.random() * 90000);
-            emailtoken = val.toString();
+            emailtoken = commonUtils.generateRandomSMSCode();
             await Common.db.Activation.update({
                 emailtoken: emailtoken,
-                phone_number: phoneNumber
+                phone_number: phoneNumber,
+                deviceapprovaltype: deviceapprovaltype
             }, {
                 where: {
                     activationkey: token,
@@ -378,7 +387,9 @@ async function activate(req, res, next) {
                 logger.info("Ignore messages to +97255888 numbers (debug only");
                 return;
             }
-            smsNotification.sendSmsNotificationInternal(phoneNumber, 'Your activation code: ' + emailtoken, null, function (message, status) {
+            smsNotification.sendSmsNotificationInternal(phoneNumber,
+                locale.format("activationSmsMessage",emailtoken),
+                null, function (message, status) {
                 logger.info(message);
             });
 

@@ -170,6 +170,7 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         resetpasscode_wipe: Sequelize.INTEGER,
         biometric_token: Sequelize.STRING,
         otp_token: Sequelize.STRING,
+        deviceapprovaltype: Sequelize.INTEGER,
     }, {
         timestamps: false
     });
@@ -359,6 +360,7 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         loginattempts: Sequelize.INTEGER,
         gateway: Sequelize.STRING,
         platform: Sequelize.STRING,
+        localid: Sequelize.INTEGER,
         vpnprofilename: Sequelize.STRING,
         vpnstate: Sequelize.INTEGER,
         vpnclient: Sequelize.STRING,

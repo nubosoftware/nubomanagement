@@ -751,7 +751,11 @@ function parse_configs(parseConfigCB) {
             if (Common.messagesServer) {
                 Common.createRedisMessagesClient = () => {
                     var redisModule = require("redis");
-                    let c = redisModule.createClient(Common.messagesServer);
+                    let conf = Common.messagesServer;
+                    if (!conf.password) {
+                        delete conf.password;
+                    }
+                    let c = redisModule.createClient(conf);
                     return c;
                 }
             }
@@ -997,6 +1001,8 @@ Promise.prototype.complete = function(cb){
         cb(err,null);
     });
 };
+
+
 
 module.exports = Common;
 

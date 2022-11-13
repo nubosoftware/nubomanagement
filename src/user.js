@@ -165,8 +165,8 @@ function getUserDetails(email, callback) {
 
 /**
  * Return few details about the user that require for activation
- * @param {*} email 
- * @returns 
+ * @param {*} email
+ * @returns
  */
 function getUserDetailsPromise(email) {
     return new Promise((resolve, reject) => {
@@ -175,7 +175,7 @@ function getUserDetailsPromise(email) {
                 if (err instanceof Error) {
                     reject(err);
                 } else {
-                    reject(new Error(err));                    
+                    reject(new Error(err));
                 }
                 return;
             }
@@ -235,19 +235,24 @@ function getUserHomeFolder(email) {
     return folder;
 }
 
-function updateUserConnectedDevice(email, imei, platform, gateway, logger, callback) {
+function updateUserConnectedDevice(email, imei, platform, gateway, localid, logger, callback) {
 
     if (platform && !gateway) {
         gateway = "-1";
     }
+    if (!localid || isNaN(localid)) {
+        localid = 0;
+    }
     let values = {
         platform: platform,
-        gateway: gateway
+        gateway: gateway,
+        localid: parseInt(localid)
     };
 
     if (platform && gateway) {
         values.last_login = new Date()
     }
+
 
 
     Common.db.UserDevices.update(values, {
@@ -424,8 +429,8 @@ function getUserDomain(email, callback) {
 
 /**
  * Get orgdomain from user. If user does not exists - parse the domain from the email address
- * @param {} email 
- * @returns 
+ * @param {} email
+ * @returns
  */
 function getUserDomainPromise(email) {
     return new Promise((resolve, reject) => {
@@ -472,12 +477,12 @@ function getUserObj(email, callback) {
 
 /**
  * Get User object. if user does not exists return empty object just with the email
- * @param {*} email 
+ * @param {*} email
  */
 async function getUserObjPromise(email) {
-    let obj = await Common.db.User.findOne({      
+    let obj = await Common.db.User.findOne({
         where: {
-            email: email                                   
+            email: email
         },
     });
     if (obj == null) {

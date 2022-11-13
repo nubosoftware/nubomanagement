@@ -100,7 +100,7 @@ function killDeviceSessionImp(email,imei,domain, callback) {
             if (removeReference) {
                 // delete session from database
                 logger.info("Session not found for user/device. Remove platform/gateway assosiation of user device");
-                User.updateUserConnectedDevice(email, imei, null, null, logger, function(err) {
+                User.updateUserConnectedDevice(email, imei, null, null,  null, logger, function(err) {
                     if (err) {
                         logger.info("failed removing platform/gateway assosiation of user device",err)
                         return;

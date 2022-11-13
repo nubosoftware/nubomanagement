@@ -427,7 +427,7 @@ async function getPlatformDetails(req, res) {
             });
         }
         let results = await Common.db.UserDevices.findAll({
-            attributes: ['email','imei','devicename','gateway','platform'],
+            attributes: ['email','imei','devicename','gateway','platform','localid'],
             where : {
                 platform : platID
             },

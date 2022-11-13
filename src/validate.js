@@ -252,6 +252,7 @@ function checkIfNeedRedirection(playerVersion, activationKey, clientIP, deviceId
                         error = "Activation pending"
                         response = {
                             status: Common.STATUS_ERROR,
+                            deviceapprovaltype: activation.deviceapprovaltype,
                             message: 'Activation pending. Please try again later.'
                         }
                         callback(error);
@@ -363,7 +364,7 @@ function checkIfNeedRedirection(playerVersion, activationKey, clientIP, deviceId
 function getActivationData(activationKey, logger, callback) {
 
     Common.db.Activation.findAll({
-        attributes: ['activationkey', 'status', 'email', 'deviceid', 'firstlogin', 'resetpasscode', 'firstname', 'lastname', 'jobtitle', 'devicetype', 'secondAuthRegistred','expirationdate','biometric_token','otp_token','pushregid'],
+        attributes: ['activationkey', 'status', 'email', 'deviceid', 'firstlogin', 'resetpasscode', 'firstname', 'lastname', 'jobtitle', 'devicetype', 'secondAuthRegistred','expirationdate','biometric_token','otp_token','pushregid','deviceapprovaltype'],
         where: {
             activationkey: activationKey
         },
@@ -520,6 +521,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                         var msg = "Activation pending. Please try again later.";
                         response = {
                             status: Common.STATUS_ERROR,
+                            deviceapprovaltype: activationData.deviceapprovaltype,
                             message: msg
                         }
                         callback(finish);
@@ -548,6 +550,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                             var msg = "Passcode reset pending. Please try again later.";
                             response = {
                                 status: activationData.status,
+                                deviceapprovaltype: activationData.deviceapprovaltype,
                                 message: msg
                             }
                             callback(finish);
@@ -705,6 +708,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                         }
                         error = err;
                         logger.error('validateActivation. getUserDeviceData error: ' + err,err);
+                        console.log(err);
                         callback(finish);
                         return;
                     }
@@ -751,8 +755,10 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                     if (!Common.withService && maxLoginAttempts > 0 && loginattempts  >= maxLoginAttempts) {
                         response = {
                             status: Common.STATUS_PASSWORD_LOCK,
+                            deviceapprovaltype: activationData.deviceapprovaltype,
                             message: "User passcode has been locked. Unlock email was sent. Please contact administrator."
                         }
+                        logger.info('validateActivation: user passcode has been locked. Unlock email was sent. Please contact administrator.');
                         callback(finish);
                         return;
                     }
@@ -910,32 +916,34 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
             }
         ], function(finish) {
             callback(error, response);
-            const getAuthReq = login.getAuthenticationRequired();
-            logger.info(`validate. Common.fastConnection: ${Common.fastConnection}, activationData.firstlogin: ${activationData.firstlogin}, getAuthReq: ${getAuthReq}, typeof getAuthReq: ${typeof getAuthReq}`);
-            if (hideNuboAppPackageName != "" && newProcess && login && activationData && activationData.deviceid) {
-                var email = activationData.email;
-                var deviceid = activationData.deviceid;
-                require('./StartSession.js').closeSessionOfUserDevice(email,deviceid,function(err,closedSession) {
-                    logger.info("Close session for hideNuboAppPackageName");
-                });
-            } else if (!error && Common.fastConnection &&
-                loginToken && login &&
-                (typeof getAuthReq != 'string' || getAuthReq != "true") &&
-                (typeof getAuthReq != 'boolean' || getAuthReq != true) ) {
-            //optimistic login - starting user session...
+            if (response.status == Common.STATUS_OK) {
+                const getAuthReq = login.getAuthenticationRequired();
+                logger.info(`validate. Common.fastConnection: ${Common.fastConnection}, activationData.firstlogin: ${activationData.firstlogin}, getAuthReq: ${getAuthReq}, typeof getAuthReq: ${typeof getAuthReq}`);
+                if (hideNuboAppPackageName != "" && newProcess && login && activationData && activationData.deviceid) {
+                    var email = activationData.email;
+                    var deviceid = activationData.deviceid;
+                    require('./StartSession.js').closeSessionOfUserDevice(email,deviceid,function(err,closedSession) {
+                        logger.info("Close session for hideNuboAppPackageName");
+                    });
+                } else if (!error && Common.fastConnection &&
+                    loginToken && login &&
+                    (typeof getAuthReq != 'string' || getAuthReq != "true") &&
+                    (typeof getAuthReq != 'boolean' || getAuthReq != true) ) {
+                //optimistic login - starting user session...
 
-                logger.info("fast connection enabled, optimistic startsession");
-                var startSessionParams = {
-                    clientIP: clientIP,
-                    loginToken:loginToken,
-                    timeZone: timeZone,
-                    fastConnection: true
+                    logger.info("fast connection enabled, optimistic startsession");
+                    var startSessionParams = {
+                        clientIP: clientIP,
+                        loginToken:loginToken,
+                        timeZone: timeZone,
+                        fastConnection: true
+                    }
+                    require('./StartSession.js').startSessionImp(startSessionParams).then( respParams => {
+                        // logger.info(`Optimistic Start session completed. err: ${JSON.stringify(respParams.err,null,2)}, resObj: ${JSON.stringify(respParams.resObj,null,2)} `);
+                    }).catch(respParams => {
+                        // logger.info(`Optimistic start session failed. err: ${JSON.stringify(respParams.err,null,2)} , resObj: ${JSON.stringify(respParams.resObj,null,2)}`);
+                    });
                 }
-                require('./StartSession.js').startSessionImp(startSessionParams).then( respParams => {
-                    // logger.info(`Optimistic Start session completed. err: ${JSON.stringify(respParams.err,null,2)}, resObj: ${JSON.stringify(respParams.resObj,null,2)} `);
-                }).catch(respParams => {
-                    // logger.info(`Optimistic start session failed. err: ${JSON.stringify(respParams.err,null,2)} , resObj: ${JSON.stringify(respParams.resObj,null,2)}`);
-                });
             }
         });
 

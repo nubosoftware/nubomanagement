@@ -52,7 +52,7 @@ function getOnlineProfiles(req, res) {
                             [Op.ne]: null
                         }
                     },
-                    attributes: ['imei','devicename','gateway','platform'],
+                    attributes: ['imei','devicename','gateway','platform','localid'],
                 }
             ]
         }).then(results => {

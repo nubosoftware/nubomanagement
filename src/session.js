@@ -701,7 +701,7 @@ function reassignAvalibleGatewayForSession(sessId, callback) {
             });
         },
         function(session, callback) {
-            userModule.updateUserConnectedDevice(session.params.email, session.params.deviceid, session.params.platid, session.params.gatewayIndex, logger, function(err) {
+            userModule.updateUserConnectedDevice(session.params.email, session.params.deviceid, session.params.platid, session.params.gatewayIndex, session.params.localid, logger, function(err) {
                 if (err) {
                     logger.error("reassignAvalibleGatewayForSession: failed updating connected platform and gateway of the session");
                     callback(err)

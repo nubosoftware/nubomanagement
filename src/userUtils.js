@@ -739,7 +739,7 @@ function AddTelephonySettingsToNewDevice(regEmail, deviceid,cb) {
         messaging_token_type: device.messaging_token_type
       };
       logger.info("AddTelephonySettingsToNewDevice");
-      addSettingsToSpecificDevice(regEmail,deviceid,"telephony",values,"telephony.json",() => {
+      addSettingsToSpecificDevice(regEmail,deviceid,"telephony",values,"telephony.json","com.nubo.sip",() => {
         cb();
       });
 
@@ -785,6 +785,7 @@ function updateDeviceTelephonySettingsImp(regEmail, deviceid, values) {
                     inserttime: new Date()
                 }).then(fDevice => {
                     device = fDevice;
+                    cb();
                 }).catch(err => {
                     logger.info("Error creating UserDevice: "+ err);
                     cb(err);
@@ -834,24 +835,25 @@ function updateDeviceTelephonySettingsImp(regEmail, deviceid, values) {
             },
             function(callback) {
                 // update the settings file with the new telephony settings
-                addSettingsToSpecificDevice(regEmail,deviceid,"telephony",values,"telephony.json",(err) => {
+                addSettingsToSpecificDevice(regEmail,deviceid,"telephony",values,"telephony.json","com.nubo.sip",(err) => {
                     callback();
                 });
             },
             function(callback) {
                 // notify sipproxy to add/change device
                 let message  = "add,"+ regEmail +","+deviceid;
-                Common.redisClient.publish("sipChannel", message,callback);
-            },
-            function(callback) {
+                logger.info("notify sipproxy to add/change device: "+message);
+                Common.redisClient.publish("sipChannel", message);
                 if (Common.messagesServer && Common.createRedisMessagesClient) {
                     // Update messages server with the new extension
+                    logger.info("Update messagesServer");
                     let params = {
                         "userID" : values.sip_username,
                         "newUser": "true",
                         "password": values.sip_password
                     }
                     let redisMessagesClient = Common.createRedisMessagesClient();
+                    // logger.info("redisMessagesClient: "+redisMessagesClient);
                     redisMessagesClient.hmset('user_'+values.sip_username, params, (err) => {
                         if (err) {
                             logger.info("redisMessagesClient error",err);
@@ -864,6 +866,7 @@ function updateDeviceTelephonySettingsImp(regEmail, deviceid, values) {
                 }
             }
         ],function(err){
+            // logger.info(`updateDeviceTelephonySettings. err: ${err}`);
             if (err) {
                 reject(err);
             } else {

@@ -283,7 +283,7 @@ function setPasscode(req, res, next) {
         function(callback) {
             callback(null);
 
-            
+
         }
     ], function(err) {
 
@@ -311,14 +311,15 @@ var genRandomString = function(length){
 };
 
 var hashPassword = function(password, salt){
+    let encPass;
     if (salt && salt.length > 0) {
-        var hash = crypto.createHmac('sha512', salt); /** Hashing algorithm sha512 */
+        let hash = crypto.createHmac('sha512', salt); /** Hashing algorithm sha512 */
         hash.update(password);
-        var value = hash.digest('hex');
+        encPass = hash.digest('hex');
     } else {
-        var value = Common.encOld(password);
+        encPass = Common.encOld(password);
     }
-    return value;
+    return encPass;
 };
 
 var generateUserSalt = function(username) {
@@ -333,8 +334,8 @@ var generateUserSalt = function(username) {
 /**
  * Internal function used to updated user password.
  * The only a salted hash is saved to the database
- * @param {String} email 
- * @param {String} newPassword 
+ * @param {String} email
+ * @param {String} newPassword
  */
 var updateUserPasswordImp = async function (email,newPassword) {
     let salt = generateUserSalt(email);

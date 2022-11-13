@@ -20,7 +20,7 @@ function updateDeviceApproval(req, res, domain) {
         deviceApprovalType = "0"
     };
 
-    if (deviceApprovalType != "1" && deviceApprovalType != "2" && deviceApprovalType != "0") {
+    if (deviceApprovalType != "1" && deviceApprovalType != "2" && deviceApprovalType != "0" && deviceApprovalType != "3") {
         logger.info("updateDeviceApproval. Invalid deviceApprovalType");
         status = 0;
         msg = "Invalid parameters";
@@ -28,7 +28,7 @@ function updateDeviceApproval(req, res, domain) {
 
     var notifierAdmin = "";
 
-    if (deviceApprovalType != "0") {
+    if (deviceApprovalType != "0" && deviceApprovalType != "3") {
 
         notifierAdmin = req.params.notifierAdmin;
         if (!notifierAdmin || notifierAdmin == "") {

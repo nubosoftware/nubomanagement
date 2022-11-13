@@ -974,7 +974,7 @@ var apiAccess = function(req, res) {
                 activateDeviceModule.deleteDevice(req,res);
                 return;
             }
-        } else if (arg1 && req.method == "GET") {
+        } else if (req.method == "GET") {
             if (!checkPerm('/profiles','r')) return;
             req.params.email = arg1;
             getProfilesModule.getDevices(req,res);
