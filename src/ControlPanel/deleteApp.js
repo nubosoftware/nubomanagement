@@ -22,6 +22,13 @@ function deleteApp(req, res, domain) {
         status = 0;
         msg = "Invalid parameters";
     }
+    let rebuildImage;
+    if (typeof req.params.rebuildImage == 'boolean') {
+        logger.info(`Rebuild image flag: ${req.params.rebuildImage}`);
+        rebuildImage = req.params.rebuildImage;
+    } else {
+        rebuildImage = true;
+    }
 
     if (status != 1) {
         res.send({
@@ -31,11 +38,11 @@ function deleteApp(req, res, domain) {
         return;
     }
 
-        deleteAppDetailsFromDB(res, packageName, domain);
+        deleteAppDetailsFromDB(res, packageName, domain,rebuildImage);
 }
 
 
-function deleteAppFromDB(packagename, domain,cb) {
+function deleteAppFromDB(packagename, domain,rebuildImage, cb) {
     var status;
     var msg;
 
@@ -161,7 +168,7 @@ function deleteAppFromDB(packagename, domain,cb) {
     }, function(callback) {
         // delete the app from image.
         // avialble only in mobile and docker
-        if (Common.isMobile()) {
+        if (Common.isMobile() && rebuildImage) {
             Common.getMobile().appMgmt.deleteAppFromDomain(domain,packagename).then(() => {
                 callback(null);
             }).catch(err => {
@@ -177,12 +184,12 @@ function deleteAppFromDB(packagename, domain,cb) {
     });
 }
 
-function deleteAppDetailsFromDB(res, packagename, domain) {
+function deleteAppDetailsFromDB(res, packagename, domain,rebuildImage) {
 
     var status;
     var msg;
 
-    deleteAppFromDB(packagename, domain,(err,status) => {
+    deleteAppFromDB(packagename, domain,rebuildImage, (err,status) => {
         if (err) {
             res.send({
                 status : '0',

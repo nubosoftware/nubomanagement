@@ -17,6 +17,7 @@ var execFile = require('child_process').execFile;
 var commonUtils = require('./commonUtils.js');
 const { Op } = require('sequelize');
 const { syncBuiltinESMExports } = require('module');
+const { addAppsToProfilesInternal } = require('./ControlPanel/addAppsToProfiles.js');
 const fsp = fs.promises;
 
 function changeModeOwner(file, opts, callback) {
@@ -579,17 +580,27 @@ function AddAppStoreSettingsToNewDevice(regEmail, deviceid,cb) {
  * @param {*} packageName
  * @param {*} values
  */
-async function addAppRestrictionsToDevice(email,deviceid,packageName,values) {
+async function addAppRestrictionsToDevice(email,deviceid,packageName,paramValues) {
     const convert = require('xml-js');
     let entries = [];
-    for (const key in values) {
-        entries.push({
-            _attributes: {
-                key: key,
-                type: "s"
-            },
-            _text: values[key]
-        })
+    logger.info("addAppRestrictionsToDevice. email: "+email+" deviceid: "+deviceid+" packageName: "+packageName+" paramValues: "+JSON.stringify(paramValues));
+    // let testObj = JSON.parse(JSON.stringify(paramValues));
+
+    // Object.keys(testObj).forEach(function(prop,index) {
+    //     logger.info("addAppRestrictionsToDevice. prop: "+prop+" value: "+testObj[prop]);
+    // });
+
+    for (var prop in paramValues) {
+        if (paramValues.hasOwnProperty(prop)) {
+            logger.info(`addAppRestrictionsToDevice. prop: ${prop}`);
+            entries.push({
+                _attributes: {
+                    key: prop,
+                    type: "s"
+                },
+                _text: paramValues[prop]
+            });
+        }
     }
     let obj = {
         "_declaration":{"_attributes":{"version":"1.0","encoding":"utf-8"}},
@@ -613,7 +624,7 @@ async function addAppRestrictionsToDevice(email,deviceid,packageName,values) {
     let fileLocal = commonUtils.buildPath(folderLocal,fileName);
     let fileAndroid = commonUtils.buildPath(folderAndroid,fileName);
     folderParams.updateFiles.push(fileAndroid);
-    logger.info(`addAppRestrictionsToDevice. ${fileLocal}: ${xmlStr}`);
+    //logger.info(`addAppRestrictionsToDevice. ${fileLocal}: ${xmlStr}`);
     await fsp.writeFile(fileLocal,xmlStr);
     await fsp.chown(fileLocal,1000,1000);
     await fsp.chmod(fileLocal,'600');
@@ -824,7 +835,7 @@ function updateDeviceTelephonySettingsImp(regEmail, deviceid, values) {
                     }
                 }
                 device.save().then(function() {
-                    logger.info(`Updateded User device ${regEmail}:${deviceid}, values: ${JSON.stringify(values,null,2)}`);
+                    // logger.info(`Updateded User device ${regEmail}:${deviceid}, values: ${JSON.stringify(values,null,2)}`);
                     callback();
                     return;
                 }).catch(function(err) {
@@ -1041,6 +1052,29 @@ async function unMountUserData(folderParams) {
     }
 }
 
+async function updateAppRestrictions(email, deviceIds) {
+    try {
+        if (!Array.isArray(deviceIds)) {
+            deviceIds = [deviceIds];
+        }
+        // get platform and unum for the device
+        const {
+            platforms,
+            uniquePlatforms,
+            userIdInPlatforms,
+            devices
+        } = await require('./ControlPanel/addAppsToProfiles.js').getUserPlatformsPromise(email, deviceIds);
+        if (platforms && platforms.length > 0) {
+            for (let idx = 0; idx < platforms.length; idx++) {
+                logger.info(`updateFilesToDevice. platid: ${platforms[idx].params.platid}, unum: ${userIdInPlatforms[idx]}`);
+                await platforms[idx].updateAppRestrictions(userIdInPlatforms[idx]);
+            }
+        }
+    } catch (err) {
+        logger.error(`updateFilesToDevice error: ${err}`, err);
+    }
+}
+
 function addSettingsToSpecificDevice(regEmail, deviceid, paramName, paramValues, settingsFileName, packageName, callback ) {
     let settings;
     if (typeof settingsFileName === "function") {
@@ -1057,6 +1091,7 @@ function addSettingsToSpecificDevice(regEmail, deviceid, paramName, paramValues,
     let dockerPlatform = (Common.platformType == "docker");
     let folderParams;
     if (packageName && dockerPlatform) {
+        // logger.info(`addSettingsToSpecificDevice. packageName: ${packageName}, paramValues: ${JSON.stringify(paramValues,null,2)}`);
         addAppRestrictionsToDevice(regEmail,deviceid,packageName,paramValues).then(() => {
             callback();
         }).catch(err => {
@@ -1116,6 +1151,18 @@ function addSettingsToSpecificDevice(regEmail, deviceid, paramName, paramValues,
 }
 
 
+function addSettingsToAllDevices(email, paramName, paramValues) {
+    return new Promise((resolve, reject) => {
+        addSettingsToDevices(email,"none",paramName,paramValues,true,false,function(err){
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    });
+}
+
 function addSettingsToDevices(regEmail, deviceid, paramName, paramValues, updateOtherDevices, updateMainDevice, callback) {
     var foundDevices = {};
     logger.info("addSettingsToDevices. deviceid: " + deviceid + ", updateOtherDevices: " + updateOtherDevices + ", updateMainDevice: " + updateMainDevice);
@@ -1160,7 +1207,7 @@ function addSettingsToDevices(regEmail, deviceid, paramName, paramValues, update
                 var settings = {};
                 settings[paramName] = paramValues;
                 let dockerPlatform = (Common.platformType == "docker");
-                mountUserData(regEmail,deviceid,dockerPlatform).then(folderParams => {
+                mountUserData(regEmail,newDeviceID,dockerPlatform).then(folderParams => {
                     saveSettingsUpdateFile(settings, regEmail, newDeviceID, null, dockerPlatform,folderParams, function(err) {
                         if (err) {
                             logger.error("Error saveSettingsUpdateFile : " + err);
@@ -1168,7 +1215,10 @@ function addSettingsToDevices(regEmail, deviceid, paramName, paramValues, update
                             logger.info("Updated settings for " + regEmail + ", " + newDeviceID);
                         }
                         unMountUserData(folderParams).then(() => {
-
+                            updateAppRestrictions(regEmail,newDeviceID).then(() => {
+                            }).catch(err => {
+                                logger.error(`updateAppRestrictions error: ${err}`,err);
+                            });
                         }).catch(err => {
                             logger.info(`unMountUserData error: ${err}`,err);
                         })
@@ -2367,6 +2417,8 @@ module.exports = {
     mountUserData,
     unMountUserData,
     resizeUserData,
+    updateAppRestrictions,
+    addSettingsToAllDevices
 
 };
 

@@ -135,6 +135,7 @@ var excludeList = {
         '/createOrReturnUserAndDomain': 1,
         '/createDomainForUser': 1,
         '/file/uploadToLoginToken': 1,
+        '/file/uploadDummyFile': 1,
         '/Notifications/notifyExchangeClient': 1,
         '/Notifications/pushNotification': 1,
         '/Notifications/sendNotificationFromRemoteServer': 1,
@@ -158,6 +159,7 @@ var excludeList = {
     'ISADMIN': {
         '/createOrReturnUserAndDomain': 1,
         '/file/uploadToLoginToken': 1,
+        '/file/uploadDummyFile': 1,
         '/createDomainForUser': 1,
         '/Notifications/notifyClient': 1,
         '/Notifications/notifyExchangeClient': 1,
@@ -205,6 +207,7 @@ var excludeList = {
         '/createOrReturnUserAndDomain': 1,
         '/createDomainForUser': 1,
         '/file/uploadToLoginToken': 1,
+        '/file/uploadDummyFile': 1,
         '/Notifications/notifyExchangeClient': 1,
         '/Notifications/pushNotification': 1,
         '/Notifications/sendNotificationFromRemoteServer': 1,

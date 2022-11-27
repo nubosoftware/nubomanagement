@@ -81,14 +81,28 @@ function uploadDummyFile(req, res) {
             async.waterfall( [
                     function(callback) {
                         req.headers['content-type'] = req.headers['content-type'] || "octet-stream";
+                        const ip = req.socket.remoteAddress;
+                        const port = req.socket.remotePort;
+                        logger.info(`uploadDummyFile: ${ip}:${port}`);
                         var form = new formidable.IncomingForm();
                         form.on( 'fileBegin', function(name, file) {
-                            logger.info( "test uploading file" );
+                            logger.info( "uploadDummyFile. fileBegin" );
                             file.path = "/dev/null";
-                        } );
+                        });
+
+                        let lastBytesReceived = 0;
+
+                        form.on('progress', (bytesReceived, bytesExpected) => {
+                            if (bytesReceived - lastBytesReceived > 100000 || bytesReceived == bytesExpected) {
+                                logger.info(`uploadDummyFile: ${bytesReceived}/${bytesExpected} bytes`);
+                                lastBytesReceived = bytesReceived;
+                            }
+                        });
+
+
 
                         form.parse( req, function(err, fields, files) {
-                            logger.logTime( "upload ended" );
+                            logger.logTime( "uploadDummyFile . upload ended" );
                             if (err) {
                                 msg = "Upload error: " + err;
                                 logger.error( msg );

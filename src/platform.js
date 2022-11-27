@@ -798,6 +798,39 @@ var Platform = function(platid, platType, callback, newplatid) {
         });
     };
 
+    this.updateAppRestrictions = function(unum) {
+        return new Promise((resolve, reject) => {
+            var options = {
+                path: `/updateAppRestrictions?unum=${unum}`,
+                method: "GET",
+                dataTimeout: 120 * 1000
+            };
+
+            doPlatformRequest(options, function(err, resData) {
+                if (err) {
+                    logger.error('problem with request: ' + err);
+                    reject(err);
+                    return;
+                } else {
+                    var resObj = {};
+                    try {
+                        //logger.info("updateAppRestrictions: "+resData);
+                        resObj = JSON.parse(resData);
+                    } catch (e) {
+                        logger.error("Invalid response from platform on updateAppRestrictions: " + resData);
+                        reject(e);
+                        return;
+                    }
+                    if (resObj.status === 1) {
+                        resolve();
+                    } else {
+                        reject(new Error("Request return error " + resData));
+                    }
+                }
+            });
+        });
+    };
+
     this.getPackagesListDocker = function(imageName) {
         return new Promise((resolve, reject) => {
             var options = {

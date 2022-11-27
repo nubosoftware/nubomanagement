@@ -881,6 +881,31 @@ var getUserPlatforms = function(email, devices, callback) {
     });
 };
 
+/**
+ * Get list of platfroms that have runnig session of one of user's devices
+ * @param {*} email
+ * @param {*} deviceIds
+ * @returns
+ */
+ function getUserPlatformsPromise(email, deviceIds) {
+    return new Promise((resolve, reject) => {
+        getUserPlatforms(email, deviceIds,
+            function (err, p, u, userIds, devices) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve({
+                    platforms: p,
+                    uniquePlatforms: u,
+                    userIdInPlatforms: userIds,
+                    devices
+                });
+            });
+
+    });
+}
+
 var AddAppsToProfiles = {
     get : addAppsToProfiles,
     lockPackages_user_apps : lockPackages_user_apps,
@@ -894,7 +919,8 @@ var AddAppsToProfiles = {
     loadAdminParamsFromSession : loadAdminParamsFromSession,
     checkAppsInTable : checkAppsInTable,
     addAppsToProfilesInternal : addAppsToProfilesInternal,
-    getUserPlatforms : getUserPlatforms
+    getUserPlatforms : getUserPlatforms,
+    getUserPlatformsPromise
 };
 
 module.exports = AddAppsToProfiles;

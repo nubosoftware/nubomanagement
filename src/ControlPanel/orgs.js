@@ -255,7 +255,7 @@ function deleteOrg(req,res) {
                 },
             }).then(results => {
                 async.eachSeries(results, (item,cb) => {
-                    require('./deleteApp.js').deleteAppFromDB(item.packagename,selectedDomain,(err,status) => {
+                    require('./deleteApp.js').deleteAppFromDB(item.packagename,selectedDomain,false,(err,status) => {
                         if (err) {
                             logger.info(`Error deleting app: ${item.packagename}`,err);
                         } else {
