@@ -235,6 +235,7 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         },
         apptype: Sequelize.STRING,
         filename: Sequelize.STRING,
+        base_image_app: Sequelize.INTEGER,
         versionname : Sequelize.STRING,
         versioncode : Sequelize.STRING,
         appname : Sequelize.STRING,

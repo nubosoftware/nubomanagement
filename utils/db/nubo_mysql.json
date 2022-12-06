@@ -922,4 +922,5 @@ PRIMARY KEY (hardwaredesc, devicemodel));"
 , "1.5.0.1.101" : "ALTER IGNORE TABLE activations MODIFY COLUMN secondAuthRegistred VARCHAR(15);"
 , "1.5.0.1.102" : "ALTER IGNORE TABLE activations MODIFY COLUMN jobtitle VARCHAR(100);"
 , "1.5.0.1.103" : "ALTER TABLE activations ADD COLUMN deviceapprovaltype int default 0 AFTER otp_token;"
+, "1.5.0.1.104" : "ALTER TABLE apps ADD COLUMN base_image_app int default 0 AFTER filename;"
 }
