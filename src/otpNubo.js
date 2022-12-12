@@ -13,6 +13,7 @@ const request = require('request');
 var smsNotification = require('./SmsNotification.js');
 let locale = require('./locale.js').locale;
 const totp = require("totp-generator");
+const commonUtils = require('./commonUtils.js');
 
 
 function sendUserOtpCode(login, logger, callback) {
@@ -67,6 +68,7 @@ function sendUserOtpCode(login, logger, callback) {
                 }
                 callback(null);
             }).catch(err => {
+                logger.error(`Error in User.findAll: ${err}`,err);
                 callback(err);
             });
         },
