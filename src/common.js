@@ -199,6 +199,7 @@ var Common = {
         senderName: "Nubo Support"
     },
     guacAddr: "nubo-guac",
+    pluginsEnabled: false,
     rootDir: process.cwd(),
     reloadSettings: parse_configs
 };
@@ -794,11 +795,40 @@ function parse_configs(parseConfigCB) {
                     return;
                 });
             };
+
+            // TEST SEND TEST EMAIL
+            // var sendOptions = {
+            //     from: Common.emailSender.senderEmail, // sender address
+            //     fromname: Common.emailSender.senderName,
+            //     to: Common.adminEmail, // list of receivers
+            //     toname: Common.adminName,
+            //     subject: `Test Email`, // Subject line
+            //     text: `Test Email Body`
+            // };
+            // logger.info("sendOptions: " + JSON.stringify(sendOptions, null, 2));
+            // Common.mailer.send(sendOptions, function(success, message) {
+            //     logger.info(`Common.mailer.send.  success: ${success}, message: ${message}`);
+            // }); //Common.mailer.send
             callback(null);
         },
         function(callback) {
             Common.constraints = require("@nubosoftware/nubo-validateconstraints")(validate);
             callback(null);
+        },
+         // load plugins
+         function(callback) {
+            if (!Common.pluginsEnabled) {
+                callback(null);
+                return;
+            }
+            const Plugin = require('./plugin');
+            Plugin.loadFromDB().then(() => {
+                logger.info(`Loaded ${Plugin.getLoadedPluginsCount()} plugins`);
+                callback(null);
+            }).catch (err => {
+                logger.error(`Plugin load error: ${err}`,err);
+                callback(null);
+            });
         },
         function(callback) {
             globals.getGlobals().then(globals => {

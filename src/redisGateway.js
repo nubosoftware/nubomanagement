@@ -142,7 +142,7 @@ function validateUpdSession(req, res) {
         },
         function(callback) {
             if (suspend == 0 || suspend == 1) {
-                //logger.info(`validateUpdSession. suspend: ${suspend}, session["suspend"]: ${session["suspend"]}, session["suspendtime"]: ${session["suspendtime"]}`);
+                // logger.info(`validateUpdSession. suspend: ${suspend}, session["suspend"]: ${session["suspend"]}, session["suspendtime"]: ${session["suspendtime"]}`);
                 let totalActiveSeconds = parseInt(session["totalActiveSeconds"]);
                 if (suspend == 1 && session["suspend"] == 0 && session["suspendtime"]) {
                     // calculate the number of active session
@@ -197,6 +197,15 @@ function validateUpdSession(req, res) {
                     }
                     callback(null);
                 });
+                if (Common.pluginsEnabled) {
+                    if (suspend == 0) {
+                        // calll plugin session connect trigger
+                        require('./plugin').invokeTrigger('session', 'connect', session);
+                    } else if (suspend == 1) {
+                        // calll plugin session disconnect trigger
+                        require('./plugin').invokeTrigger('session', 'disconnect', session);
+                    }
+                }
             } else {
                 //logger.info("Not update suspend params!");
                 callback(null);

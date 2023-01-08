@@ -608,6 +608,28 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                 } else
                     callback(null);
             },
+            //run plugin validation if exists
+            function(callback) {
+                if (Common.pluginsEnabled) {
+                    require('./plugin').invokeTriggerWaitForResult('validation', 'before',activationData).then(function (result) {
+                        if (result === false) {
+                            error = "Plugin validation failed.";
+                            response = {
+                                status: Common.STATUS_ERROR,
+                                message: error
+                            }
+                            callback(finish);
+                        } else {
+                            callback(null);
+                        }
+                    }).catch(function (err) {
+                        logger.error('validateActivation:invokeTriggerWaitForResult. error: ' + err);
+                        callback(null);
+                    });
+                } else {
+                    callback(null);
+                }
+            },
             //get user data
             function(callback) {
                 if (userData) {

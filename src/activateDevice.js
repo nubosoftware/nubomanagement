@@ -176,8 +176,8 @@ async function activate(req, res, next) {
             }
         }
 
-        // insert activationKey row to db
-        await Common.db.Activation.create({
+
+        const activationObj = {
             activationkey: token,
             deviceid: deviceid,
             status: 0,
@@ -195,7 +195,19 @@ async function activate(req, res, next) {
             maindomain: domainEmail,
             imsi: imsi,
             devicename: deviceName
-        });
+        };
+
+        // run before activation trigger
+        if (Common.pluginsEnabled) {
+            const isValid = await require('./plugin').invokeTriggerWaitForResult('activation', 'before',activationObj);
+            if (isValid === false) {
+                logger.info('Activation failed by plugin');
+                throw new APIException("Device doesn't exist", Common.STATUS_DISABLE_USER_DEVICE);
+            }
+        }
+
+        // insert activationKey row to db
+        await Common.db.Activation.create(activationObj);
 
         // mark all other activations for the same user and device as expired
         await Common.db.Activation.update({
@@ -253,6 +265,7 @@ async function activate(req, res, next) {
             mtype: "important"
         });
 
+
         // send result to the user
         let retObj = {
             status: 0,
@@ -265,6 +278,10 @@ async function activate(req, res, next) {
         }
         res.send(retObj);
         responseSent = true;
+
+        if (Common.pluginsEnabled) {
+            require('./plugin').invokeTrigger('activation', 'after',activationObj);
+        }
 
         // handle cases when activation should be approved automatically
         var demoUserList = [];

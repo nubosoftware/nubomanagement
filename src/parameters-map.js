@@ -1584,7 +1584,7 @@ var filter = {
 
     {
         "regex": true,
-        "path": "/api/.*|^/appstore/",
+        "path": "/api/.*|^/appstore/|^/html/",
         "constraints": {
         },
         "headerConstraints": {
@@ -1593,6 +1593,7 @@ var filter = {
 
         }
     },
+
 
 
     ]

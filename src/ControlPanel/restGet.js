@@ -60,6 +60,7 @@ var Login = require('../login.js');
 const LongOperationNotif = require('../longOperationsNotif.js');
 const AdminPermissions = require('../adminPermissions');
 const orgsModule = require('./orgs');
+const Plugin =  require('../plugin');
 
 var setting = require('../settings.js');
 
@@ -389,6 +390,8 @@ var loginWebAdmin  = function(req,res,arg1) {
                 orgname,
                 orgs,
                 edition: Common.getEdition(),
+                pluginsEnabled: Common.pluginsEnabled,
+                productName: Common.productName,
                 deviceTypes: Common.getDeviceTypes(),
                 siteAdmin: (siteAdmin == 1),
                 siteAdminDomain: (siteAdmin == 1 ? Common.siteAdminDomain : null),
@@ -750,6 +753,22 @@ var adminLoginActivate = function(email,deviceid,deviceName,resetPassword,oldAct
     });
 }
 
+// var apiPluginAccess = function(req, res) {
+//     let pluginName = req.params.pluginName;
+//     if (Common.pluginsEnabled) {
+//         const handled = Plugin.handleApiPluginRequest(pluginName,req,res);
+//         if (handled) {
+//             return;
+//         }
+//     }
+//     logger.info(`apiPluginAccess. 404. pluginName: ${pluginName}, method: ${req.method}`);
+//     res.writeHead(404, {
+//         "Content-Type": "text/plain"
+//     });
+//     res.end("404 Not Found\n");
+
+// }
+
 var apiAccess = function(req, res) {
     let objectType = req.params.objectType;
     let arg1 = req.params.arg1;
@@ -910,6 +929,32 @@ var apiAccess = function(req, res) {
         if (!arg1) {
             require('../eventLog').getEvents(req,res);
             return;
+        }
+    } else if (objectType === 'plugins' && Common.pluginsEnabled) {
+        if (!checkPerm('@/','rw')) return;
+        if (!arg1) {
+            if (req.method == "GET") {
+                require('../plugin').getAll(req,res);
+                return;
+            } else if (req.method == "PUT") {
+                require('../plugin').upload(req,res);
+                return;
+            }
+        } else {
+            logger.info(`Plugin: ${arg1}`);
+            if (req.method == "DELETE") {
+                require('../plugin').delete(arg1,req,res);
+                return;
+            } else if (req.method == "POST") {
+                require('../plugin').update(arg1,req,res);
+                return;
+            } else if (req.method == "GET") {
+                require('../plugin').getPlugin(arg1,req,res);
+                return;
+            } else if (req.method == "PUT") {
+                require('../plugin').upload(req,res,arg1);
+                return;
+            }
         }
     } else if (objectType === 'admins') {
         if (!checkPerm('/','w')) return;
@@ -1133,6 +1178,12 @@ var apiAccess = function(req, res) {
         }
         if (Common.isDesktop()) {
             const handled = Common.getDesktop().handleRestApiRequest(objectType,arg1,arg2,arg3,perms,adminLogin,req,res);
+            if (handled) {
+                return;
+            }
+        }
+        if (Common.pluginsEnabled) {
+            const handled = Plugin.handleRestApiRequest(objectType,arg1,arg2,arg3,perms,adminLogin,req,res);
             if (handled) {
                 return;
             }

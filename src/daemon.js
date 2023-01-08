@@ -197,6 +197,8 @@ var mainFunction = function(err, firstTimeLoad) {
     });
 };
 
+Common.isDaemonProcess = true;
+
 Common.loadCallback = function(err, firstTimeLoad) {
     if (firstTimeLoad) mainFunction(err, firstTimeLoad);
 }

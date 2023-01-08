@@ -1565,6 +1565,7 @@ function createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime,
         function(err) {
             if (err) {
                 logger.error("createUserFolders: " + err);
+                console.error(err);
                 callback("createUserFolders failed");
                 return;
             }
@@ -1655,6 +1656,11 @@ function enableNewDeviceApps(email, deviceId, time, hrTime, callback) {
                         maindomain: maindomain,
                     },
                 }).then(app => {
+                    if (!app) {
+                        logger.info("No app found for package name " + packageName);
+                        callback(null);
+                        return;
+                    }
                     insertToDeviceApps(email, deviceId, packageName, app.filename, maindomain, TO_BE_INSTALLED, time, hrTime, function(err) {
                         callback(err);
                     });

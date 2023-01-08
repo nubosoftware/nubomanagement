@@ -14,6 +14,7 @@ var NuboRestifyshutdown = require('@nubosoftware/nubo-restify-shutdown');
 
 var Common = require('./common.js');
 const validate = require('validate.js');
+const { path } = require('./common.js');
 
 //================= requires =================================
 var Validate;
@@ -132,6 +133,10 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
                     }
                 },
                 function(urlObj, options, callback) {
+                    if (!options) {
+                        options = {};
+                    }
+                    options.name = opts.name;
                     var server = restify.createServer(options);
                     opts.handlers.forEach(function(hanlder) {
                         hanlder(server);
@@ -232,12 +237,14 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
                 Common.listenAddresses,
                 function(listenAddress, callback) {
                     var opts = {
-                        listenAddress: listenAddress
+                        listenAddress: listenAddress,
                     };
                     if (Common.listenAddressesPlatforms) {
                         opts.handlers = [setPublicServiceServer];
+                        opts.name = `Public Server ${listenAddress}`;
                     } else {
                         opts.handlers = [setPublicServiceServer, setPlatformServiceServer];
+                        opts.name = `Public and Platform Server ${listenAddress}`;
                     }
                     createListener(opts, callback);
                 },
@@ -253,7 +260,8 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
                     function(listenAddress, callback) {
                         var opts = {
                             listenAddress: listenAddress,
-                            handlers: [presetPlatformServiceServer, setPlatformServiceServer]
+                            handlers: [presetPlatformServiceServer, setPlatformServiceServer],
+                            name: `Platform Server ${listenAddress}`,
                         };
                         createListener(opts, callback);
                     },
@@ -265,7 +273,15 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
                 callback(null);
             }
         },
+
         function(callback) {
+            // initiate static folders in the background
+            require('./staticFolders').moduleInit().then(() => {
+
+            }).catch(err => {
+
+            });
+            // eneterprise edition multi datacenter handler
             if (Common.isEnterpriseEdition()) {
                 Common.getEnterprise().dataCenter.startRestServer(callback);
             } else {
@@ -348,6 +364,11 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
         });
     });
 };
+
+
+function getAppServers() {
+    return appServers;s
+}
 
 function getResourceListByDevice(req, res, next) {
     var deviceName = req.params.deviceName;
@@ -494,6 +515,10 @@ function setPublicServiceServer(server) {
     if (Common.isMobile()) {
         Common.getMobile().addPublicServerHandlers(server);
     }
+    if (Common.pluginsEnabled) {
+        require('./plugin').addPublicServer(server);
+    }
+
     server.get('/checkOtpAuth', Otp.checkOtpAuth);
     server.get('/resendOtpCode', Otp.resendOtpCode);
     server.get('/getClientConf', Validate.getClientConf);
@@ -559,13 +584,35 @@ function setPublicServiceServer(server) {
     server.post("/addMissingResource", addMissingResource);
     server.get('/getResourceListByDevice', getResourceListByDevice);
     server.post('/updateUserConnectionStatics', updateUserConnectionStatics);
+
+
+    // html server that serve static web client - admin and desktop
+    server.get("/html/*", require('./staticFolders').serve);
+    // const staticPath = path.join(Common.rootDir,'static');
+    // var htmlServer = new nodestatic.Server(staticPath, {
+    //     cache: 3600
+    // });
+    // server.get("/html/*", function (req, res, next) {
+    //     htmlServer.serve(req, res, (err, result) => {
+    //         if (err) {
+    //             logger.error("Error serving static url " + req.url + " - " + err.message);
+    //             res.writeHead(404, {
+    //                 "Content-Type": "text/plain"
+    //             });
+    //             res.end("404 Not Found\n");
+    //             return;
+    //         }
+    //         logger.info("Served GET static file: " + req.url);
+    //     });
+    // });
     if (Common.appstore && Common.appstore.enable === true) {
+        const nodestatic = require('@nubosoftware/node-static');
         let appStorePath = Common.appstore.path;
         if (appStorePath.endsWith("/appstore")) {
             let pathS = appStorePath.split("/");
             appStorePath = pathS.slice(0, pathS.length-1).join("/");
         }
-        const nodestatic = require('@nubosoftware/node-static');
+
         var appStoreServer = new nodestatic.Server(appStorePath, {
             cache: 3600
         });
@@ -793,5 +840,8 @@ function loadRequires() {
 
 Common.loadCallback = mainFunction;
 if (module) {
-    module.exports = {mainFunction: mainFunction};
+    module.exports = {
+        mainFunction: mainFunction,
+        getAppServers
+    };
 }

@@ -1194,6 +1194,22 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
      }, {
          timestamps: false
      });
+
+     db.Plugins = sequelize.define('plugins', {
+        id: {
+            type: Sequelize.STRING,
+            primaryKey: true
+        },
+        version : Sequelize.STRING,
+        name : Sequelize.STRING,
+        description : Sequelize.TEXT,
+        active: Sequelize.INTEGER,
+        packagehash: Sequelize.INTEGER,
+        configuration: Sequelize.TEXT('medium'),
+        package: Sequelize.BLOB('long')
+    }, {
+        timestamps: true
+    });
     //sequelize.sync();
 }
 
