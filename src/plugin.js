@@ -4,11 +4,9 @@ var Common = require('./common.js');
 var logger = Common.getLogger(__filename);
 const _ = require('underscore');
 const fs = require('fs').promises;
-const fss = require('fs');
 var crypto = require('crypto');
 const path = require('path');
 const commonUtils = require('./commonUtils.js');
-const { fn } = require('sequelize/dist/index.js');
 
 
 
