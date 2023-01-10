@@ -87,7 +87,8 @@ function getProfileDetailsFromDB(res, email, domain,webCP) {
     function(callback) {
 
         Common.db.User.findAll({
-            attributes : ['firstname', 'lastname','isactive', 'officephone', 'mobilephone', 'manager', 'country', 'dcname', 'storageLimit', 'storageLast', 'isimadmin', 'im_mobile', 'im_mobile2', 'addomain', 'username', 'clientip', 'clientport', 'subscriptionid', 'subscriptionupdatedate', 'lastactivity','recording'],
+            attributes : ['firstname', 'lastname','isactive', 'officephone', 'mobilephone', 'manager', 'country', 'dcname', 'storageLimit', 'storageLast', 'isimadmin', 'im_mobile', 'im_mobile2', 'addomain', 'username', 'clientip', 'clientport', 'subscriptionid', 'subscriptionupdatedate', 'lastactivity','recording',
+               'orguser','serverurl','securessl'],
             where : {
                 email : email,
                 orgdomain : domain
@@ -160,9 +161,10 @@ function getProfileDetailsFromDB(res, email, domain,webCP) {
                             lastActivityTime : lastactivity,
                         };
                         if (webCP) {
+                            _.extend(details, _.pick(row, 'recording', 'orguser', 'serverurl', 'securessl'));
                             details.firstname = firstname;
                             details.lastname = lastname;
-                            details.recording = row.recording;
+                            // details.recording = row.recording;
                         }
                         callback(null);
                     });

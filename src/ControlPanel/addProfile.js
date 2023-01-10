@@ -76,7 +76,7 @@ function addProfile(req, res, next) {
             var domain = "nubosoftware.com";
         }
 
-        addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain,password);
+        addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain,password,req.params);
 
     });
 
@@ -91,7 +91,7 @@ function validateEmail(email) {
     return re.test(email);
 }
 
-function addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain,password) {
+function addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain,password,params) {
     var errorMsg = "Failed to add profile";
 	email = email.toLowerCase();
 
@@ -126,7 +126,7 @@ function addProfileToDB(res, first, last, email, manager, country, officePhone, 
                 orgpasswordcache : '',
                 serverurl : '',
                 jobtitle : '',
-                orguser : '',
+                orguser : params.orguser || '',
                 isactive : 1,
                 isadmin : 0,
                 manager : manager,
@@ -137,7 +137,7 @@ function addProfileToDB(res, first, last, email, manager, country, officePhone, 
                 passcodeupdate: new Date(),
                 passcodetypechange: 0,
                 passcodesalt: salt,
-                orgemail : '',
+                orgemail : params.orgemail || '',
                 orgdomain : domain,
                 lastname : last,
                 authtype : 0,

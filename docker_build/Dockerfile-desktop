@@ -41,8 +41,12 @@ WORKDIR ${TARGET_DIR}
 # prepare the desktop module
 RUN ./scripts/attachDesktopModule.sh
 
+# prepare the static-src folder
+RUN ./scripts/prepareStaticSrc.sh
+
 # build the dist folder
 RUN npm run build
+#RUN if [[ -z "$dev" ]] ; then rm -rf src webpack.config.js nubo-management-desktop/src ; else echo "Development build - not deleting sources" ; fi
 RUN rm -rf src webpack.config.js nubo-management-desktop/src
 
 # remove build dependencies

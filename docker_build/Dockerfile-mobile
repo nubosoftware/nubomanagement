@@ -62,6 +62,9 @@ RUN apt install -y build-essential
 # prepare the mobile/enterprise packages link
 RUN ./scripts/attachEnterpriseMobileModule.sh
 
+# prepare the static-src folder
+RUN ./scripts/prepareStaticSrc.sh
+
 # remove build-essntial
 RUN apt-get --purge autoremove -y build-essential
 
