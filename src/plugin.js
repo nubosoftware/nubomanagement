@@ -7,6 +7,7 @@ const fs = require('fs').promises;
 var crypto = require('crypto');
 const path = require('path');
 const commonUtils = require('./commonUtils.js');
+const originalRequire = require("../scripts/originalRequire");
 
 
 
@@ -154,7 +155,7 @@ const commonUtils = require('./commonUtils.js');
             this.mainPackage = JSON.parse(packageJsonMain);
 
             this.moduleJS = path.join(this.pluginFolderPath,this.mainPackage.main);
-            let module = require(this.moduleJS);
+            let module =  originalRequire.require(this.moduleJS);
             this.pluginModule = module.getPluginModule();
             // this.vm = vm;
             // this.vm.sandbox.pluginModule = this.pluginModule;
@@ -202,7 +203,7 @@ const commonUtils = require('./commonUtils.js');
 
             }
             if (this.moduleJS) {
-                delete require.cache[require.resolve(this.moduleJS)];
+                originalRequire.unrequire(this.moduleJS);
                 this.moduleJS = undefined;
             }
             if (removeStaticPlugins) {
@@ -745,7 +746,7 @@ const commonUtils = require('./commonUtils.js');
 
                     // validate package
                     let moduleJS = path.join(sandboxPath,mainPackage.main);
-                    let module = require(moduleJS);
+                    let module =  originalRequire.require(moduleJS);
                     try {
                         let pluginModule = module.getPluginModule();
                         if (!pluginModule) {
@@ -755,7 +756,7 @@ const commonUtils = require('./commonUtils.js');
                             throw new Error("Init not found in plugin module");
                         }
                     } finally {
-                        delete require.cache[require.resolve(moduleJS)];
+                        originalRequire.unrequire(moduleJS);
                     }
 
                     logger.info(`Plugin module validated!`);

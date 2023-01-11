@@ -45,7 +45,7 @@ module.exports = {
     'scripts/killPlatform': './src/scripts/killPlatform.js',
     'scripts/killSession': './src/scripts/killSession.js',
     'scripts/registerPlatform': './src/scripts/registerPlatform.js',
-    
+
     readRedisSubscribeMsgs: './src/readRedisSubscribeMsgs.js',
     readOnlineJournal: './src/readOnlineJournal.js',
     moduleExec: './src/moduleExec.js',
@@ -53,8 +53,8 @@ module.exports = {
     'unittests/deleteUserDevice': './src/unittests/deleteUserDevice.js',
     'unittests/installApks': './src/unittests/installApks.js',
     'unittests/sendEmail': './src/unittests/sendEmail.js',
-    'unittests/updateDeviceTelephonySettings': './src/unittests/updateDeviceTelephonySettings.js',    
-  
+    'unittests/updateDeviceTelephonySettings': './src/unittests/updateDeviceTelephonySettings.js',
+
   },
   output: {
     path: path.join(__dirname, 'dist'),
@@ -65,11 +65,15 @@ module.exports = {
   externals: [
     function ({ context, request }, callback) {
       // include nubo-management modules with the project
-      if (/^nubo-management-/.test(request)) {                      
+      if (/^nubo-management-/.test(request)) {
         callback();
-        return;        
-      }     
-      externalsFunc(context,request,callback);      
+        return;
+      }
+      if (/^\.\.\/scripts\/originalRequire$/.test(request)) {
+        console.log(` externals commonjs request: ${request}`);
+        return callback(null, 'commonjs ' + request);
+      }
+      externalsFunc(context,request,callback);
     },
   ], // Need this to avoid error when working with Express
   optimization: {
