@@ -57,6 +57,7 @@ var filter = {
             "networkConQuality": constraints.NaturalNumberConstrOptional,
             "nuboFlags": constraints.NaturalNumberConstrOptional,
             "packageName": constraints.ExcludeSpecialCharactersOptional,
+            "biometricCanAuthenticate": constraints.NaturalNumberConstrOptional,
             "appName": {},
             "camerasInfo": {}
         }
