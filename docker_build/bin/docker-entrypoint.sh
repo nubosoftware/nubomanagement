@@ -4,6 +4,10 @@
 
 
 echo "cmd: ${1}"
+# copy static files
+rsync -a /opt/nubomanagement/static-image/ /opt/nubomanagement/static-src/
+
+# run upgrade script
 #if [ "${1}" -eq 'supervisord' ]; then
   cd /opt/nubomanagement
   sudo node dist/upgrade.js
