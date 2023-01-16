@@ -212,6 +212,8 @@ const originalRequire = require("../scripts/originalRequire");
             this.removePublicServerHandlers();
             this.removeTriggers();
 
+
+
         } catch (err) {
             this.status = Plugin.PLUGIN_STATUS_ERROR;
             this.error = `Error deinitializing plugin: ${err}`;
@@ -429,6 +431,21 @@ const originalRequire = require("../scripts/originalRequire");
                 FrontEndService: require('./frontEndService'),
                 StartSession: require('./StartSession'),
                 Service: require("./service.js"),
+                redis: {
+                    sendCommand: async (command, ...params) => {
+                        if (!Common.redisClient[command]) {
+                            throw new Error(`Redis command not found: ${command}`);
+                        } else {
+                            console.log(`sendCommand: ${command}`);
+                        }
+                        return await Common.redisClient[command](...params);
+                    }
+                },
+                plugin: {
+                    sendMessageToPlugin: async (pluginId, message) => {
+                        await Plugin.sendMessageToPlugin(pluginId, message);
+                    }
+                }
             };
         }
         return Plugin.coreModule;
@@ -455,9 +472,93 @@ const originalRequire = require("../scripts/originalRequire");
                 await plugin.init();
             }
             Plugin.pluginsLoaded = true;
+            Common.redisSub.subscribe("plugin", (message) => {
+                // logger.info(`Message from redis plugin channel: ${message}`);
+                Plugin.handleMessage(message);
+            });
+
         } catch (err) {
             logger.error(`Error loading plugins from db: ${err}`,err);
         }
+    }
+
+    /**
+     * Handle message from plugin channel
+     * @param {*} message
+     */
+    static async handleMessage(message) {
+        try {
+            // logger.info(`handleMessage. message: ${message}`);
+            const msg = JSON.parse(message);
+            if (msg.pluginId) {
+                const oldPlugin = Plugin.plugins[msg.pluginId];
+                if (msg.command == "init") {
+                    // load the plugin from db
+                    let dbItem = await Common.db.Plugins.findOne({
+                        attributes: ['id','version','name','description','active','packagehash','configuration'],
+                        where: {
+                            id: msg.pluginId
+                        },
+                    });
+                    if (!dbItem) {
+                        logger.error(`handleMessage. Plugin not found: ${msg.pluginId}`);
+                        return;
+                    }
+                    if (oldPlugin) {
+                        logger.info(`handleMessage. Reinitialize plugin: ${msg.pluginId}`);
+                        if (oldPlugin.initialized) {
+                            await oldPlugin.deinit(dbItem.active == 0);
+                        }
+                    } else {
+                        logger.info(`handleMessage. New plugin: ${msg.pluginId}`);
+                    }
+                    let plugin = new Plugin(dbItem);
+                    // initialize plugin
+                    await plugin.init();
+                } else if (msg.command == "delete") {
+                    if (oldPlugin) {
+                        logger.info(`handleMessage. Delete plugin: ${msg.pluginId}`);
+                        if (oldPlugin.initialized) {
+                            await oldPlugin.deinit(true);
+                        }
+                        delete Plugin.plugins[msg.pluginId];
+                    }
+                } else if (msg.command == "pluginMessage") {
+                    if (oldPlugin) {
+                        // logger.info(`handleMessage. Message to plugin: ${msg.pluginId}`);
+                       const fnName = "handleMessage";
+                        if (oldPlugin.status == Plugin.PLUGIN_STATUS_LOADED && oldPlugin.pluginModule ) {
+                            if (fnName in oldPlugin.pluginModule && typeof oldPlugin.pluginModule[fnName] === "function") {
+                                oldPlugin.pluginModule[fnName](msg.message);
+                            }
+                        }
+                    }
+                } else {
+                    logger.error(`handleMessage. Command not found: ${message}`);
+                }
+            } else {
+                logger.error(`Invalid message: ${message}`);
+            }
+        } catch (err) {
+            logger.error(`Error handling message: ${err}`,err);
+        }
+    }
+
+    /**
+     * Send message to all processes that handle plugins
+     * @param {*} msg
+     */
+    static sendMessage(msg) {
+        try {
+            // logger.info(`sendMessage. message: ${JSON.stringify(msg,null,2)}`);
+            Common.redisClient.publish("plugin", JSON.stringify(msg));
+        } catch (err) {
+            logger.error(`Error sending message: ${err}`,err);
+        }
+    }
+
+    static async sendMessageToPlugin(pluginId, message) {
+        Plugin.sendMessage({command: "pluginMessage", pluginId: pluginId, message: message});
     }
 
     /**
@@ -536,7 +637,7 @@ const originalRequire = require("../scripts/originalRequire");
 
 
     /**
-     * Remote plugin
+     * Remove plugin
      * @param {*} id
      * @param {*} req
      * @param {*} res
@@ -565,7 +666,8 @@ const originalRequire = require("../scripts/originalRequire");
                     id : id,
                 }
             });
-            delete Plugin.plugins[id];
+            Plugin.sendMessage({command: "delete", pluginId: id});
+            // delete Plugin.plugins[id];
             logger.info(`Plugin deleted: ${id}`);
 
             res.send({
@@ -582,6 +684,12 @@ const originalRequire = require("../scripts/originalRequire");
 
     }
 
+    /**
+     * Update plugin - enable/disable or change configuration
+     * @param {*} id
+     * @param {*} req
+     * @param {*} res
+     */
     static async update(id,req,res) {
         if (!Plugin.pluginsLoaded) {
             await Plugin.loadFromDB()
@@ -611,26 +719,33 @@ const originalRequire = require("../scripts/originalRequire");
                     plugin.configuration = newConf;
                     plugin.dbItem.configuration =  JSON.stringify(newConf);
                     logger.info(`Plugin configuration changed: ${plugin.dbItem.configuration}}`);
-                    if (plugin.active) {
+                    await plugin.dbItem.save();
+                    // if (plugin.active) {
                         logger.info(`Plugin configuration changed. Restarting plugin`);
-                        await plugin.deinit(false);
-                        await plugin.init();
-                    }
+                        // await plugin.deinit(false);
+                        // await plugin.init();
+                        Plugin.sendMessage({command: "init", pluginId: id});
+                    // }
                 }
             }
             if (req.params.active && !plugin.active) {
                 plugin.active = true;
                 plugin.dbItem.active = 1;
-                await plugin.init();
+                //await plugin.init();
+                await plugin.dbItem.save();
+                Plugin.sendMessage({command: "init", pluginId: id});
             } else if (!req.params.active && plugin.active) {
                 plugin.active = false;
                 plugin.dbItem.active = 0;
-                await plugin.deinit(true);
+                await plugin.dbItem.save();
+                Plugin.sendMessage({command: "init", pluginId: id});
+                // await plugin.deinit(true);
+                // Common.redisClient.publish("plugin", `deinit:${this.id}`);
             }
 
 
 
-            await plugin.dbItem.save();
+
             logger.info(`Plugin update: ${id}. active: ${plugin.active}`);
 
             res.send({
@@ -697,49 +812,6 @@ const originalRequire = require("../scripts/originalRequire");
 
                 // extract package file
                 try {
-                    // let env = process.env;
-                    // if (Common.nodePath) {
-                    //     env.PATH = `${Common.nodePath}:${env.PATH}`;
-                    // }
-                    // let initRet = await commonUtils.execCmd("npm",["init","-y"],{  cwd: sandboxPath, env});
-                    // // logger.info(`NPM init. stdout: ${initRet.stdout}, stderr: ${initRet.stderr}`);
-                    // let {stdout , stderr} = await commonUtils.execCmd("npm",["i",packagePath],{  cwd: sandboxPath, env});
-                    // logger.info(`Package extracted. stdout: ${stdout}, stderr: ${stderr}`);
-                    // let packageJsonMain = await fs.readFile(path.join(sandboxPath,"package.json"),"utf-8");
-                    // // logger.info(`Main package.json: ${packageJsonMain}`);
-                    // let mainPackage = JSON.parse(packageJsonMain);
-                    // let dependenciesKeys = Object.keys(mainPackage.dependencies); //"dependencies"
-                    // if (!dependenciesKeys || !dependenciesKeys[0]) {
-                    //     throw new Error(`Cannot find module (empty dependencies)`);
-                    // }
-                    // let packageId = dependenciesKeys[0];
-                    // logger.info(`packageId found: ${packageId}`);
-                    // if (updatePlugin) {
-                    //     if (id != packageId) {
-                    //         throw new Error(`Uploaded id (${packageId}) is not the same as plugin id (${id})!`);
-                    //     }
-                    //     await updatePlugin.deinit();
-                    // } else if (Plugin.plugins[packageId]) {
-                    //     throw new Error(`Plugin with the same id (${packageId}) is already loaded!`);
-                    // }
-                    // // read package package.json
-                    // let modulePath = path.join(sandboxPath,"node_modules",packageId);
-                    // let packageJsonModule = await fs.readFile(path.join(modulePath,"package.json"),"utf-8");
-                    // logger.info(`Module package.json: ${packageJsonModule}`);
-                    // let modulePackage = JSON.parse(packageJsonModule);
-
-                    // mainPackage.main = path.join("node_modules",packageId,modulePackage.main);
-                    // if (modulePackage.types) {
-                    //     mainPackage.types = path.join("node_modules",packageId,modulePackage.types);
-                    // }
-                    // mainPackage.name = modulePackage.name;
-                    // mainPackage.description = modulePackage.description;
-                    // mainPackage.author = modulePackage.author;
-                    // mainPackage.version = modulePackage.version;
-                    // mainPackage.license = modulePackage.license;
-                    // packageJsonMain = JSON.stringify(mainPackage,null,2);
-                    // await fs.writeFile(path.join(sandboxPath,"package.json"),packageJsonMain);
-                    // logger.info(`Main package.json: ${packageJsonMain}`);
 
                     let mainPackage = await Plugin.buildPluginFolder(sandboxPath,packagePath,updatePlugin,id);
                     let packageId = mainPackage.name;
@@ -787,7 +859,7 @@ const originalRequire = require("../scripts/originalRequire");
                         updatePlugin.version = mainPackage.version;
                         updatePlugin.name = mainPackage.name;
                         updatePlugin.description = mainPackage.description;
-                        await updatePlugin.init();
+                        // await updatePlugin.init();
                     } else {
                         // create db item
                         let dbItem = await Common.db.Plugins.create({
@@ -798,13 +870,13 @@ const originalRequire = require("../scripts/originalRequire");
                             packagehash: packagehash,
                             package: packageBuffer
                         });
-                        let plugin = new Plugin(dbItem);
+                        // let plugin = new Plugin(dbItem);
                         // initialize plugin
-                        await plugin.init();
+                        // await plugin.init();
                     }
-
-
-
+                    // send init message to plugin managers
+                    Plugin.sendMessage({command: "init", pluginId: packageId});
+                    //Common.redisClient.publish("plugin", `init:${packageId}`);
 
                 } catch (err) {
                     if (err instanceof commonUtils.ExecCmdError) {
