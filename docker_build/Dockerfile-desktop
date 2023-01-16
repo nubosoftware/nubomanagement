@@ -4,7 +4,7 @@ ARG TARGET_DIR=/opt/nubomanagement
 LABEL build_ver="${BUILD_VER}"
 
 # add required packages
-RUN apk add --update supervisor curl rsyslog sudo docker
+RUN apk add --update supervisor curl rsyslog sudo docker bash
 
 # temporary add build dependencies
 RUN apk add --no-cache --virtual .build-deps-full \
