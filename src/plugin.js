@@ -145,9 +145,7 @@ const originalRequire = require("../scripts/originalRequire");
             logger.info(`Init plugin: ${this.id}..`);
             this.pluginFolderName = `plugin_${this.id}`;
             this.pluginFolderPath = path.join(Plugin.pluginsFolder,this.pluginFolderName);
-            if (!this.active) {
-                return;
-            }
+
             await this.updatePluginFolderIfNeeded();
 
             let packageJsonMain = await fs.readFile(path.join(this.pluginFolderPath,"package.json"),"utf-8");
@@ -169,6 +167,11 @@ const originalRequire = require("../scripts/originalRequire");
             if (this.pluginModule.getConfDesciptions) {
                 this.confDescriptions = this.pluginModule.getConfDesciptions();
             }
+
+            if (!this.active) {
+                return;
+            }
+
             // calling plugin init
             logger.info(`Calling plugin init..`);
             this.pluginInitResponse =  this.pluginModule.init(Plugin.getCoreModule(),this.configuration);
@@ -276,13 +279,13 @@ const originalRequire = require("../scripts/originalRequire");
                 if (newServer) {
                     // add only to the new server
                     const route = newServer[publicServerHandler.method](publicServerHandler.path,publicServerHandler.handler);
-                    logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${newServer.name}`);
+                    // logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${newServer.name}`);
                     this.publicRoutes.push({route : route, server: newServer});
                 } else {
                     // add to existing servers
                     for (const server of Plugin.publicServers) {
                         const route = server[publicServerHandler.method](publicServerHandler.path,publicServerHandler.handler);
-                        logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${server.name}`);
+                        // logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${server.name}`);
                         this.publicRoutes.push({route : route, server: server});
                     }
                 }
@@ -297,7 +300,7 @@ const originalRequire = require("../scripts/originalRequire");
         // remove handlers from public servers
         for (const publicRoute of this.publicRoutes) {
             publicRoute.server.rm(publicRoute.route);
-            logger.info(`Removed public server handler. plugin: ${this.id}, route: ${publicRoute.route}, server: ${publicRoute.server.name}`);
+            // logger.info(`Removed public server handler. plugin: ${this.id}, route: ${publicRoute.route}, server: ${publicRoute.server.name}`);
         }
         this.publicRoutes = [];
     }
@@ -311,7 +314,7 @@ const originalRequire = require("../scripts/originalRequire");
                 const triggerKey = `${trigger.objectType}_${trigger.action}`;
                 Plugin.triggers[triggerKey] = Plugin.triggers[triggerKey] || [];
                 Plugin.triggers[triggerKey].push({pluginId: this.id, trigger: trigger});
-                logger.info(`Added trigger. plugin: ${this.id}, trigger: ${triggerKey}`);
+                // logger.info(`Added trigger. plugin: ${this.id}, trigger: ${triggerKey}`);
             }
         }
     }
@@ -327,7 +330,7 @@ const originalRequire = require("../scripts/originalRequire");
                     const index = Plugin.triggers[triggerKey].findIndex((item) => item.pluginId === this.id);
                     if (index >= 0) {
                         Plugin.triggers[triggerKey].splice(index,1);
-                        logger.info(`Removed trigger. plugin: ${this.id}, trigger: ${triggerKey}`);
+                        // logger.info(`Removed trigger. plugin: ${this.id}, trigger: ${triggerKey}`);
                     }
                 }
             }
@@ -344,6 +347,7 @@ const originalRequire = require("../scripts/originalRequire");
      */
     static async invokeTriggerWaitForResult(objectType, action, ...params) {
         try {
+            // logger.info(`invokeTriggerWaitForResult. objectType: ${objectType}, action: ${action}, params: ${params.length}`);
             const triggerKey = `${objectType}_${action}`;
             if (Plugin.triggers[triggerKey]) {
                 for (const trigger of Plugin.triggers[triggerKey]) {
@@ -436,7 +440,7 @@ const originalRequire = require("../scripts/originalRequire");
                         if (!Common.redisClient[command]) {
                             throw new Error(`Redis command not found: ${command}`);
                         } else {
-                            console.log(`sendCommand: ${command}`);
+                            // console.log(`sendCommand: ${command}`);sssss
                         }
                         return await Common.redisClient[command](...params);
                     }
@@ -619,7 +623,7 @@ const originalRequire = require("../scripts/originalRequire");
                 throw new Error(`Plugin not found: ${id}`);
             }
             let pluginRes = _.pick(plugin,"id","version","name","description","active","status","error","configuration","confDescriptions")
-            logger.info(`getPlugin. configuration: ${JSON.stringify(pluginRes.configuration,null,2)}`);
+            // logger.info(`getPlugin. configuration: s${JSON.stringify(pluginRes.configuration,null,2)}`);
             res.send({
                 status: Common.STATUS_OK,
                 message: "Request was fulfilled",
