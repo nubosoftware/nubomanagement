@@ -184,14 +184,14 @@ const { Subject } = require('await-notify');
         try {
             Static.srcRootFolder = path.join(Common.rootDir,'static-src');
             Static.staticFolder = path.join(Common.rootDir,'static');
+            Static.webServer = new nodestatic.Server(Static.staticFolder, {
+                cache: 3600
+            });
             for (const defaultFolder of Static.defaultFolders) {
                 let folder = new Static(defaultFolder.src,defaultFolder.dist);
                 Static.folders[defaultFolder.dist] = folder;
                 await folder.init();
             }
-            Static.webServer = new nodestatic.Server(Static.staticFolder, {
-                cache: 3600
-            });
             logger.info(`[Static:moduleInit] module loaded with ${Object.keys(Static.folders).length} folders`);
             Static.moduleLoaded = true;
 
@@ -224,7 +224,7 @@ const { Subject } = require('await-notify');
 
     /**
      * Add or update a plugin to a static folder
-     * The static folder will be requilt if any file added or changed
+     * The static folder will be rebuilt if any file added or changed
      * @param {*} staticFolder
      * @param {*} srcPath
      * @param {*} pluginName
@@ -309,7 +309,7 @@ const { Subject } = require('await-notify');
      * @returns
      */
     static serve(req, res) {
-        if (!Static.moduleLoaded) {
+        if (!Static.webServer) {
             logger.error(`[Static] module not loaded!`);
             res.writeHead(500, {
                 "Content-Type": "text/plain"
@@ -326,7 +326,7 @@ const { Subject } = require('await-notify');
                 res.end("404 Not Found\n");
                 return;
             }
-            logger.info("[Static] Served GET static file: " + req.url);
+            //logger.info("[Static] Served GET static file: " + req.url);
         });
 
     }
