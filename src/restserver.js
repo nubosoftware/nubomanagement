@@ -163,6 +163,7 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
     async.series([
         function(callback) {
             loadRequires();
+            Common.isRestservers = true;
             return callback(null)
         },
         function(callback){

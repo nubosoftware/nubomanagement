@@ -234,6 +234,10 @@ const originalRequire = require("../scripts/originalRequire");
                 // logger.info(`initStaticPlugins. Not initializing static plugins in daemon process`);
                 return;
             }
+            if (!Common.isRestservers) {
+                // logger.info(`initStaticPlugins. Not initializing static plugins in non restserver process`);
+                return;
+            }
             const Static = require('./staticFolders');
             for (const staticPlugIn of this.staticPlugIns) {
                 let staticFolder = staticPlugIn.staticFolder;
