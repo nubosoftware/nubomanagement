@@ -142,7 +142,7 @@ const originalRequire = require("../scripts/originalRequire");
 
             Plugin.plugins[this.id] = this;
 
-            logger.info(`Init plugin: ${this.id}..`);
+            logger.info(`Init plugin: ${this.id}.`);
             this.pluginFolderName = `plugin_${this.id}`;
             this.pluginFolderPath = path.join(Plugin.pluginsFolder,this.pluginFolderName);
 
@@ -174,7 +174,23 @@ const originalRequire = require("../scripts/originalRequire");
 
             // calling plugin init
             logger.info(`Calling plugin init..`);
-            this.pluginInitResponse =  this.pluginModule.init(Plugin.getCoreModule(),this.configuration);
+            let core = Object.assign({
+                pluginId : this.id,
+                pluginName : this.name,
+                pluginVersion : this.version,
+                plugin: {
+                    sendMessageToPlugin: async (pluginId, message) => {
+                        await Plugin.sendMessageToPlugin(pluginId, message);
+                    },
+                    defineDBModel: (modelName, modelDefinition, options) => {
+                        options = options || {};
+                        options.tableName = `p_${this.id}_${modelName}`.replaceAll("-","_").toLowerCase();
+                        logger.info(`defineDBModel. modelName: ${modelName} , modelDefinition: ${JSON.stringify(modelDefinition)}, options: ${JSON.stringify(options)}`);
+                        return Common.sequelize.define(modelName, modelDefinition, options);
+                    }
+                }
+            }, Plugin.getCoreModule());
+            this.pluginInitResponse =  this.pluginModule.init(core,this.configuration);
             logger.info(`Plugin initialized!`);
             if (this.pluginInitResponse) {
                 this.addPublicServerHandlers();
@@ -449,11 +465,6 @@ const originalRequire = require("../scripts/originalRequire");
                         return await Common.redisClient[command](...params);
                     }
                 },
-                plugin: {
-                    sendMessageToPlugin: async (pluginId, message) => {
-                        await Plugin.sendMessageToPlugin(pluginId, message);
-                    }
-                }
             };
         }
         return Plugin.coreModule;
