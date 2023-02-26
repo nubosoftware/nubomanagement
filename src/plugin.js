@@ -477,6 +477,10 @@ const originalRequire = require("../scripts/originalRequire");
         if (!Common.pluginsEnabled) {
             throw new Error("Plugins are disabled!");
         }
+        if (Plugin.pluginsLoaded) {
+            logger.info(`Plugins already loaded`);
+            return
+        }
         try {
             logger.info(`Load plugins`);
             Plugin.pluginsFolder = path.resolve(Common.rootDir,"plugins");

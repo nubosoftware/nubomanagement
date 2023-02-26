@@ -643,6 +643,7 @@ function parse_configs(parseConfigCB) {
                     logger.error("initSequelize error",err);
                     return callback("cannot connect to db");
                 }
+                logger.info(`Connected to DB: ${dbConf.name} on ${dbConf.host}:${dbConf.port}, sequelizeObj: ${sequelizeObj}`);
 
                 Common.db = dbObj;
                 Common.sequelize = sequelizeObj;
@@ -652,9 +653,13 @@ function parse_configs(parseConfigCB) {
         },
         // init modules
         function(settings, sysConf, callback) {
-            // load mobile module if enabled
+            if (!myFirstTimeLoad) {
+                // do not init modules if not first time load
+                return callback(null, settings, sysConf);
+            }
             const mobileModuleLoader = require('./mobileModuleLoader');
             if (mobileModuleLoader.isPresent()) {
+                // load mobile module if enabled
                 try {
                     mobileModuleLoader.init();
                     Common.mobileModule = true;
@@ -737,6 +742,7 @@ function parse_configs(parseConfigCB) {
         },
         function(settings, sysConf, callback) {
             if (!myFirstTimeLoad) {
+                // do not init redis if not first time loads
                 return callback(null);
             }
 
@@ -812,12 +818,16 @@ function parse_configs(parseConfigCB) {
             callback(null);
         },
         function(callback) {
-            Common.constraints = require("@nubosoftware/nubo-validateconstraints")(validate);
+            // load validate constraints
+            if (myFirstTimeLoad) {
+                Common.constraints = require("@nubosoftware/nubo-validateconstraints")(validate);
+            }
             callback(null);
         },
          // load plugins
          function(callback) {
-            if (!Common.pluginsEnabled) {
+            if (!Common.pluginsEnabled || !myFirstTimeLoad) {
+                // do not load plugins if not first time loads or plugins are not enabled
                 callback(null);
                 return;
             }
@@ -839,16 +849,11 @@ function parse_configs(parseConfigCB) {
             });
         },
         function(callback) {
+            // load orgs
             var orgList = [];
             Common.db.Orgs.findAll({
                 attributes : ['maindomain','inviteurl'],
             }).then(function(results) {
-                /*if (!results || results == "") {
-                    var err = "Common. orgs table is empty";
-                    logger.error(err);
-                    callback(err);
-                    return;
-                }*/
                 results.forEach(function(row) {
                     var org = {};
                     org.maindomain = row.maindomain;
