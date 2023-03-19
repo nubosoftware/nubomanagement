@@ -20,7 +20,7 @@ var MIN_DIFFERENT_DIGITS = 4;
 // user is allowed 3 login attempts. then he will be locked.
 var MAX_LOGIN_ATTEMPTS = 3;
 
-function checkPasscode(req, res, next) {
+function checkPasscode(req, res, loginObj) {
     // https://oritest.nubosoftware.com/checkPasscode?loginToken=[]&passcode=[]
     const finish = "__finish";
 
@@ -56,6 +56,15 @@ function checkPasscode(req, res, next) {
 
     async.series([
         function(callback) {
+            if (loginObj && loginObj.loginToken && loginObj.loginToken == loginToken) {
+                login = loginObj;
+                logger.user(login.getEmail());
+                logger.device(login.getDeviceID());
+                webClient = login.getDeviceID().includes("web");
+                logger.info("loginObj is valid");
+                callback(null);
+                return;
+            }
             new Login(loginToken, function(err, loginObj) {
                 if (err) {
                     return callback(err);
@@ -215,7 +224,8 @@ function checkPasscode(req, res, next) {
                 // let enterprise edition check password
                 let entParams = {
                     alreadyCheckedPasscode,
-                    isValidPasscode
+                    isValidPasscode,
+                    decryptedPassword
                 }
                 Common.getEnterprise().settings.checkPasswordEnterprise(login,entParams,function(err){
                     if (!err) {
@@ -595,9 +605,8 @@ async function sendNotification(email, first, last, loginEmailToken, mobilePhone
 
 }
 
-var checkPasscode = {
+
+module.exports = {
     func: checkPasscode,
     findUserNameSendEmail: findUserNameSendEmail
 };
-
-module.exports = checkPasscode;
