@@ -82,6 +82,16 @@ function updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, ma
     if (params.orgemail != undefined) {
         obj.orgemail = params.orgemail;
     }
+    if (params.password != undefined) {
+        logger.info(`updateProfileDetailsInDB. Update password for user: ${email}`);
+        const setPasscode = require('../setPasscode.js');
+        const salt = setPasscode.generateUserSalt(email);
+        const passwordHash = setPasscode.hashPassword(params.password,salt);
+        obj.passcodeupdate = new Date();
+        obj.passcode = passwordHash;
+        obj.passcodetypechange = 0;
+        obj.passcodesalt= salt;
+    }
     Common.db.User.update(obj , {
         where : {
             email : email,
