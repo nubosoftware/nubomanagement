@@ -200,6 +200,7 @@ var Common = {
     },
     guacAddr: "nubo-guac",
     pluginsEnabled: false,
+    isRestServer: false,
     rootDir: process.cwd(),
     reloadSettings: parse_configs
 };

@@ -142,6 +142,34 @@ var Platform = function(platid, platType, callback, newplatid) {
         });
     }; // this.addToRunningPlatforms
 
+
+
+    /**
+     * Mark platform as error platform
+     * @param {*} silent
+     * @param {*} connectionError
+     * @param {*} revive
+     * @returns
+     */
+    this.addToErrorPlatformsPromise = function(silent, connectionError, revive) {
+        return new Promise((resolve, reject) => {
+            this.addToErrorPlatforms((err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            }, silent, connectionError, revive);
+        });
+    }
+
+    /**
+     * Mark platform as error platform
+     * @param {*} callback
+     * @param {*} silent
+     * @param {*} connectionError
+     * @param {*} revive
+     */
     this.addToErrorPlatforms = function(callback, silent, connectionError,revive) {
         var platid = this.params.platid;
         var platform = this;
@@ -263,6 +291,24 @@ var Platform = function(platid, platType, callback, newplatid) {
 
     this.resetFails = function(callback) {
         Common.redisClient.zrem("platforms_fails", this.params.platid, callback);
+    }
+
+
+    /**
+     * Increase (decrece) reference to number of sessions in platform
+     * @param {*} inc
+     * @returns
+     */
+    this.increaseReferencePromise = function(inc) {
+        return new Promise((resolve, reject) => {
+            this.increaseReference(inc, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
     }
 
     // increase (decrece) refernce to number of sessions in platform
@@ -507,11 +553,11 @@ var Platform = function(platid, platType, callback, newplatid) {
             },
             // get firewall rules
             function(callback) {
-                if (!Common.isDesktop() || !Common.isEnterpriseEdition()) {
+                if (/*!Common.isDesktop() ||*/ !Common.isEnterpriseEdition()) {
                     callback(null);
                     return;
                 }
-                Common.getEnterprise().firewall.getFirewallRulesForUser(session.login.loginParams.email,session.login.loginParams.mainDomain)
+                Common.getEnterprise().firewall.getFirewallRulesForUser(session.login.loginParams.email,session.login.loginParams.mainDomain,session.params)
                     .then( firewallObj => {
                         firewall = firewallObj;
                         callback(null);
@@ -1213,6 +1259,31 @@ var DeleteAll = function(platType) {
         });
     });
 };
+
+/**
+ * Try to get a platform from the pool
+ * @param {*} platType
+ * @param {*} dedicatedPlatID
+ * @param {*} domain
+ * @param {*} logger
+ * @returns Promise<plat,lock>
+ */
+var getAvailablePlatformPromise = function(platType, dedicatedPlatID, domain, logger) {
+    return new Promise((resolve, reject) => {
+        getAvailablePlatform(platType, dedicatedPlatID, domain, logger, (err, plat,lock) => {
+            if (err) {
+                if (err instanceof Error) {
+                    reject(err);
+                } else {
+                    reject(new Error(err));
+                }
+            } else {
+                resolve({plat,lock});
+            }
+        });
+    });
+};
+
 
 /**
  *  getAvailablePlatform
@@ -2114,6 +2185,25 @@ var checkPlatforms = function(callback) {
     });
 }
 
+/**
+ * Get platform by id
+ * @param {*} platid
+ * @returns Promise<Platform>
+ */
+function getPlatform(platid) {
+    return new Promise((resolve, reject) => {
+        new Platform(platid, null, function(err, obj) {
+            if (err || !obj) {
+                var msg = "Platform does not exist. err:" + err;
+                logger.info(msg);
+                reject(new Error(msg));
+                return;
+            }
+            resolve(obj);
+        });
+    });
+}
+
 module.exports = {
     Platform: Platform,
     DeleteAll: DeleteAll,
@@ -2126,4 +2216,6 @@ module.exports = {
     listAllPlatforms,
     registerPlatformType,
     getStaticPlatformParams,
+    getPlatform,
+    getAvailablePlatformPromise
 };

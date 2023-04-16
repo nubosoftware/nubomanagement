@@ -32,7 +32,7 @@ function returnInternalError(err, res) {
     return;
 }
 
-function resetPasscode(req, res, next) {
+function resetPasscode(req, res, loginObj) {
     // https://oritest.nubosoftware.com/resetPasscode?loginToken=[loginToken]
     res.contentType = 'json';
     var msg = "";
@@ -442,7 +442,7 @@ function resetPasscode(req, res, next) {
     }
 }
 
-var resetPasscode = {
+
+module.exports = {
     func : resetPasscode
 };
-module.exports = resetPasscode;

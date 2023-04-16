@@ -48,9 +48,10 @@ function getOnlineProfiles(req, res) {
                     model: Common.db.UserDevices,
                     where : {
                         maindomain : domain,
-                        platform : {
-                            [Op.ne]: null
-                        }
+                        // platform : {
+                        //     [Op.ne]: null
+                        // },
+                        active_session : 1
                     },
                     attributes: ['imei','devicename','gateway','platform','localid'],
                 }

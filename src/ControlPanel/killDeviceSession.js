@@ -1,4 +1,4 @@
-var StartSession = require('../StartSession.js');
+
 var sessionModule = require('../session.js');
 var Common = require('../common.js');
 var Lock = require('../lock.js');
@@ -6,6 +6,7 @@ var async = require('async');
 var User = require('../user.js');
 var setting = require('../settings.js');
 var logger = Common.getLogger(__filename);
+const SessionController = require('../SessionController');
 
 var KillDeviceSession = {
 		get : killDeviceSession,
@@ -79,14 +80,12 @@ function killDeviceSessionImp(email,imei,domain, callback) {
         },
         // end sessions
         function(callback) {
-            StartSession.endSession(sessId, function(err) {
-                if (err) {
-                    callback(err);
-                } else {
-                    logger.info("killDeviceSession. Killed session: " + sessId);
-                    removeReference = false;
-                    callback(null);
-                }
+            SessionController.endSession(sessId).then(() => {
+                logger.info("killDeviceSession. Killed session: " + sessId);
+                removeReference = false;
+                callback(null);
+            }).catch(err => {
+                callback(err);
             });
         }
     ],function(err) {
@@ -100,7 +99,7 @@ function killDeviceSessionImp(email,imei,domain, callback) {
             if (removeReference) {
                 // delete session from database
                 logger.info("Session not found for user/device. Remove platform/gateway assosiation of user device");
-                User.updateUserConnectedDevice(email, imei, null, null,  null, logger, function(err) {
+                User.updateUserConnectedDevice(email, imei, null, null,  null, logger, false, function(err) {
                     if (err) {
                         logger.info("failed removing platform/gateway assosiation of user device",err)
                         return;

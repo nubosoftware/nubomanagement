@@ -22,9 +22,9 @@ var Session, getSessionOfUserDevice, getSessionsOfUser, setUserDeviceLock, relea
 
 var Session = function(sessid, opts, callback) {
     var logger = Common.getLogger(__filename);
-    if (typeof opts === "function") {
+    if (opts && typeof opts === "function") {
         callback = opts;
-    } else {
+    } else if (opts && typeof opts === "object") {
         if (opts.logger) logger = opts.logger;
     }
 
@@ -86,6 +86,35 @@ var Session = function(sessid, opts, callback) {
         })(this); //function (sess)
     }; // save
 
+
+    /**
+     * Suspend or resume a session
+     * if suspend = 0, resume the session
+     * if suspend = 1, suspend the session
+     * @param {number} suspend
+     * @returns {Promise}
+     */
+    this.suspendPromise = function(suspend) {
+        const self = this;
+        return new Promise((resolve, reject) => {
+            self.suspend(suspend, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
+
+
+    /**
+     * Suspend or resume a session
+     * if suspend = 0, resume the session
+     * if suspend = 1, suspend the session
+     * @param {*} suspend
+     * @param {*} callback
+     */
     this.suspend = function(suspend, callback) {
         var now = new Date();
         this.params.suspend = suspend;
@@ -122,6 +151,28 @@ var Session = function(sessid, opts, callback) {
         }); // save
     }; //forceExit
 
+
+    /**
+     * Delete a session from redis along with all the references
+     * @returns {Promise}
+     */
+    this.delPromise = function() {
+        const self = this;
+        return new Promise((resolve, reject) => {
+            self.del((err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
+
+    /**
+     * Delete a session from redis along with all the references
+     * @param {*} callback
+     */
     this.del = function(callback) {
         var logger = this.logger;
         var self = this;
@@ -148,6 +199,23 @@ var Session = function(sessid, opts, callback) {
         });
     }
 
+    /**
+     * Delete the platform reference of a session
+     * @returns {Promise}
+     */
+    this.deletePlatformReferencePromise = function() {
+        const self = this;
+        return new Promise((resolve, reject) => {
+            self.deletePlatformReference((err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
+
     this.deletePlatformReference = function(callback) {
 
         var logger = this.logger;
@@ -162,15 +230,40 @@ var Session = function(sessid, opts, callback) {
             if (err) {
                 var errMsg = "session.deletePlatformReference: " + err;
                 logger.error(errMsg);
-                callback(errMsg);
+                callback(new Error(errMsg));
                 return;
             }
-
             callback(null);
             return;
         });
     }
 
+    /**
+     * Update the platform references for this session in redis
+     * @returns {Promise}
+     */
+    this.updatePlatformReferencePromise = function() {
+        var self = this;
+        return new Promise(function(resolve, reject) {
+            self.updatePlatformReference(function(err,cnt) {
+                if (err) {
+                    if (err instanceof Error) {
+                        reject(err);
+                    } else {
+                        reject(new Error(err));
+                    }
+                } else {
+                    resolve(cnt);
+                }
+            });
+        });
+    }
+
+    /**
+     * Update the platform references for this session in redis
+     * @param {*} callback
+     * @returns
+     */
     this.updatePlatformReference = function(callback) {
         if (!this.params.platid || !this.params.localid) {
             callback("Missing params for updatePlatformReference");
@@ -204,6 +297,59 @@ var Session = function(sessid, opts, callback) {
         }); // Common.redisClient.set
     };
 
+
+
+    /**
+     * Save the session in redis
+     * @returns {Promise}
+     */
+    this.savePromise = function() {
+        var self = this;
+        return new Promise(function(resolve, reject) {
+            self.save(function(err, sess) {
+                if (err) {
+                    if (err instanceof Error) {
+                        reject(err);
+                    } else {
+                        reject(new Error(err));
+                    }
+                } else {
+                    resolve(sess);
+                }
+            });
+        });
+    }
+    /**
+     * Set the user and device for this session
+     * Save the session and also addd usersess_ refereces to redis
+     * @param {*} email
+     * @param {*} deviceid
+     * @returns
+     */
+    this.setUserAndDevicePromise = function(email, deviceid) {
+        var self = this;
+        return new Promise(function(resolve, reject) {
+            self.setUserAndDevice(email, deviceid, function(err) {
+                if (err) {
+                    if (err instanceof Error) {
+                        reject(err);
+                    } else {
+                        reject(new Error(err));
+                    }
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
+
+    /**
+     * Set the user and device for this session
+     * Save the session and also addd usersess_ refereces to redis
+     * @param {*} email
+     * @param {*} deviceid
+     * @param {*} callback
+     */
     this.setUserAndDevice = function(email, deviceid, callback) {
             this.params.email = email;
             this.params.deviceid = deviceid;
@@ -309,61 +455,73 @@ var Session = function(sessid, opts, callback) {
 };
 
 
+/**
+ * Load a running session from redis by email and deviceid
+ * If session is not found, return null
+ * @param {*} email
+ * @param {*} deviceid
+ * @returns
+ */
+let getSessionOfUserDevicePromise = function(email, deviceid) {
+    return new Promise((resolve, reject) => {
+        getSessionOfUserDevice(email, deviceid, (err, obj) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(obj);
+            }
+        });
+    });
+};
+
 getSessionOfUserDevice = function(email, deviceid, callback) {
+    Common.redisClient.get('usersess_' + email + '_' + deviceid, function(err, reply) {
+        if (err) {
+            return callback(err);
+        }
 
-    if (Common.withService) {
-        Common.redisClient.smembers('usersess_' + email, function(err, replies) {
+        if (reply == null) {
+            return callback(null, null);
+        }
+
+        new Session(reply, function(err, obj) {
             if (err) {
                 return callback(err);
             }
 
-            if (replies.length == 0) {
-                return callback(null, null);
-            }
-
-            new Session(replies[0], function(err, obj) {
-                if (err) {
-                    return callback(err);
-                }
-
-                callback(null, obj);
-            });
-
+            callback(null, obj);
         });
+    });
+};
 
-    } else {
-        Common.redisClient.get('usersess_' + email + '_' + deviceid, function(err, reply) {
+/**
+ * Get all sessions of a user
+ * @param {*} email
+ * @returns Promise<Session[]>
+ */
+var getSessionsOfUserPromise = function(email) {
+    return new Promise((resolve, reject) => {
+        getSessionsOfUser(email, (sessions,err) => {
             if (err) {
-                return callback(err);
+                reject(err);
+            } else {
+                resolve(sessions);
             }
-
-            if (reply == null) {
-                return callback(null, null);
-            }
-
-            new Session(reply, function(err, obj) {
-                if (err) {
-                    return callback(err);
-                }
-
-                callback(null, obj);
-            });
-
         });
-    }
+    });
 };
 
 getSessionsOfUser = function(email, callback) {
     Common.redisClient.smembers('usersess_' + email, function(err, replies) {
         if (err) {
-            callback(err, null);
-            return;
-        }
-        if (replies == null) {
-            callback(null, null); // session not found with no error
+            callback(null, err);
             return;
         }
         var sessions = [];
+        if (replies == null) {
+            callback(sessions,null); // session not found with no error
+            return;
+        }
         var i = 0;
         async.eachSeries(replies, function(reply, callback) {
             new Session(reply, function(err, obj) {
@@ -385,6 +543,20 @@ getSessionsOfUser = function(email, callback) {
 
     }); // Common.redisClient.get
 }; //getSessionsOfUser
+
+/**
+ * Get all session ids of a user
+ * @param {*} email
+ * @returns Promise<string[]>
+ */
+var getSessionIdsOfUser = async function(email) {
+    const arr = await Common.redisClient.smembers('usersess_' + email);
+    if (arr == null) {
+        return [];
+    } else {
+        return arr;
+    }
+}
 
 getSessionFromPlatformReference = function(platid, localid, callback) {
 
@@ -701,7 +873,7 @@ function reassignAvalibleGatewayForSession(sessId, callback) {
             });
         },
         function(session, callback) {
-            userModule.updateUserConnectedDevice(session.params.email, session.params.deviceid, session.params.platid, session.params.gatewayIndex, session.params.localid, logger, function(err) {
+            userModule.updateUserConnectedDevice(session.params.email, session.params.deviceid, session.params.platid, session.params.gatewayIndex, session.params.localid, logger, true, function(err) {
                 if (err) {
                     logger.error("reassignAvalibleGatewayForSession: failed updating connected platform and gateway of the session");
                     callback(err)
@@ -746,6 +918,29 @@ function reassignAvalibleGatewayForSession(sessId, callback) {
     });
 }
 
+/**
+ * Load session object from redis
+ * @param {*} sessId
+ * @param {*} opts
+ * @returns Promise<Session>
+ */
+function loadSession(sessId, opts) {
+    return new Promise((resolve, reject) => {
+        new Session(sessId, opts, function(err, obj) {
+            if (err) {
+                //logger.error("createSessionObject: " + err);
+                if (err instanceof Error) {
+                    reject(err);
+                } else {
+                    reject(new Error(err));
+                }
+                return;
+            }
+            resolve(obj);
+        });
+    });
+}
+
 module.exports = {
     Session: Session,
     getSessionOfUserDevice: getSessionOfUserDevice,
@@ -756,4 +951,8 @@ module.exports = {
     unsubscribeFromGatewayChannel: unsubscribeFromGatewayChannel,
     subscribeToGatewayChannel: subscribeToGatewayChannel,
     gatewayChannelMonitorService: gatewayChannelMonitorService,
+    getSessionOfUserDevicePromise,
+    getSessionIdsOfUser,
+    loadSession,
+    getSessionsOfUserPromise,
 };

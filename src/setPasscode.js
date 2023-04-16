@@ -67,7 +67,7 @@ function validatePassword(logger, password) {
 
 }
 
-function setPasscode(req, res, next) {
+function setPasscode(req, res, loginObj) {
     // https://oritest.nubosoftware.com/setPasscode?loginToken=[]&passcode=[]&oldpasscode=[]
     res.contentType = 'json';
     const finish = "__finish";
@@ -97,6 +97,16 @@ function setPasscode(req, res, next) {
 
     async.series([
         function(callback) {
+            if (loginObj && loginObj.loginToken) {
+                loginToken = loginObj.loginToken;
+                login = loginObj;
+                logger.user(login.getEmail());
+                logger.device(login.getDeviceID());
+                webClient = login.getDeviceID().includes("web");
+                logger.info("loginObj is valid");
+                callback(null);
+                return;
+            }
             new Login(loginToken, function(err, loginObj) {
                 if (err) {
                     return callback(err);

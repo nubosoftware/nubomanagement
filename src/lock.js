@@ -94,6 +94,30 @@ Lock.prototype.acquire = function(callback) {
     );
 }
 
+Lock.prototype.acquirePromise = function() {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+        self.acquire(function(err, replay) {
+            if (err)
+                reject(err);
+            else
+                resolve(replay);
+        });
+    });
+}
+
+Lock.prototype.releasePromise = function() {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+        self.release(function(err, replay) {
+            if (err)
+                reject(err);
+            else
+                resolve(replay);
+        });
+    });
+}
+
 Lock.prototype.release = function(callback) {
     if (callback != null && typeof callback !== "function") {
         var errMsg = "release: callback must be a function (lock on \'" + this._key + "\')";

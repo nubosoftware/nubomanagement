@@ -10,6 +10,7 @@ var Config = require('./config.js');
 var CommonUtils = require("./commonUtils.js");
 var eventLog = require('./eventLog.js');
 var EV_CONST = eventLog.EV_CONST;
+var jwt = require('jsonwebtoken');
 
 Validate = {
     func: validate,
@@ -81,6 +82,7 @@ function validate(req, res, next) {
     res.contentType = 'json';
     var playerVersion = req.params.playerVersion ? req.params.playerVersion : null;
     var activationKey = req.params.activationKey ? req.params.activationKey : null;
+    var jwtToken = req.params.jwt;
     var deviceId = req.params.deviceid ? req.params.deviceid : null;
     var clientIP = req.header('x-client-ip'); //req.connection.remoteAddress;
     // var clientIPint = req.header('x-client-ip');
@@ -139,7 +141,7 @@ function validate(req, res, next) {
                 },
                 function(callback) {
                     logger.info("validateActivation...");
-                    validateActivation(activationKey, deviceId, userData, activationData, req.url, timeZone, clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, function(err, validateResponse) {
+                    validateActivation(activationKey, deviceId, userData, activationData, req.url, timeZone, clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, jwtToken, function(err, validateResponse) {
                         if (err)
                             error = err;
 
@@ -364,7 +366,7 @@ function checkIfNeedRedirection(playerVersion, activationKey, clientIP, deviceId
 function getActivationData(activationKey, logger, callback) {
 
     Common.db.Activation.findAll({
-        attributes: ['activationkey', 'status', 'email', 'deviceid', 'firstlogin', 'resetpasscode', 'firstname', 'lastname', 'jobtitle', 'devicetype', 'secondAuthRegistred','expirationdate','biometric_token','otp_token','pushregid','deviceapprovaltype'],
+        attributes: ['activationkey', 'status', 'email', 'deviceid', 'firstlogin', 'resetpasscode', 'firstname', 'lastname', 'jobtitle', 'devicetype', 'secondAuthRegistred','expirationdate','biometric_token','otp_token','pushregid','deviceapprovaltype','public_key'],
         where: {
             activationkey: activationKey
         },
@@ -473,7 +475,7 @@ function getUserDeviceData(email, deviceID, logger, maindomain, callback) {
 }
 
 function validateActivation(activationKey, deviceID, userdata, activationdata, url, timeZone,
-    clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, callback) {
+    clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, jwtToken, callback) {
 
     var finish = 'finish';
     var response = null;
@@ -512,6 +514,42 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                         activationData = activation;
                         callback(null);
                     });
+                }
+            },
+            // check jwt token if public key is set
+            function(callback) {
+                if (activationData.public_key) {
+                    // jwt
+                    try {
+                        // logger.info('validateActivation: jwtToken: ' + jwtToken);
+                        if (!jwtToken) {
+                            throw new Error("JWT token is missing");
+                        }
+                        var decoded = jwt.verify(jwtToken, activationData.public_key);
+                        if (!decoded) {
+                            throw new Error("Invalid JWT");
+                        }
+                        let decodedActivationKey = decoded.activationKey;
+                        if (!decodedActivationKey) {
+                            decodedActivationKey = decoded.sub;
+                        }
+                        if (decodedActivationKey !== activationKey) {
+                            throw new Error("Invalid activationKey in JWT");
+                        }
+                        callback(null);
+                    } catch (err) {
+                        response = {
+                            status: Common.STATUS_ERROR,
+                            message: "Invalid JWT"
+                        }
+                        error = err;
+                        logger.error('validateActivation: ' + err);
+                        callback(finish);
+                        return;
+                    }
+                } else {
+                    // logger.info(`validateActivation: no public key set for activationKey: ${activationKey}`);
+                    callback(null);
                 }
             },
             //check activation data
@@ -857,6 +895,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                     login.setSecondFactorAuth(Common.secondFactorAuthType.NONE);
                 }
                 login.loginParams.secondAuthRegistred = activationData.secondAuthRegistred;
+                login.loginParams.public_key = activationData.public_key;
 
                 login.loginParams.hideNuboAppPackageName = hideNuboAppPackageName;
                 login.loginParams.clientauthtype = userData.org.clientauthtype;
@@ -944,8 +983,10 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                 if (hideNuboAppPackageName != "" && newProcess && login && activationData && activationData.deviceid) {
                     var email = activationData.email;
                     var deviceid = activationData.deviceid;
-                    require('./StartSession.js').closeSessionOfUserDevice(email,deviceid,function(err,closedSession) {
+                    require('./SessionController').closeSessionOfUserDevice(email,deviceid).then( () => {
                         logger.info("Close session for hideNuboAppPackageName");
+                    }).catch(err => {
+                        logger.info("Close session for hideNuboAppPackageName error: "+err);
                     });
                 } else if (!error && Common.fastConnection &&
                     loginToken && login &&
@@ -960,7 +1001,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                         timeZone: timeZone,
                         fastConnection: true
                     }
-                    require('./StartSession.js').startSessionImp(startSessionParams).then( respParams => {
+                    require('./SessionController').startSessionImp(startSessionParams).then( respParams => {
                         // logger.info(`Optimistic Start session completed. err: ${JSON.stringify(respParams.err,null,2)}, resObj: ${JSON.stringify(respParams.resObj,null,2)} `);
                     }).catch(respParams => {
                         // logger.info(`Optimistic start session failed. err: ${JSON.stringify(respParams.err,null,2)} , resObj: ${JSON.stringify(respParams.resObj,null,2)}`);

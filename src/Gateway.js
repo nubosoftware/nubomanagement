@@ -98,6 +98,32 @@ var updateGWSessionSet = function(gwIndex,inc,sessid,callback) {
     }
 };
 
+
+
+/**
+ * Increase or decrease the number of sessions of a gateway
+ * @param {*} gwIndex
+ * @param {*} inc
+ * @param {*} sessid
+ * @param {*} logger
+ * @returns Promise
+ */
+var updateGWSessionScorePromise = function(gwIndex, inc, sessid, logger) {
+    return new Promise(function(resolve, reject) {
+        updateGWSessionScore(gwIndex, inc, sessid, logger, function(err) {
+            if (err) {
+                if (err instanceof Error) {
+                    reject(err);
+                } else {
+                    reject(new Error(err));
+                }
+            } else {
+                resolve();
+            }
+        });
+    });
+};
+
 //update gateway's number of sessions score
 var updateGWSessionScore = function(gwIndex, inc, sessid, logger, callback) {
 
@@ -462,7 +488,8 @@ var GatewayModule = {
     unsubscribeFromGatewayTTLExpiration: unsubscribeFromGatewayTTLExpiration,
     gatewayTTLExpiredMonitorService: gatewayTTLExpiredMonitorService,
     addPlatToGW: addPlatToGW,
-    removePlatFromGW: removePlatFromGW
+    removePlatFromGW: removePlatFromGW,
+    updateGWSessionScorePromise
 };
 
 module.exports = GatewayModule;

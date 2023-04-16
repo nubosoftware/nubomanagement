@@ -925,4 +925,6 @@ PRIMARY KEY (hardwaredesc, devicemodel));"
 , "1.5.0.1.104" : "ALTER TABLE apps ADD COLUMN base_image_app int default 0 AFTER filename;"
 , "1.5.0.2.103" : "CREATE TABLE plugins (id VARCHAR(100) , version VARCHAR(50), name VARCHAR(50), description text, active int default 1 , packagehash VARCHAR(65), package LONGBLOB, createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id));"
 , "1.5.0.2.104" : "ALTER TABLE plugins ADD COLUMN configuration MEDIUMTEXT AFTER packagehash;"
+, "1.5.0.2.105" : "ALTER TABLE activations ADD COLUMN public_key TEXT after deviceapprovaltype;"
+, "1.5.0.2.106" : "ALTER TABLE user_devices ADD COLUMN active_session int default 0 after localid;"
 }

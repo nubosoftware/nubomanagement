@@ -52,7 +52,7 @@ function checkOrphanSessions(logger,callback) {
                 if (!err && sess == null) {
                     // found orphan session in db
                     logger.error("Found orphan session. email: "+email+", imei: "+imei+". Delete session from db");
-                    User.updateUserConnectedDevice(email, imei, null, null, null, logger, function(err) {
+                    User.updateUserConnectedDevice(email, imei, null, null, null, logger, false, function(err) {
                         if (err) {
                             callback("failed removing platform/gateway assosiation of user device")
                             return;

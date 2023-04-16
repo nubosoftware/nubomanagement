@@ -235,7 +235,54 @@ function getUserHomeFolder(email) {
     return folder;
 }
 
-function updateUserConnectedDevice(email, imei, platform, gateway, localid, logger, callback) {
+
+/**
+ * Update user device table with current session info
+ * @param {*} email
+ * @param {*} imei
+ * @param {*} platform
+ * @param {*} gateway
+ * @param {*} localid
+ * @param {*} logger
+ * @returns {Promise}
+ */
+function updateUserConnectedDevicePromise(email, imei, platform, gateway, localid, active_session) {
+    if (platform && !gateway) {
+        gateway = "-1";
+    }
+    if (!localid || isNaN(localid)) {
+        localid = 0;
+    }
+    let values = {
+        platform: platform,
+        gateway: gateway,
+        localid: parseInt(localid),
+        active_session: active_session ? 1 : 0
+    };
+
+    if ((platform && gateway) || active_session) {
+        values.last_login = new Date()
+    }
+
+    return Common.db.UserDevices.update(values, {
+        where: {
+            email: email,
+            imei: imei
+        }
+    });
+}
+
+/**
+ * Update user device table with current session info
+ * @param {*} email
+ * @param {*} imei
+ * @param {*} platform
+ * @param {*} gateway
+ * @param {*} localid
+ * @param {*} logger
+ * @param {*} callback
+ */
+function updateUserConnectedDevice(email, imei, platform, gateway, localid, logger, active_session, callback) {
 
     if (platform && !gateway) {
         gateway = "-1";
@@ -246,10 +293,11 @@ function updateUserConnectedDevice(email, imei, platform, gateway, localid, logg
     let values = {
         platform: platform,
         gateway: gateway,
-        localid: parseInt(localid)
+        localid: parseInt(localid),
+        active_session: active_session ? 1 : 0
     };
 
-    if (platform && gateway) {
+    if ((platform && gateway) || active_session) {
         values.last_login = new Date()
     }
 
@@ -268,6 +316,28 @@ function updateUserConnectedDevice(email, imei, platform, gateway, localid, logg
         callback(errMsg);
     });
 
+}
+
+/**
+ * Get user connected devices
+ * @param {*} email
+ * @param {*} logger
+ * @returns
+ */
+function getUserConnectedDevicesPromise(email,logger) {
+    return new Promise((resolve, reject) => {
+        getUserConnectedDevices(email,logger,function(err,results) {
+            if (err) {
+                if (err instanceof Error) {
+                    reject(err);
+                } else {
+                    reject(new Error(err));
+                }
+                return;
+            }
+            resolve(results);
+        });
+    });
 }
 
 function getUserConnectedDevices(email, logger, callback) {
@@ -367,6 +437,37 @@ function updateUserDataCenter(email, dcname, dcurl, logger, callback) {
 
 }
 
+
+/**
+ * Get user data center
+ * @param {*} email
+ * @param {*} logger
+ * @returns
+ */
+async function getUserDataCenterPromise(email, logger) {
+    return new Promise((resolve, reject) => {
+        getUserDataCenter(email, logger, function(err, dcname, dcurl) {
+            if (err) {
+                if (err instanceof Error) {
+                    reject(err);
+                } else {
+                    reject(new Error(err));
+                }
+                return;
+            }
+            resolve({
+                dcname, dcurl
+            });
+        });
+    });
+}
+
+/**
+ * Get user data center
+ * @param {*} email
+ * @param {*} logger
+ * @param {*} callback
+ */
 function getUserDataCenter(email, logger, callback) {
 
     Common.db.User.findAll({
@@ -715,6 +816,7 @@ var User = {
     isUseDeviceConnected: isUseDeviceConnected,
     updateUserDataCenter: updateUserDataCenter,
     getUserDataCenter: getUserDataCenter,
+    getUserDataCenterPromise,
     getUserDomain : getUserDomain,
     getUserDeviceDataFolderObj: getUserDeviceDataFolderObj,
     getUserStorageFolderObj: getUserStorageFolderObj,
@@ -730,7 +832,9 @@ var User = {
     getDomainFolder,
     getUserDomainPromise,
     getUserDetailsPromise,
-    getUserObjPromise
+    getUserObjPromise,
+    updateUserConnectedDevicePromise,
+    getUserConnectedDevicesPromise,
 };
 
 module.exports = User;

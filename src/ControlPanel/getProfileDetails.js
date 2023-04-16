@@ -88,7 +88,7 @@ function getProfileDetailsFromDB(res, email, domain,webCP) {
 
         Common.db.User.findAll({
             attributes : ['firstname', 'lastname','isactive', 'officephone', 'mobilephone', 'manager', 'country', 'dcname', 'storageLimit', 'storageLast', 'isimadmin', 'im_mobile', 'im_mobile2', 'addomain', 'username', 'clientip', 'clientport', 'subscriptionid', 'subscriptionupdatedate', 'lastactivity','recording',
-               'orguser','serverurl','securessl'],
+               'orguser','orgemail','serverurl','securessl'],
             where : {
                 email : email,
                 orgdomain : domain
@@ -161,7 +161,7 @@ function getProfileDetailsFromDB(res, email, domain,webCP) {
                             lastActivityTime : lastactivity,
                         };
                         if (webCP) {
-                            _.extend(details, _.pick(row, 'recording', 'orguser', 'serverurl', 'securessl'));
+                            _.extend(details, _.pick(row, 'recording', 'orguser', 'orgemail', 'serverurl', 'securessl'));
                             details.firstname = firstname;
                             details.lastname = lastname;
                             // details.recording = row.recording;
@@ -270,7 +270,7 @@ function getProfileDetailsFromDB(res, email, domain,webCP) {
     // get devices
     function(callback) {
         Common.db.UserDevices.findAll({
-            attributes : ['devicename', 'active', 'imei', 'inserttime', 'imsi', 'gateway', 'platform','localid'],
+            attributes : ['devicename', 'active', 'imei', 'inserttime', 'imsi', 'gateway', 'platform','localid',"active_session"],
             order: [['platform','DESC']],
             where : {
                 email : email,
@@ -295,9 +295,10 @@ function getProfileDetailsFromDB(res, email, domain,webCP) {
                     var imsi = row.imsi != null ? row.imsi : '';
                     var insertTime = row.inserttime != null ? row.inserttime : '';
                     var localid = row.localid > 0 ? row.localid : '';
+                    var active_session = row.active_session == 1 ? true : false;
 
                     var isOnline = 0;
-                    if (platform && platform.length > 0 && gateway && gateway.length > 0) {
+                    if (/*platform && platform.length > 0 && gateway && gateway.length > 0*/ active_session) {
                         isOnline = 1;
                     }
 

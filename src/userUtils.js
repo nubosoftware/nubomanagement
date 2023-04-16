@@ -266,6 +266,7 @@ function createDomainForUser(domain, logger, callback) {
                     org_obj.passcodeexpirationdays = results[0].passcodeexpirationdays || 0;
                     org_obj.passcodeminchars = results[0].passcodeminchars || 6;
                     org_obj.passcodetype = results[0].passcodetype || 0;
+                    // logger.info(`createDomainForUser. passcodetype: ${org_obj.passcodetype}, results[0].passcodetype: ${results[0].passcodetype}, domain: ${domain}`);
                 }
                 org_obj.exchangeencoding = results[0].exchangeencoding || "UTF-8";
                 org_obj.owaurl = results[0].owaurl != null ? results[0].owaurl : '';
@@ -284,6 +285,29 @@ function createDomainForUser(domain, logger, callback) {
             callback(err, res);
         }
     );
+}
+
+/**
+ * Create or return user and domain
+ * @param {*} email
+ * @param {*} logger
+ * @param {*} userDomain
+ * @returns {Promise}
+ */
+function createOrReturnUserAndDomainPromise(email, logger, userDomain) {
+    return new Promise(function(resolve, reject) {
+        createOrReturnUserAndDomain(email, logger, function(err, user, userObj, orgObj) {
+            if (err) {
+                if (err instanceof Error) {
+                    reject(err);
+                } else {
+                    reject(new Error(err));
+                }
+            } else {
+                resolve({user: user, userObj: userObj, orgObj: orgObj});
+            }
+        }, userDomain);
+    });
 }
 
 function createOrReturnUserAndDomain(email, logger, callback,userDomain) {
@@ -1322,6 +1346,32 @@ function saveSettingsUpdateFile(settings, userName, deviceID, settingsFileName, 
 
 
 
+/**
+ * Create user folders
+ * @param {*} email
+ * @param {*} deviceid
+ * @param {*} deviceType
+ * @param {*} overwrite
+ * @param {*} time
+ * @param {*} hrTime
+ * @param {*} demoUser
+ * @param {*} tempUserDataFlag
+ * @param {*} sessTrack
+ * @param {*} hideNuboAppPackageName
+ * @returns Promise
+ */
+function createUserFoldersPromise(email, deviceid, deviceType, overwrite, time, hrTime, demoUser, tempUserDataFlag, sessTrack, hideNuboAppPackageName) {
+    return new Promise((resolve, reject) => {
+        createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime, (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        }, demoUser, tempUserDataFlag, sessTrack, hideNuboAppPackageName);
+    });
+}
+
 function createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime, callback, demoUser, tempUserDataFlag, sessTrack, hideNuboAppPackageName) {
 
     var userFolder, userFolderSd, storageFolder, dataFolder, domainNewUserFile, newUserFile;
@@ -1679,6 +1729,29 @@ function enableNewDeviceApps(email, deviceId, time, hrTime, callback) {
     });
 
 }
+
+/**
+ * Validate user folders. for the giver user name, device id and device type
+ * If the folders arre validated, return true
+ * Otherwise, return false
+ * @param {*} UserName
+ * @param {*} deviceID
+ * @param {*} deviceType
+ * @param {*} keys
+ * @returns Promise<boolean>
+ */
+function validateUserFoldersPromise(UserName, deviceID, deviceType, keys) {
+    return new Promise(function(resolve, reject) {
+        validateUserFolders(UserName, deviceID, deviceType, keys, function(err) {
+            if (err) {
+                resolve(false);
+            } else {
+                resolve(true);
+            }
+        });
+    });
+}
+
 
 function validateUserFolders(UserName, deviceID, deviceType, keys, callback) {
     var folder, folderSd;
@@ -2069,9 +2142,29 @@ function getUserPass(email, callback) {
 }
 
 
+/**
+ * Calculate the size of the user data in KB
+ * @param {*} user
+ * @returns {Promise<null>}
+ */
+var getUserDataSizePromise = function(user) {
+    return new Promise(function(resolve, reject) {
+        var duParams = ["--max-depth=0", "-B1024", Common.nfshomefolder + userModule.getUserHomeFolder(user)];
+        execFile(Common.globals.DU, duParams, function(error, stdout, stderr) {
+            if (error) {
+                reject(new Error("getUserDataSize:" + error));
+            } else {
+                resolve(parseInt(stdout));
+            }
+        });
+    });
+}
 
-
-
+/**
+ * Calculate the size of the user data in KB
+ * @param {*} user
+ * @param {*} callback
+ */
 var getUserDataSize = function(user, callback) {
     var duParams = ["--max-depth=0", "-B1024", Common.nfshomefolder + userModule.getUserHomeFolder(user)];
     execFile(Common.globals.DU, duParams, function(error, stdout, stderr) {
@@ -2424,7 +2517,11 @@ module.exports = {
     unMountUserData,
     resizeUserData,
     updateAppRestrictions,
-    addSettingsToAllDevices
+    addSettingsToAllDevices,
+    validateUserFoldersPromise,
+    createUserFoldersPromise,
+    getUserDataSizePromise,
+    createOrReturnUserAndDomainPromise,
 
 };
 

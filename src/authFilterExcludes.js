@@ -202,7 +202,7 @@ var excludeList = {
         '/checkStatus': 1,
         '/receiveSMS': 1,
     },
-    'NOLOGIN_REGEX': /^\/appstore\/|^\/html\/|^\/api\/plugin\//,
+    'NOLOGIN_REGEX': /^\/appstore\/|^\/html\/|^\/api\/plugin\/|^\/client\//,
     'PLATUID': {
         '/createOrReturnUserAndDomain': 1,
         '/createDomainForUser': 1,

@@ -104,6 +104,11 @@ async function checkAndCleanPlatformSessions(platform,platSessions) {
         // logger.info(`checkAndCleanPlatformSessions. platsesslist: ${arr}`);
         for (const sessid of arr) {
             let sess = await redisHgetall(`sess_${sessid}`);
+            if (!sess) {
+                logger.info(`checkAndCleanPlatformSessions. Session ${sessid} does not exist!`);
+                await Common.redisClient.srem(`platsesslist_${platform.params.platid}`, sessid);
+                continue;
+            }
             let key = `${sess.email}_${sess.deviceid}`;
             if (platSessions[key]) {
                 // logger.info(`checkAndCleanPlatformSessions. Session ${key} is running in platform ${platform.params.platid}.`);

@@ -774,6 +774,7 @@ var apiAccess = function(req, res) {
     let arg1 = req.params.arg1;
     let arg2 = req.params.arg2;
     let arg3 = req.params.arg3;
+    //logger.info(`apiAccess. objectType: ${objectType}, arg1: ${arg1}, arg2: ${arg2}, arg3: ${arg3}, method: ${req.method}, url: ${req.url}`);
     let requestType = null;
     if (objectType === 'auth') {
         if (arg1 == "activate") {

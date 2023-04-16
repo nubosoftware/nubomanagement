@@ -32,6 +32,14 @@ function checkPasscode(req, res, loginObj) {
 
     var loginToken = req.params.loginToken;
     var passcode = req.params.passcode;
+    if (!passcode) {
+        logger.info(`checkPasscode: passcode is empty`);
+        res.send({
+            status: Common.STATUS_ERROR,
+            message: "Invalid passcode"
+        });
+        return;
+    }
     var clientIP = req.header('x-client-ip');
 
     var login;
@@ -56,7 +64,8 @@ function checkPasscode(req, res, loginObj) {
 
     async.series([
         function(callback) {
-            if (loginObj && loginObj.loginToken && loginObj.loginToken == loginToken) {
+            if (loginObj && loginObj.loginToken) {
+                loginToken = loginObj.loginToken;
                 login = loginObj;
                 logger.user(login.getEmail());
                 logger.device(login.getDeviceID());
@@ -79,6 +88,7 @@ function checkPasscode(req, res, loginObj) {
                 }
 
                 if (loginObj.getPasscodeActivationRequired() != "false" || loginObj.getAuthenticationRequired() != "false") {
+                    logger.info(`Passcode activation required: ${loginObj.getPasscodeActivationRequired()}, Authentication required: ${loginObj.getAuthenticationRequired()}`);
                     status = Common.STATUS_ERROR;
                     message = "Pascode enter not allowed";
 

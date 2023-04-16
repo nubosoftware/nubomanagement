@@ -14,6 +14,18 @@ module.exports = function(token, callback) {
         isValidPassword: false
     };
 
+    this.savePromise = function() {
+        return new Promise((resolve, reject) => {
+            this.save((err, login) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(login);
+            });
+        });
+    };
+
     this.save = function(callback) {
 
         (function(login) {

@@ -39,6 +39,7 @@ const originalRequire = require("../scripts/originalRequire");
     staticPlugIns = [];
     pluginInitResponse;
     publicRoutes = [];
+    sessionType = undefined;
 
 
     static PLUGIN_STATUS_NOT_ACTIVE = 0;
@@ -199,6 +200,11 @@ const originalRequire = require("../scripts/originalRequire");
                     await this.initStaticPlugins();
                 }
                 this.addTriggers();
+                if (this.pluginInitResponse.sessionType) {
+                    this.sessionType = this.pluginInitResponse.sessionType;
+                    // mark reload of session types
+                    require('./SessionController').reloadSessionTypesCache();
+                }
             }
 
             this.status = Plugin.PLUGIN_STATUS_LOADED;
@@ -250,7 +256,7 @@ const originalRequire = require("../scripts/originalRequire");
                 // logger.info(`initStaticPlugins. Not initializing static plugins in daemon process`);
                 return;
             }
-            if (!Common.isRestservers) {
+            if (!Common.isRestServer) {
                 // logger.info(`initStaticPlugins. Not initializing static plugins in non restserver process`);
                 return;
             }
@@ -311,6 +317,7 @@ const originalRequire = require("../scripts/originalRequire");
                 }
             }
         }
+        // call triqger handlers
     }
 
     /**
@@ -443,6 +450,7 @@ const originalRequire = require("../scripts/originalRequire");
                 UserUtils: require("./userUtils.js"),
                 User: require("./user.js"),
                 Session: require('./session').Session,
+                SessionController: require('./SessionController'),
                 Settings: require('./settings'),
                 nubocronAPI: require('./nubocronAPI'),
                 nuboCronJobs: require('./nuboCronJobs'),
@@ -594,6 +602,15 @@ const originalRequire = require("../scripts/originalRequire");
         }
         let cnt = Object.keys(Plugin.plugins).length;
         return cnt;
+    }
+
+    /**
+     * Get plugin by id
+     * @param {*} id
+     * @returns plugin or null
+     */
+    static getPluginById(id) {
+        return Plugin.plugins[id];
     }
 
     /**
@@ -978,7 +995,37 @@ const originalRequire = require("../scripts/originalRequire");
         return mainPackage;
     }
 
+    /**
+     * Get all plugin session types
+     * @returns
+     */
+    static getSessionTypes() {
+        let ret = [];
+        for (const id in Plugin.plugins) {
+            const plugin = Plugin.plugins[id];
+            if (plugin.status == Plugin.PLUGIN_STATUS_LOADED && plugin.sessionType) {
+                if (!Array.isArray(plugin.sessionType)) {
+                    plugin.sessionType = [plugin.sessionType];
+                }
+                for (const sessionType of plugin.sessionType) {
+                    const item = {
+                        ...sessionType,
+                        value : `plugin:${id}:${sessionType.value}`,
+                        pluginId: id,
+                        plugin: plugin
+                    }
+                    ret.push(item);
+                }
+            }
+        }
+        return ret;
+    }
 
+
+    /**
+     * Add public server to all plugins with public server handlers
+     * @param {*} server
+     */
     static addPublicServer(server) {
         Plugin.publicServers.push(server);
         logger.info(`addPublicServer. server: ${server.name} Public servers: ${Plugin.publicServers.length} `);
@@ -988,6 +1035,27 @@ const originalRequire = require("../scripts/originalRequire");
             if (plugin.status == Plugin.PLUGIN_STATUS_LOADED && plugin.pluginInitResponse  && plugin.pluginInitResponse.publicServerHandlers) {
                 plugin.addPublicServerHandlers(server);
             }
+        }
+    }
+
+
+
+    /**
+     * Call a function in the plugin module
+     * If the plugin is not loaded or the function is not found an error is thrown
+     * @param {*} fnName
+     * @param  {...any} args
+     * @returns the function return value
+     */
+    callFunc(fnName,...args) {
+        if (this.status == Plugin.PLUGIN_STATUS_LOADED && this.pluginModule ) {
+            if (fnName in this.pluginModule && typeof this.pluginModule[fnName] === "function") {
+                return this.pluginModule[fnName](...args);
+            } else {
+                throw new Error(`callFunc. Error function (${fnName}) not found!`);
+            }
+        } else {
+            throw new Error(`callFunc. Error plugin not loaded!`);
         }
     }
 
@@ -1004,6 +1072,32 @@ const originalRequire = require("../scripts/originalRequire");
                 }
             }
         }
+    }
+
+    /**
+     * Call the first plugin function found and that return true
+     * In base that the plugin function return false, continue to the next plugins until one return trues
+     * @param {*} fnName
+     * @param  {...any} args
+     * @returns true if function found and returned true
+     */
+    static callFirstPluginFunction(fnName,...args) {
+        if (!Plugin.pluginsLoaded) {
+            logger.info(`callPluginFunction. Error plugins not loaded!`);
+            return;
+        }
+        for (const id in Plugin.plugins) {
+            const plugin = Plugin.plugins[id];
+            if (plugin.status == Plugin.PLUGIN_STATUS_LOADED && plugin.pluginModule ) {
+                if (fnName in plugin.pluginModule && typeof plugin.pluginModule[fnName] === "function") {
+                    let ret = plugin.pluginModule[fnName](...args);
+                    if (ret == true) {
+                        return ret;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     static handleRestApiRequest(...args) {

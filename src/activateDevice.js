@@ -110,6 +110,14 @@ async function activate(req, res, next) {
             regid = "none";
         }
 
+        let public_key = req.params.public_key;
+        if (public_key) {
+            // logger.info(`public_key: ${public_key}`);
+        } else {
+            // logger.info(`public_key is empty`);
+            public_key = null;
+        }
+
         // convert device name to human readble format (if avilable)
         let devNameResults = await Common.db.DeviceModelConvert.findAll({
             attributes: ['devicemodel'],
@@ -194,12 +202,13 @@ async function activate(req, res, next) {
             expirationdate: expirationDate,
             maindomain: domainEmail,
             imsi: imsi,
-            devicename: deviceName
+            devicename: deviceName,
+            public_key,
         };
 
         // run before activation trigger
         if (Common.pluginsEnabled) {
-            const isValid = await require('./plugin').invokeTriggerWaitForResult('activation', 'before',activationObj);
+            const isValid = await require('./plugin').invokeTriggerWaitForResult('activation', 'before',activationObj,req.params);
             if (isValid === false) {
                 logger.info('Activation failed by plugin');
                 throw new APIException("Device doesn't exist", Common.STATUS_DISABLE_USER_DEVICE);

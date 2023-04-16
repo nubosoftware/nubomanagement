@@ -19,6 +19,7 @@ const { path } = require('./common.js');
 //================= requires =================================
 var Validate;
 var StartSession;
+var SessionController;
 var ActivationLink;
 var setPasscode;
 var checkPasscode;
@@ -77,6 +78,9 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
 
     if (!firstTimeLoad)// execute the following code only in the first time
         return;
+
+    Common.isRestServer = true;
+    logger.info("Starting Rest Server");
 
     var readCerts = function(obj, callback) {
         if(!obj) {
@@ -163,7 +167,6 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
     async.series([
         function(callback) {
             loadRequires();
-            Common.isRestservers = true;
             return callback(null)
         },
         function(callback){
@@ -288,6 +291,14 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
             } else {
                 callback(null);
             }
+        },
+        function(callback) {
+            // call plugin trigger after all servers are up
+            require('./plugin').invokeTrigger('restserver', 'start');
+            if (typeof runTest === 'function') {
+                runTest();
+            }
+            callback(null);
         }
     ], function(err) {
         if (err) {
@@ -530,6 +541,10 @@ function setPublicServiceServer(server) {
     server.get('/setPasscode', setPasscode.func);
     server.get('/resetPasscode', resetPasscode.func);
     server.get('/activate', Activate.func);
+
+    generateAPIRoutes(server,'/client',require('./client').apiAccess);
+
+
     server.get('/activationLink', ActivationLink.func);
     server.get('/validate', Validate.func);
     server.get('/captureDeviceDetails', captureDeviceDetails.captureDeviceDetails);
@@ -539,8 +554,8 @@ function setPublicServiceServer(server) {
 
     server.get('/startsession', StartSession.func);
     server.post('/startsession', StartSession.func);
-    server.get('/logoutUser', StartSession.logoutUser);
-    server.get('/closeOtherSessions', StartSession.closeOtherSessions);
+    server.get('/logoutUser', require('./SessionController.js').logoutUser);
+    server.get('/closeOtherSessions', require('./SessionController.js').closeOtherSessions);
     server.get('/declineCall', StartSession.declineCall);
     server.get('/SmsNotification/sendSmsNotification', SmsNotification.sendSmsNotification);
 
@@ -676,25 +691,57 @@ function presetPlatformServiceServer(server) {
     server.use(nocache);
 }
 
+/**
+ * Generate API routes for the server. Route all requests to the same handler for up to 4 arguments:
+ * 1. object type
+ * 2. arg1
+ * 3. arg2
+ * 4. arg3
+ * The routes are generated based on the baseURI and the handler.
+ * baseURI should include leading slash and should not include trailing slash.
+ * @param {*} server
+ * @param {*} baseURI
+ * @param {*} handler
+ */
+function generateAPIRoutes(server,baseURI,handler) {
+    server.post(`${baseURI}/:objectType`,handler);
+    server.post(`${baseURI}/:objectType/:arg1`,handler);
+    server.post(`${baseURI}/:objectType/:arg1/:arg2`,handler);
+    server.post(`${baseURI}/:objectType/:arg1/:arg2/:arg3`,handler);
+    server.put(`${baseURI}/:objectType`,handler);
+    server.put(`${baseURI}/:objectType/:arg1`,handler);
+    server.put(`${baseURI}/:objectType/:arg1/:arg2`,handler);
+    server.put(`${baseURI}/:objectType/:arg1/:arg2/:arg3`,handler);
+    server.del(`${baseURI}/:objectType`,handler);
+    server.del(`${baseURI}/:objectType/:arg1`,handler);
+    server.del(`${baseURI}/:objectType/:arg1/:arg2`,handler);
+    server.del(`${baseURI}/:objectType/:arg1/:arg2/:arg3`,handler);
+    server.get(`${baseURI}/:objectType`,handler);
+    server.get(`${baseURI}/:objectType/:arg1`,handler);
+    server.get(`${baseURI}/:objectType/:arg1/:arg2`,handler);
+    server.get(`${baseURI}/:objectType/:arg1/:arg2/:arg3`,handler);
+}
+
 function setPlatformServiceServer(server) {
     server.post('/cp/:requestType', require('./ControlPanel/restGet.js').get);
     server.post('/loginWebAdmin',require('./ControlPanel/restGet.js').loginWebAdmin);
-    server.post('/api/:objectType',require('./ControlPanel/restGet.js').apiAccess);
-    server.post('/api/:objectType/:arg1',require('./ControlPanel/restGet.js').apiAccess);
-    server.post('/api/:objectType/:arg1/:arg2',require('./ControlPanel/restGet.js').apiAccess);
-    server.post('/api/:objectType/:arg1/:arg2/:arg3',require('./ControlPanel/restGet.js').apiAccess);
-    server.put('/api/:objectType',require('./ControlPanel/restGet.js').apiAccess);
-    server.put('/api/:objectType/:arg1',require('./ControlPanel/restGet.js').apiAccess);
-    server.put('/api/:objectType/:arg1/:arg2',require('./ControlPanel/restGet.js').apiAccess);
-    server.put('/api/:objectType/:arg1/:arg2/:arg3',require('./ControlPanel/restGet.js').apiAccess);
-    server.del('/api/:objectType',require('./ControlPanel/restGet.js').apiAccess);
-    server.del('/api/:objectType/:arg1',require('./ControlPanel/restGet.js').apiAccess);
-    server.del('/api/:objectType/:arg1/:arg2',require('./ControlPanel/restGet.js').apiAccess);
-    server.del('/api/:objectType/:arg1/:arg2/:arg3',require('./ControlPanel/restGet.js').apiAccess);
-    server.get('/api/:objectType',require('./ControlPanel/restGet.js').apiAccess);
-    server.get('/api/:objectType/:arg1',require('./ControlPanel/restGet.js').apiAccess);
-    server.get('/api/:objectType/:arg1/:arg2',require('./ControlPanel/restGet.js').apiAccess);
-    server.get('/api/:objectType/:arg1/:arg2/:arg3',require('./ControlPanel/restGet.js').apiAccess);
+    generateAPIRoutes(server,"/api",require('./ControlPanel/restGet.js').apiAccess);
+    // server.post('/api/:objectType',require('./ControlPanel/restGet.js').apiAccess);
+    // server.post('/api/:objectType/:arg1',require('./ControlPanel/restGet.js').apiAccess);
+    // server.post('/api/:objectType/:arg1/:arg2',require('./ControlPanel/restGet.js').apiAccess);
+    // server.post('/api/:objectType/:arg1/:arg2/:arg3',require('./ControlPanel/restGet.js').apiAccess);
+    // server.put('/api/:objectType',require('./ControlPanel/restGet.js').apiAccess);
+    // server.put('/api/:objectType/:arg1',require('./ControlPanel/restGet.js').apiAccess);
+    // server.put('/api/:objectType/:arg1/:arg2',require('./ControlPanel/restGet.js').apiAccess);
+    // server.put('/api/:objectType/:arg1/:arg2/:arg3',require('./ControlPanel/restGet.js').apiAccess);
+    // server.del('/api/:objectType',require('./ControlPanel/restGet.js').apiAccess);
+    // server.del('/api/:objectType/:arg1',require('./ControlPanel/restGet.js').apiAccess);
+    // server.del('/api/:objectType/:arg1/:arg2',require('./ControlPanel/restGet.js').apiAccess);
+    // server.del('/api/:objectType/:arg1/:arg2/:arg3',require('./ControlPanel/restGet.js').apiAccess);
+    // server.get('/api/:objectType',require('./ControlPanel/restGet.js').apiAccess);
+    // server.get('/api/:objectType/:arg1',require('./ControlPanel/restGet.js').apiAccess);
+    // server.get('/api/:objectType/:arg1/:arg2',require('./ControlPanel/restGet.js').apiAccess);
+    // server.get('/api/:objectType/:arg1/:arg2/:arg3',require('./ControlPanel/restGet.js').apiAccess);
 //    server.get('/cp/:requestType', require('./ControlPanel/restGet.js').get);
     if (!Common.withService) {
         server.post('/settings/getSessionDetails', Settings.getSessionDetails);
@@ -808,6 +855,7 @@ function loadRequires() {
 
     Validate = require('./validate.js');
     StartSession = require('./StartSession.js');
+    SessionController = require('./SessionController.js');
     ActivationLink = require('./activationLink.js');
     setPasscode = require('./setPasscode.js');
     checkPasscode = require('./checkPasscode.js');
@@ -846,3 +894,21 @@ if (module) {
         getAppServers
     };
 }
+
+
+// async function runTest() {
+//     // "email":"a2@nubo0.com","deviceid":"2685d0848404532e"
+//     try {
+//         const device = await Common.db.UserDevices.findOne({
+//             attributes: ['email', 'imei', 'active', 'devicename', 'platform', 'gateway','assigned_phone_number','local_extension'],
+//             where: {
+//                 email: "a2@nubo0.com",
+//                 imei: "2685d0848404532e",
+//             }
+//         });
+//         console.log(`runTest. device: ${JSON.stringify(device)}`);
+//         await require('./SessionController.js').startSessionByDevice("a2@nubo0.com","2685d0848404532e",device);
+//     } catch (e) {
+//         console.log(e);
+//     }
+// }
