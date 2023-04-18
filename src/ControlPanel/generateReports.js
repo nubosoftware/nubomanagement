@@ -226,6 +226,7 @@ async function generateBlockLoginReport(res,domain,params) {
             limit: 10000,
             order: [["ID","DESC"]],
         }
+
         let results = await Common.db.EventsLog.findAll(options);
         let values = results.map((item) => {
             let event = [
@@ -273,7 +274,7 @@ async function generateDailyUsersReport(res,domain,params) {
             attributes : [
                 [sequelize.fn('DATE_FORMAT', sequelize.col('start_time'),'%Y-%m-%d'), 'sessdate'],
                 //[sequelize.fn('COUNT', `DISTINCT(${sequelize.col('email')})`), 'users'],
-                ['COUNT(DISTINCT(email))','users'],
+                [sequelize.literal('COUNT(DISTINCT(email))'),'users'],
                 [sequelize.fn('SUM', sequelize.col('active_seconds')), 'total_active_seconds'],
             ],
             where,
