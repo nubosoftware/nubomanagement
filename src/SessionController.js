@@ -512,6 +512,14 @@ async function startSessionImp(startSessionParams) {
             };
             throw new Error(msg);
         }
+        if (fastConnection && sessionType != SESSION_TYPE_MOBILE) {
+            var msg = "fast connection is only supported for mobile session type";
+            resObj = {
+                status: 0,
+                message: msg,
+            };
+            throw new Error(msg);
+        }
         const sessionTypes = getSessionTypes();
         for (const item of sessionTypes) {
             if (item.value == sessionType) {
@@ -567,40 +575,42 @@ async function startSessionImp(startSessionParams) {
 
 
         // logger.info("startSessionImp: deviceParams: " + JSON.stringify(startSessionParams.deviceParams, null, 2));
-        if (startSessionParams.deviceParams) {
-            // if there are new device params add them to the cache for next time
-            let session_cache_params = JSON.stringify(startSessionParams.deviceParams);
-            await Common.db.UserDevices.update({
-                session_cache_params: session_cache_params
-            }, {
-                where: {
-                    email: loginData.getEmail(),
-                    imei: loginData.getDeviceID()
-                }
-            });
-        } else {
-            // try to read old value for session_cache_params
-            const { session_cache_params } = await Common.db.UserDevices.findOne({
-                attributes: ['session_cache_params'],
-                where: {
-                    imei: loginData.getDeviceID(),
-                    email: loginData.getEmail()
-                }
-            });
-            if (session_cache_params) {
-                startSessionParams.deviceParams = JSON.parse(session_cache_params);
-                if (!startSessionParams.timeZone && startSessionParams.deviceParams.timeZone) {
-                    timeZone = startSessionParams.deviceParams.timeZone;
-                }
+        if (sessionType == SESSION_TYPE_MOBILE) {
+            if (startSessionParams.deviceParams) {
+                // if there are new device params add them to the cache for next time
+                let session_cache_params = JSON.stringify(startSessionParams.deviceParams);
+                await Common.db.UserDevices.update({
+                    session_cache_params: session_cache_params
+                }, {
+                    where: {
+                        email: loginData.getEmail(),
+                        imei: loginData.getDeviceID()
+                    }
+                });
             } else {
-                logger.info("startSessionImp: deviceParams are missing");
-                // const msg = "Cannot proceed with fast connection when deviceParams are missing";
-                // resObj = {
-                //     status: 2,
-                //     message: msg,
-                //     loginToken: 'notValid'
-                // };
-                // throw new Error(msg);
+                // try to read old value for session_cache_params
+                const { session_cache_params } = await Common.db.UserDevices.findOne({
+                    attributes: ['session_cache_params'],
+                    where: {
+                        imei: loginData.getDeviceID(),
+                        email: loginData.getEmail()
+                    }
+                });
+                if (session_cache_params) {
+                    startSessionParams.deviceParams = JSON.parse(session_cache_params);
+                    if (!startSessionParams.timeZone && startSessionParams.deviceParams.timeZone) {
+                        timeZone = startSessionParams.deviceParams.timeZone;
+                    }
+                } else {
+                    logger.info("startSessionImp: deviceParams are missing");
+                    const msg = "Cannot proceed with fast connection when deviceParams are missing";
+                    resObj = {
+                        status: 2,
+                        message: msg,
+                        loginToken: 'notValid'
+                    };
+                    throw new Error(msg);
+                }
             }
         }
 
