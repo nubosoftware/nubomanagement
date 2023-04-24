@@ -427,7 +427,7 @@ async function list(req, res, login) {
 async function startSessionImp(startSessionParams) {
     var logger = new ThreadedLogger(Common.getLogger(__filename));
     logger.logTime(`startSessionImp start`);
-    logger.info(`startSessionImp start. startSessionParams: ${JSON.stringify(startSessionParams, null, 2)}`);
+    // logger.info(`startSessionImp start. startSessionParams: ${JSON.stringify(startSessionParams, null, 2)}`);
 
     var msg = "";
     var status = 100; //unknown
