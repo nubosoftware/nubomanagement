@@ -70,7 +70,7 @@ function checkOtpAuth(req, res, next) {
         }
     ], function(err) {
         if (err && err !== finish) {
-            sendTrack(login, ip, response.message, response.status);
+            // sssendTrack(login, ip, response.message, response.status);
             logger.error("checkOtpAuth: " + err,{mtype: "important"});
             res.send(response);
             return;
@@ -82,7 +82,7 @@ function checkOtpAuth(req, res, next) {
             logger.info("checkOtpAuth: OTP code is valid.",{mtype: "important"});
         }
 
-        res.send(response);        
+        res.send(response);
     });
 }
 

@@ -953,10 +953,19 @@ const originalRequire = require("../scripts/originalRequire");
         if (Common.nodePath) {
             env.PATH = `${Common.nodePath}:${env.PATH}`;
         }
-        let initRet = await commonUtils.execCmd("npm",["init","-y"],{  cwd: pluginPath, env});
-        // logger.info(`NPM init. stdout: ${initRet.stdout}, stderr: ${initRet.stderr}`);
-        let {stdout , stderr} = await commonUtils.execCmd("npm",["i",packagePath],{  cwd: pluginPath, env});
-        logger.info(`Package extracted. stdout: ${stdout}, stderr: ${stderr}`);
+        if (packagePath.endsWith("offline.tgz")) {
+            // extract offline packages with all dependencies
+            logger.info(`Extracting offline package: ${packagePath}`);
+            let {stdout , stderr} = await commonUtils.execCmd("tar",["-xzf",packagePath],{  cwd: pluginPath, env});
+            logger.info(`Package extracted. stdout: ${stdout}, stderr: ${stderr}`);
+        } else {
+            // extract package and install dependenciess
+            let initRet = await commonUtils.execCmd("npm",["init","-y"],{  cwd: pluginPath, env});
+            // logger.info(`NPM init. stdout: ${initRet.stdout}, stderr: ${initRet.stderr}`);
+            let {stdout , stderr} = await commonUtils.execCmd("npm",["i",packagePath],{  cwd: pluginPath, env});
+            logger.info(`Package extracted. stdout: ${stdout}, stderr: ${stderr}`);
+        }
+
         let packageJsonMain = await fs.readFile(path.join(pluginPath,"package.json"),"utf-8");
         // logger.info(`Main package.json: ${packageJsonMain}`);
         let mainPackage = JSON.parse(packageJsonMain);

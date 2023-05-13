@@ -158,6 +158,26 @@ function checkPasscode(req, res, loginObj) {
             });
 
         },
+        function (callback) {
+            // let plugins to decrypt the password
+            if (Common.pluginsEnabled) {
+                let resultObj = {
+                    passcode: decryptedPassword,
+                }
+                require('./plugin').invokeTriggerWaitForResult('password', 'before',resultObj).then(function (result) {
+                    if (result === true && resultObj.plain) {
+                        logger.info(`checkPasscode: trigger password before returned plain password`);
+                        decryptedPassword = resultObj.plain;
+                    }
+                    callback(null);
+                }).catch(function (err) {
+                    logger.error('checkPasscode:invokeTriggerWaitForResult. error: ' + err);
+                    callback(null);
+                });
+            } else {
+                callback(null);
+            }
+        },
         function(callback) {
             Common.db.UserDevices.findAll({
                 attributes: ['active', 'loginattempts'],
