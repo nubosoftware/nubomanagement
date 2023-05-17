@@ -115,6 +115,7 @@ async function getRecordings(req, res, next) {
                 }
             ]
         });
+        // logger.info(`getRecordings. result: ${JSON.stringify(result,null,2)}`);
         res.send({
             status: 1,
             message: "Request was fulfilled",

@@ -868,7 +868,7 @@ async function startSessionImp(startSessionParams) {
 
                         try {
                             // add app params
-                            let appParams = Common.appParams;
+                            let appParams = Object.assign({}, Common.appParams);
                             if (sessionType == SESSION_TYPE_MOBILE && Common.platformType == "docker") {
                                 // we load app params only to mobile devices
                                 logger.logTime(`startSessionImp before appParams`);
