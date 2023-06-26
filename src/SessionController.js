@@ -716,8 +716,8 @@ async function startSessionImp(startSessionParams) {
                     const sessions = await sessionModule.getSessionIdsOfUser(email);
                     if (sessions && sessions.length > 0) {
                         resObj = {
-                            startSessionStatus: -9,
-                            startSessionMessage: `Found active session for user ${email}.`
+                            status: -9,
+                            message: `Found active session for user ${email}.`
                         };
                         throw new Error(`Found active session for user ${email}.`);
                     }
@@ -845,8 +845,8 @@ async function startSessionImp(startSessionParams) {
                         logger.info(`startSessionImp. platform: ${JSON.stringify(plat.params)}`);
                     } catch (err) {
                         resObj = {
-                            startSessionStatus: 0,
-                            startSessionMessage: "Not found available platform",
+                            status: 0,
+                            message: "Not found available platform",
                             startSessionErrorCode: -8
                         };
                         throw err;
