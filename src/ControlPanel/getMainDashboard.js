@@ -205,7 +205,8 @@ function getMainDashboardFromDB(domain, isNewCP, siteAdmin, callback) {
 
                     if (totalUsers > 0) {
                         totalSpaceMB = parseInt((results[0].storageLimit * totalUsers) / 1000);// get value in MB
-                        totalUsedSpaceMB = parseInt(((spaceUsedPerUserAvg / totalUsers)) / 1000); // get value in MB
+                        totalUsedSpaceMB = parseInt(spaceUsedPerUserAvg / 1000); // get value in MB
+                        // logger.info("totalSpaceMB: "+totalSpaceMB+" totalUsedSpaceMB: "+totalUsedSpaceMB);
                     }
                 }
 
