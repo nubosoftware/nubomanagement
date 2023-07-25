@@ -10,125 +10,48 @@ var spawn = require('child_process').spawn;
 var commonUtils = require('./commonUtils.js');
 var validate = require('validate.js');
 const { Op } = require('sequelize');
+const { s } = require('accesslog/lib/tokens.js');
 
 
 
 
+var loadedNFS = {};
 
-function getPathFromObj(path) {
-    var realPath;
-    if (path.folder == './') {
-        realPath = path.root;
-    } else {
-        realPath = commonUtils.buildPath(path.root, path.folder);
+
+/**
+ * Get the NFS object from the cache or create a new one
+ * @param {*} obj
+ * @param {*} callback
+ * @returns
+ */
+var nfsNew = function(obj, callback) {
+    const nfs_idx = obj.nfs_idx;
+    if (loadedNFS[nfs_idx]) {
+        callback(null, loadedNFS[nfs_idx]);
+        return;
     }
-
-    return realPath;
+    getNFSServer(nfs_idx, function(err, result) {
+        if (err) {
+            return callback(err);
+        }
+        let nfsobj = {};
+        nfsobj.logger = obj.logger || Common.logger;
+        nfsobj.params = result;
+        nfsobj.nfs_ip = nfsobj.params.ssh_ip;
+        nfsobj.nfs_idx = nfs_idx;
+        nfsobj.end = () => {};
+        logger.info(`getNFSServer. idx: ${nfs_idx}, params: ${JSON.stringify(nfsobj.params,null,2)}`);
+        loadedNFS[nfs_idx] = nfsobj;
+        callback(null,nfsobj);
+    });
 }
 
-var nfs = function(obj, callback) {
-    this.params = {};
-    var self = this;
-    //    this.UserName = obj.UserName;    
-    
 
-    this.end = function() {}
-
-    if (obj) {
-        (function(nfsobj) {
-            nfsobj.logger = obj.logger || Common.logger;
-            var logger = nfsobj.logger;
-
-            function initNfsIP(idx, callback) {
-                var nfs;
-                var ssh;
-                async.series([
-                    function(callback) {
-                        getNFSServer(idx, function(err, result) {
-                            if (err) {
-                                return callback(err);
-                            }
-
-                            nfsobj.params = result;
-                            nfsobj.nfs_ip = nfsobj.params.ssh_ip;
-                            //logger.info(`getNFSServer. idx: ${idx}, params: ${JSON.stringify(nfsobj.params,null,2)}`);
-                            callback(null);
-                        });
-                    },                   
-                ], function(err) {
-                    if (err) logger.info("fail to get nfs, err: " + err);
-                    //else logger.info("nfs object initializated");
-                    callback(err);
-                });
-            }
-
-            var UserName = obj.UserName;
-            var session_id;
-            var nfs_idx;
-            async.series([
-                function(callback) {
-                    if (!UserName) return callback(null);
-                    Common.redisClient.srandmember("usersess_" + UserName, function(err, result) {
-                        if (err) {
-                            var msg = "Cannot get SRANDMEMBER usersess_" + UserName;
-                            logger.info(msg);
-                        }
-                        //logger.info("SRANDMEMBER usersess_" + UserName + " return err: " + err + "; res: " + result);
-                        session_id = result;
-                        callback(null);
-                    });
-                },
-                // If exist session of same user, use in same nfs to keep same sdcard storage, esle take nfs with least connections
-                function(callback) {
-                    if (session_id) {
-                        Common.redisClient.hget("sess_" + session_id, "nfs_idx", function(err, result) {
-                            if (err) {
-                                var msg = "Cannot get HGET sess_" + session_id + " nfs_idx";
-                                logger.info(msg);
-                            }
-                            //logger.info("HGET sess_" + UserName + " return err: " + err + "; res: " + result);
-                            nfs_idx = result;
-                            callback(err);
-                        });
-                    } else if (typeof obj.nfs_idx === 'number') {
-                        nfs_idx = obj.nfs_idx;
-                        callback(null);
-                    } else {
-
-                        callback("missing nfs server");
-                        return;
-
-                        // Common.redisClient.zrange('nfs_servers',0,0,function(err,replies) {
-                        //     var msg = null;
-                        //     if (err || replies.length<1) {
-                        //         msg = err || "No nfs servers in redis";
-                        //         logger.error(msg);
-                        //     }
-                        //     logger.info("NFS: "+ replies[0]);
-                        //     nfs_idx = replies[0];
-                        //     callback(msg);
-                        // });
-                    }
-                },
-            ], function(err) {
-                if (err) {
-                    logger.info("Cannot create nfs object, err:" + err);
-                    callback(err);
-                } else {
-                    initNfsIP(nfs_idx, function(err) {
-                        nfsobj.nfs_idx = nfs_idx;
-                        callback(err, nfsobj);
-                    });
-                }
-            });
-        })(this);
-    } else {
-        var msg = "Could not create nfs. null obj";
-        logger.error(msg);
-        callback(msg, null);
-    }
-};
-
+/**
+ * Load a NFS server params from the database by id
+ * @param {*} id
+ * @param {*} callback
+ */
 function getNFSServer(id, callback) {
 
     Common.db.NfsServers.findOne({
@@ -142,7 +65,7 @@ function getNFSServer(id, callback) {
         }
 
         if (!nfs) {
-            return callback("getNFSServer: cannot find nfs server " + id);
+            return callback(new Error("getNFSServer: cannot find nfs server " + id));
         }
 
         var nfs_server = {};
@@ -161,7 +84,5 @@ function getNFSServer(id, callback) {
 
 
 
+module.exports = nfsNew;
 
-module.exports = function(obj, callback) {
-    new nfs(obj, callback);
-};

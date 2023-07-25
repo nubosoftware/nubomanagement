@@ -756,6 +756,22 @@ async function startSessionImp(startSessionParams) {
                 if (login.loginParams.hideNuboAppPackageName) {
                     session.params.hideNuboAppPackageName = login.loginParams.hideNuboAppPackageName;
                 }
+
+                // create session in redis
+                session.params.activation = login.getActivationKey();
+                session.params.deleteFlag = 0;
+                session.params.loginToken = login.loginParams.loginToken;
+                var now = new Date();
+                session.params.startTime = now.toFormat("YYYY-MM-DD HH24:MI:SS");
+                session.params.startTS = now.getTime();
+                session.params.encrypted = login.loginParams.encrypted;
+                session.params.forceExit = 0;
+
+                await session.setUserAndDevicePromise(email, deviceID);
+                await session.suspendPromise(1); // suspend session until first connection
+                buildStatus.sesionObjectCreated = true;
+
+
                 logger.info(`startSessionImp. session.params: ${JSON.stringify(session.params)}`);
 
                 // get some paramters from the orgnization object in db
@@ -973,19 +989,10 @@ async function startSessionImp(startSessionParams) {
                     }
                 }
 
-                // create session in redis
-                session.params.activation = login.getActivationKey();
-                session.params.deleteFlag = 0;
-                session.params.loginToken = login.loginParams.loginToken;
-                var now = new Date();
-                session.params.startTime = now.toFormat("YYYY-MM-DD HH24:MI:SS");
-                session.params.startTS = now.getTime();
-                session.params.encrypted = login.loginParams.encrypted;
-                session.params.forceExit = 0;
+                // save session paramss in rediss
+                await session.savePromise();
 
-                await session.setUserAndDevicePromise(email, deviceID);
-                await session.suspendPromise(1); // suspend session until first connection
-                buildStatus.sesionObjectCreated = true;
+
 
                 // update user DB with data center details
                 if (Common.dcName && Common.dcURL) {
@@ -1720,13 +1727,17 @@ async function closeOtherSessionsImp(req, res, next,login) {
 
     } catch (err) {
         logger.error("closeOtherSessions: Error: " + err, err);
-        if (resObj) {
-            res.status(200).send(resObj);
-        } else {
-            res.status(200).send({
-                status: Common.STATUS_ERROR,
-                message: err.message
-            });
+        try {
+            if (resObj) {
+                res.send(resObj);
+            } else {
+                res.send({
+                    status: Common.STATUS_ERROR,
+                    message: err.message
+                });
+            }
+        } catch (err) {
+            logger.error("closeOtherSessions: send Error: " + err, err);
         }
     }
 }
