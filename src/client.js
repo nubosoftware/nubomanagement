@@ -113,6 +113,12 @@ var apiAccess = async function(req, res) {
             return;
         }
     }
+    if (Common.pluginsEnabled) {
+        const handled = Plugin.callFirstPluginFunction("handleClientApiRequestNotAuthenticated",objectType,arg1,arg2,arg3,req,res);
+        if (handled) {
+            return;
+        }
+    }
     const login = await checkAuth(req,res);
     if (!login) {
         // invalid authentification. checkAuth already sent the error message
