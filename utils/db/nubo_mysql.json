@@ -927,4 +927,5 @@ PRIMARY KEY (hardwaredesc, devicemodel));"
 , "1.5.0.2.104" : "ALTER TABLE plugins ADD COLUMN configuration MEDIUMTEXT AFTER packagehash;"
 , "1.5.0.2.105" : "ALTER TABLE activations ADD COLUMN public_key TEXT after deviceapprovaltype;"
 , "1.5.0.2.106" : "ALTER TABLE user_devices ADD COLUMN active_session int default 0 after localid;"
+, "1.5.0.3.100" : "ALTER TABLE app_usages ADD COLUMN seconds int default 0;"
 }

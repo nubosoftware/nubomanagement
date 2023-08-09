@@ -747,12 +747,19 @@ async function startSessionImp(startSessionParams) {
                     session.params.appName = Common.defaultAppName;
                 }
                 session.params.tz = timeZone;
+
+                // set recording path, will use for recording and app usage
+                session.params.recording_path = Common.recording_path;
+
+                // set recording paramss
                 if (login.loginParams.recording == 1) {
                     session.params.recording = login.loginParams.recording;
-                    session.params.recording_path = Common.recording_path;
                     session.params.recording_name = `recording_${session.params.sessid}_0`;
                     logger.info(`recording: ${login.loginParams.recording}, recording_path: ${Common.recording_path}`);
                 }
+                // set app usage file name
+                session.params.appUsageFileName = `appUsage_${session.params.sessid}.csv`;
+
                 if (login.loginParams.hideNuboAppPackageName) {
                     session.params.hideNuboAppPackageName = login.loginParams.hideNuboAppPackageName;
                 }
@@ -1498,6 +1505,11 @@ async function endSession(sessionID,closeSessionMsg,doNotRemoveLoginToken) {
                 active_seconds: totalActiveSeconds
             });
 
+            if (session.params.appUsageFileName) {
+                // upload app usage file to database
+                await updateAppUsage(session);
+            }
+
             if (endSessErr) {
                 var subj = (Common.dcName != "" ? Common.dcName + " - " : "") + "Session deleted unsuccessfully";
                 var text = 'Session delete error: ' + errMsg + '\nSession details: ' + JSON.stringify(session.params, null, 2);
@@ -1512,6 +1524,131 @@ async function endSession(sessionID,closeSessionMsg,doNotRemoveLoginToken) {
     // throw error if exists
     if (endSessErr) {
         throw endSessErr;
+    }
+}
+
+
+
+/**
+ * App usage ignore set, these apps are system apps and should be ignored
+ */
+const appUsageIgnoreSet = new Set([
+    'com.android.systemui',
+    'com.android.settings',
+    'com.android.vending',
+    'com.android.launcher3',
+    'com.nubo.blackscreenapp',
+    'android'
+]);
+
+/**
+ * Calculate app usage from app usage file,
+ * store in database and remove file
+ * @param {*} session
+ */
+async function updateAppUsage(session) {
+    try {
+        const fsp = require('fs').promises;
+        const appUsageFile = session.params.appUsageFileName;
+        const appUsageFilePath = Common.path.join(session.params.recording_path, appUsageFile);
+        const appUsageFileContent = await fsp.readFile(appUsageFilePath, 'utf8');
+        // parse csv file, seeprate lines and columns
+        const lines = appUsageFileContent.split('\n');
+        let appsMap = {};
+        for (const line of lines) {
+            try {
+                const cols = line.split(',');
+                if (cols.length !== 3) continue;
+                const timeStr = cols[0];
+                const app = cols[1];
+                // ignore system apps
+                if (appUsageIgnoreSet.has(app)) continue;
+                const action = cols[2];
+                const time = new Date(timeStr);
+                const day = time.toFormat("YYYY-MM-DD");
+                const appKey = `${day}_${app}`;
+                let appData = appsMap[appKey];
+                if (!appData) {
+                    appData = {
+                        day : day,
+                        app: app,
+                        startAppTime: undefined,
+                        count: 0,
+                        seconds: 0,
+                        startCnt: 0
+                    };
+                }
+                if (action === 'create_app') {
+                    // count app lunch, only one per day
+                    appData.count = 1;
+                } else if (action === 'start_app') {
+                    // mark start of app time
+                    if (!appData.startAppTime) {
+                        appData.startAppTime = time;
+                    }
+                    appData.startCnt++;
+                } else if (action === 'stop_app') {
+                    if (appData.startAppTime) {
+                        // add app usage time
+                        appData.startCnt--;
+                        if (appData.startCnt === 0) {
+                            appData.seconds += parseInt((time.getTime() - appData.startAppTime.getTime()) / 1000);
+                            appData.startAppTime = undefined;
+                        }
+                    } else {
+                        // look for start app time in previous lines
+                        const prevDay = new Date(time.getTime() - 24 * 60 * 60 * 1000);
+                        const prevDayKey = `${day}_${app}`;
+                        const prevAppData = appsMap[prevDayKey];
+                        if (prevAppData && prevAppData.startAppTime) {
+                            // add app usage time
+                            prevAppData.startCnt--;
+                            if (prevAppData.startCnt === 0) {
+                                prevAppData.seconds += parseInt((time.getTime() - prevAppData.startAppTime.getTime()) / 1000);
+                                prevAppData.startAppTime = undefined;
+                            }
+                            appData = prevAppData;
+                        }
+                    }
+                }
+                appsMap[appKey] = appData;
+            } catch (err) {
+                logger.error(`updateAppUsage: Error parsing line: ${line}, Error: ${err}`);
+                console.error(err);
+            }
+        }
+        //console.log(`updateAppUsage. appsMap: ${JSON.stringify(appsMap, null, 2)}`);
+        // save app usage to database
+        for (const appKey in appsMap) {
+            const appData = appsMap[appKey];
+            const dayDate = new Date(appData.day);
+            const appUsage = await Common.db.AppUsage.findOne({
+                where: {
+                    day : dayDate,
+                    email: session.params.email,
+                    packagename: appData.app
+                }
+            });
+            if (!appUsage) {
+                await Common.db.AppUsage.create({
+                    day : dayDate,
+                    email: session.params.email,
+                    packagename: appData.app,
+                    count: appData.count,
+                    seconds: appData.seconds
+                });
+            } else {
+                appUsage.count += appData.count;
+                appUsage.seconds += appData.seconds;
+                await appUsage.save();
+            }
+        }
+
+        // remove app usage file
+        await fsp.unlink(appUsageFilePath);
+
+    } catch (err) {
+        logger.error(`updateAppUsage: Error: ${err}`);
     }
 }
 

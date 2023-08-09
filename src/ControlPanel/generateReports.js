@@ -483,22 +483,30 @@ function generateAppUsageByUser(res, domain) {
     var headersSize = [];
     var values = [];
 
-    var query = 'select u1.email, a1.packagename, a1.count, a1.day, a2.appname from app_usages AS a1 INNER JOIN apps AS a2 ON '
-        + '(a1.packagename=a2.packagename) INNER JOIN users as u1 ON(u1.email=a1.email) ';
+    const query=`SELECT u1.email, a1.packagename, a1.count, a1.seconds, a1.day, a2.appname FROM users AS u1
+    INNER JOIN app_usages AS a1 ON (u1.email=a1.email)
+    INNER JOIN apps AS a2 ON (a1.packagename=a2.packagename AND a2.maindomain=u1.orgdomain)
+    WHERE u1.orgdomain= :domain ORDER BY count DESC`;
+
+
+    // var query2 = 'select u1.email, a1.packagename, a1.count, a1.day, a2.appname from app_usages AS a1 INNER JOIN apps AS a2 ON '
+    //     + '(a1.packagename=a2.packagename and a2.maindomain = u1.orgdomain) INNER c users as u1 ON(u1.email=a1.email) ';
 
     var queryWhereClause = " AND u1.orgdomain= :domain ORDER BY count DESC";
     var queryParams = {domain:domain};
 
-    Common.sequelize.query(query + queryWhereClause, { replacements: queryParams, type: QueryTypes.SELECT}).then(function(results) {
+    Common.sequelize.query(query , { replacements: queryParams, type: QueryTypes.SELECT}).then(function(results) {
 
-        headers.push("email");
-        headers.push("app name");
-        headers.push("time");
-        headers.push("count");
+        headers.push("User");
+        headers.push("App Name");
+        headers.push("Day");
+        headers.push("Count");
+        headers.push("Seconds");
 
         headersSize.push("30");
         headersSize.push("30");
         headersSize.push("25");
+        headersSize.push("10");
         headersSize.push("10");
 
         results.forEach(function(row) {
@@ -508,6 +516,7 @@ function generateAppUsageByUser(res, domain) {
             var appname = row.appname != null ? row.appname : '';
             var time = row.day != null ? row.day : '';
             var count = row.count != null ? row.count : '';
+            var seconds = row.seconds != null ? row.seconds : '';
 
             var item = [];
 
@@ -515,6 +524,7 @@ function generateAppUsageByUser(res, domain) {
             item.push(appname);
             item.push(time);
             item.push(count);
+            item.push(seconds);
 
             values.push(item);
 

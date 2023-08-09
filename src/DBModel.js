@@ -820,7 +820,8 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         day: { type: Sequelize.DATE, primaryKey: true},
         email: { type: Sequelize.STRING, primaryKey: true},
         packagename: { type: Sequelize.STRING, primaryKey: true},
-        count: Sequelize.INTEGER
+        count: Sequelize.INTEGER,
+        seconds: Sequelize.INTEGER,
     }, {
         timestamps: false
     });
