@@ -751,6 +751,21 @@ async function startSessionImp(startSessionParams) {
                 // set recording path, will use for recording and app usage
                 session.params.recording_path = Common.recording_path;
 
+                // make sure to create the recording path in the first time only
+                if (!Common.recordingPathCreated && Common.recording_path) {
+                    const fsp = require('fs').promises;
+                    try {
+                        logger.info(`startSessionImp. creating recording path: ${Common.recording_path}`);
+                        await fsp.mkdir(Common.recording_path, { recursive: true });
+                        // set permissions allow write to all
+                        await fsp.chmod(Common.recording_path, 0o777);
+                    } catch (err) {
+                        logger.error(`startSessionImp. error creating recording path: ${err.message}`);
+                    }
+                    Common.recordingPathCreated = true;
+                }
+
+
                 // set recording paramss
                 if (login.loginParams.recording == 1) {
                     session.params.recording = login.loginParams.recording;
@@ -759,6 +774,8 @@ async function startSessionImp(startSessionParams) {
                 }
                 // set app usage file name
                 session.params.appUsageFileName = `appUsage_${session.params.sessid}.csv`;
+
+
 
                 if (login.loginParams.hideNuboAppPackageName) {
                     session.params.hideNuboAppPackageName = login.loginParams.hideNuboAppPackageName;
