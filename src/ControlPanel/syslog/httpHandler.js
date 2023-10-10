@@ -5,6 +5,56 @@ var ThreadedLogger = require('../../ThreadedLogger.js');
 var DBProcessModule = require('./DBProcess.js');
 const { Op } = require('sequelize');
 var util = require('util');
+const fsp = require('fs').promises;
+const path = require('path');
+const commonUtils = require('../../commonUtils.js');
+
+
+
+/**
+ * Convert bytes to size string
+ * @param {*} bytes
+ * @returns
+ */
+function bytesToSize(bytes) {
+    var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    if (bytes == 0) return '0 Byte';
+    var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10);
+    if (i == 0) return bytes + ' ' + sizes[i];
+    return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + sizes[i];
+}
+
+/**
+ * Return all file in directory as array of relative paths
+ * @param {*} dir
+ * @param {*} originalDir
+ * @returns
+ */
+async function getFiles(dir, getInfo = false, originalDir = dir) {
+    let files = [];
+    const items = await fsp.readdir(dir, { withFileTypes: true });
+
+    for (let item of items) {
+        const fullPath = path.join(dir, item.name);
+        const relativePath = path.relative(originalDir, fullPath);
+
+        if (item.isDirectory()) {
+            files = files.concat(await getFiles(fullPath, getInfo, originalDir));
+        } else if (item.isFile()) {
+            if (getInfo) {
+                const stats = await fsp.stat(fullPath);
+                const fileSize = stats.size;
+                files.push({ path: relativePath, size: fileSize, sizeStr: bytesToSize(fileSize), lastModified: stats.mtime });
+            } else {
+                files.push(relativePath);
+            }
+        }
+    }
+    return files;
+}
+
+
+
 
 /*
  * Handle request /getLogs
@@ -154,8 +204,100 @@ function getFiltersFromLogs(req,res) {
     });
 }
 
+
+async function listLogFiles(req,res) {
+    var logger = Common.getLogger(__filename);
+    try {
+        if (!Common.enableLogsDownload) {
+            logger.info(`listLogFiles. Error: Logs download is disabled`);
+            res.send({
+                status: '2',
+                message: `Error: Logs download is disabled`
+            });
+            res.end();
+            return;
+        }
+        // find the full path of .syslog folder
+        const dir = Common.syslogs_path;
+        const files = await getFiles(dir, true);
+        // list only .log and .zip filess
+        const filteredFiles = files.filter(file => {
+            const extension = path.extname(file.path);
+            return extension === '.log' || extension === '.zip';
+        });
+        res.send({
+            status: '1',
+            message: "Request was fulfilled",
+            files: filteredFiles
+        });
+    } catch (err) {
+        logger.error(`listLogFiles. Error: ${err}`,err);
+        res.send({
+            status: '0',
+            message: `Error: ${err}`
+        });
+        res.end();
+    }
+}
+
+/**
+ * Download the log file which is relative files unders the syslog folder
+ * Validate that this is indeed under the syslog folder
+ * @param {*} fileName
+ * @param {*} req
+ * @param {*} res
+ */
+async function downloadLogFile(fileName, req, res) {
+    var logger = Common.getLogger(__filename);
+    try {
+        if (!Common.enableLogsDownload) {
+            logger.info(`downloadLogFile. Error: Logs download is disabled`);
+            res.send({
+                status: '2',
+                message: `Error: Logs download is disabled`
+            });
+            res.end();
+            return;
+        }
+        const dir = Common.syslogs_path; //path.resolve("./rsyslog");
+        const files = await getFiles(dir);
+        const filteredFiles = files.filter(file => {
+            const extension = path.extname(file);
+            return extension === '.log' || extension === '.zip';
+        });
+        if (!filteredFiles.includes(fileName)) {
+            logger.info(`downloadLogFile. Error: ${fileName} is not under syslog folder`);
+            res.send({
+                status: '0',
+                message: `${fileName} is not under syslog folder`
+            });
+            res.end();
+            return;
+        }
+        const filePath = commonUtils.buildPath(dir, fileName);
+        logger.info(`downloadLogFile. filePath: ${filePath}`);
+        // read the file
+        const data = await fsp.readFile(filePath);
+        // send the file as a response
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.send(data);
+
+    } catch (err) {
+        logger.info(`downloadLogFile. Error: ${err}`);
+        res.send({
+            status: '0',
+            message: `Error: ${err}`
+        });
+        res.end();
+    }
+
+}
+
 module.exports = {
     get: httpGet,
-    getFiltersFromLogs
+    getFiltersFromLogs,
+    listLogFiles,
+    downloadLogFile
 };
 

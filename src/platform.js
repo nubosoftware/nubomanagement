@@ -604,7 +604,8 @@ var Platform = function(platid, platType, callback, newplatid) {
                     //xml_file_content: session.xml_file_content
                 };
                 if (Common.platformSettings && Common.isMobile() && Common.platformType == "docker") {
-                    postObj.platformSettings = Common.platformSettings;
+                    postObj.platformSettings = { ...Common.platformSettings };
+                    postObj.platformSettings.send_logs = session.params.send_logs;
                 }
                 if (Common.isMobile() && Common.platformType == "docker" && session.xml_file_content) {
                     postObj.xml_file_content = session.xml_file_content;

@@ -200,6 +200,7 @@ var Common = {
     },
     guacAddr: "nubo-guac",
     pluginsEnabled: false,
+    enableLogsDownload: true,
     isRestServer: false,
     rootDir: process.cwd(),
     reloadSettings: parse_configs
@@ -737,6 +738,9 @@ function parse_configs(parseConfigCB) {
                 }
                 if (!Common.recording_path) {
                     Common.recording_path =  Common.path.join(Common.nfshomefolder,"recording");
+                }
+                if (!Common.syslogs_path) {
+                    Common.syslogs_path =  Common.path.join(Common.nfshomefolder,"syslogs");
                 }
             }
             callback(null, settings, sysConf);

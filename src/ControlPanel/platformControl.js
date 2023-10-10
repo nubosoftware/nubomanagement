@@ -39,11 +39,25 @@ async function updateStaticPlatform(req,res) {
         let ip = req.params.ip;
         let vmname = req.params.vmname;
 
-        await Common.db.StaticPlatforms.upsert({
+        let item = {
             platid: platID,
             ip: ip,
             vmname: vmname
-        });
+        };
+        if (req.params.send_logs !== undefined) {
+            item.send_logs = req.params.send_logs ? 1 : 0;
+        }
+
+        await Common.db.StaticPlatforms.upsert(item);
+        if (req.params.send_logs !== undefined) {
+            // update platform redis params (if exists)
+            let redis = Common.redisClient;
+            let params = await redis.hgetall("platform_"+platID);
+            if (params) {
+                params.send_logs = req.params.send_logs ? true : false;
+                await redis.hmset("platform_"+platID,params);
+            }
+        }
         logger.info(`Updated platform ${platID}. ip: ${ip}, vmname: ${vmname}`);
         status = 1;
         msg = "Updated";
@@ -404,7 +418,8 @@ async function getStaticPlatformParams(platID) {
             platid: platID,
             ip: staticPlatform.ip,
             vmname: staticPlatform.vmname,
-            ssh_port: staticPlatform.ssh_port
+            ssh_port: staticPlatform.ssh_port,
+            send_logs: staticPlatform.send_logs === 1? true : false
         }
     }
     return params;

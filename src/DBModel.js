@@ -1193,7 +1193,8 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
          },
          ip: Sequelize.STRING,
          vmname: Sequelize.STRING,
-         ssh_port: Sequelize.INTEGER
+         ssh_port: Sequelize.INTEGER,
+         send_logs: Sequelize.INTEGER,
      }, {
          timestamps: false
      });

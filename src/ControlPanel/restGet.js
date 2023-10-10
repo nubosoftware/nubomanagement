@@ -921,9 +921,17 @@ var apiAccess = function(req, res) {
         if (!checkPerm('@/','r')) return;
         if (!arg1) {
             requestType = "getLogs";
-        } else if (arg1 = "getFilters") {
+        } else if (arg1 === "getFilters") {
             LogsModule.getFiltersFromLogs(req,res);
             return;
+        } else if (arg1 === "files") {
+            if (!arg2 && req.method === "GET") {
+                LogsModule.listLogFiles(req,res);
+                return;
+            } else if (arg2 && req.method === "GET") {
+                LogsModule.downloadLogFile(arg2,req,res);
+                return;
+            }
         }
     } else if (objectType === 'events') {
         if (!checkPerm('/','r')) return;

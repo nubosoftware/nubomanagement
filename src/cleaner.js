@@ -17,7 +17,11 @@ const redisSet = promisify(Common.redisClient.set).bind(Common.redisClient);
 const redisDel = promisify(Common.redisClient.del).bind(Common.redisClient);
 const redisSmembers = promisify(Common.redisClient.smembers).bind(Common.redisClient);
 const redisHgetall = promisify(Common.redisClient.hgetall).bind(Common.redisClient);
+const fsp = require('fs').promises;
+const path = require('path');
 
+
+var cleanPltformLogCnt = 0;
 function cleaner(callback) {
     var now = new Date();
     var timeoutTime = new Date(now.getTime() - Common.sessionTimeout * 1000).getTime();
@@ -82,6 +86,12 @@ function cleaner(callback) {
                 callback(null);
             });
     });
+
+    if (cleanPltformLogCnt % (12 * 60 * 24) == 0) { // run every 24 hour
+        cleanPltformLogCnt = 0;
+        cleanPlatformLogs();
+    }
+    cleanPltformLogCnt++;
 }
 
 var cleanerService = new Service(cleaner, {
@@ -91,6 +101,41 @@ var cleanerService = new Service(cleaner, {
     }
 });
 
+
+/**
+ * Clean platform logs older than 7 days
+ */
+async function cleanPlatformLogs() {
+    try {
+        const folder = Common.syslogs_path;
+        const directories = await fsp.readdir(folder);
+        logger.info(`cleanPlatformLogs. directories: ${directories}`);
+        // iterate over directories
+        for (const directory of directories) {
+            const directoryPath = path.join(folder, directory);
+            const directoryStat = await fsp.stat(directoryPath);
+
+            // filter files based on file path and modification time
+            if (directoryStat.isDirectory() && /^platform_\d+$/.test(directory)) {
+                const files = await fsp.readdir(directoryPath);
+                for (const file of files) {
+                    const filePath = path.join(directoryPath, file);
+                    const fileStat = await fsp.stat(filePath);
+                    const fileAge = Date.now() - fileStat.mtime.getTime();
+                    const isOlderThan7Days = fileAge > (7 * 24 * 60 * 60 * 1000);
+                    // console.log(`cleanPlatformLogs. file: ${file}, fileAge: ${fileAge}. isOlderThan7Days: ${isOlderThan7Days}`);
+                    if (isOlderThan7Days) {
+                        // delete file
+                        logger.info(`cleanPlatformLogs. delete file: ${filePath}, file age in days: ${Number(fileAge / (24 * 60 * 60 * 1000)).toFixed(1)}`);
+                        await fsp.unlink(filePath);
+                    }
+                };
+            }
+        }
+    } catch (err) {
+        logger.error(`cleanPlatformLogs error: ${err}.`,err);
+    }
+}
 
 
 /**

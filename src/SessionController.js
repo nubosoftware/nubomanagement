@@ -882,6 +882,7 @@ async function startSessionImp(startSessionParams) {
                         session.platform = plat;
                         session.params.platid = plat.params.platid;
                         session.params.platform_ip = plat.params.platform_ip;
+                        session.params.send_logs = plat.params.send_logs;
                         logger.info(`startSessionImp. platform: ${JSON.stringify(plat.params)}`);
                     } catch (err) {
                         resObj = {
