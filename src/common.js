@@ -743,6 +743,9 @@ function parse_configs(parseConfigCB) {
                 if (!Common.syslogs_path) {
                     Common.syslogs_path =  Common.path.join(Common.nfshomefolder,"syslogs");
                 }
+                if (!Common.platformSettings) {
+                    Common.platformSettings = {};
+                }
             }
             callback(null, settings, sysConf);
         },
