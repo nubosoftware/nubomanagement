@@ -201,6 +201,7 @@ var Common = {
     guacAddr: "nubo-guac",
     pluginsEnabled: false,
     enableLogsDownload: true,
+    permittedLogFileExternsions: [".log",".zip",".txt",".gz"],
     isRestServer: false,
     rootDir: process.cwd(),
     reloadSettings: parse_configs

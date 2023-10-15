@@ -223,7 +223,7 @@ async function listLogFiles(req,res) {
         // list only .log and .zip filess
         const filteredFiles = files.filter(file => {
             const extension = path.extname(file.path);
-            return extension === '.log' || extension === '.zip';
+            return Common.permittedLogFileExternsions.includes(extension);
         });
         res.send({
             status: '1',
@@ -263,7 +263,7 @@ async function downloadLogFile(fileName, req, res) {
         const files = await getFiles(dir);
         const filteredFiles = files.filter(file => {
             const extension = path.extname(file);
-            return extension === '.log' || extension === '.zip';
+            return Common.permittedLogFileExternsions.includes(extension);
         });
         if (!filteredFiles.includes(fileName)) {
             logger.info(`downloadLogFile. Error: ${fileName} is not under syslog folder`);
