@@ -966,7 +966,9 @@ async function startSessionImp(startSessionParams) {
                                 }
                             } catch (err) {
                                 logger.error(`startSessionImp. Error attachUser: ${err}`, err);
-                                buildStatus.addToErrorsPlatforms = true;
+                                if (Common.platformType != "docker") {
+                                    buildStatus.addToErrorsPlatforms = true;
+                                }
                                 throw err;
                             }
                             buildStatus.userAttached = true;
