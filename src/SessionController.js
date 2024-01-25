@@ -275,7 +275,7 @@ async function startSessionFromClient(req,res,login) {
         if (session.params.audioToken) {
             resobj.audioToken = session.params.audioToken;
         }
-        if (session.params.nuboglListenPort) {
+        if (session.params.nuboglListenPort || session.params.useNuboGL) {
             resobj.serverSideOpenGL = true;
         }
         if (session.params.recording) {
@@ -426,6 +426,7 @@ async function list(req, res, login) {
  */
 async function startSessionImp(startSessionParams) {
     var logger = new ThreadedLogger(Common.getLogger(__filename));
+    let tag = `startSessionImp[${startSessionParams.loginToken}]`;
     logger.logTime(`startSessionImp start`);
     // logger.info(`startSessionImp start. startSessionParams: ${JSON.stringify(startSessionParams, null, 2)}`);
 
@@ -479,6 +480,7 @@ async function startSessionImp(startSessionParams) {
         // add some metadata to the logger
         logger.user(loginData.getEmail());
         logger.device(loginData.getDeviceID());
+        tag = `startSessionImp[${loginData.getEmail()}]`;
         logger.info("Start session", {
             mtype: "important"
         });
@@ -755,12 +757,12 @@ async function startSessionImp(startSessionParams) {
                 if (!Common.recordingPathCreated && Common.recording_path) {
                     const fsp = require('fs').promises;
                     try {
-                        logger.info(`startSessionImp. creating recording path: ${Common.recording_path}`);
+                        logger.info(`${tag} creating recording path: ${Common.recording_path}`);
                         await fsp.mkdir(Common.recording_path, { recursive: true });
                         // set permissions allow write to all
                         await fsp.chmod(Common.recording_path, 0o777);
                     } catch (err) {
-                        logger.error(`startSessionImp. error creating recording path: ${err.message}`);
+                        logger.error(`${tag} error creating recording path: ${err.message}`);
                     }
                     Common.recordingPathCreated = true;
                 }
@@ -770,7 +772,7 @@ async function startSessionImp(startSessionParams) {
                 if (login.loginParams.recording == 1) {
                     session.params.recording = login.loginParams.recording;
                     session.params.recording_name = `recording_${session.params.sessid}_0`;
-                    logger.info(`recording: ${login.loginParams.recording}, recording_path: ${Common.recording_path}`);
+                    logger.info(`${tag} recording: ${login.loginParams.recording}, recording_path: ${Common.recording_path}`);
                 }
                 // set app usage file name
                 session.params.appUsageFileName = `appUsage_${session.params.sessid}.csv`;
@@ -796,7 +798,7 @@ async function startSessionImp(startSessionParams) {
                 buildStatus.sesionObjectCreated = true;
 
 
-                logger.info(`startSessionImp. session.params: ${JSON.stringify(session.params)}`);
+                logger.info(`${tag} session.params: ${JSON.stringify(session.params)}`);
 
                 // get some paramters from the orgnization object in db
                 const org = Common.db.Orgs.findOne({
@@ -827,7 +829,7 @@ async function startSessionImp(startSessionParams) {
                         // creating new image for desktop
                         const imageName = await Common.getDesktop().debs.createImageForUser(email, login.loginParams.mainDomain);
                         session.params.docker_image = imageName;
-                        logger.info(`Using created image: ${imageName}`);
+                        logger.info(`${tag} Using created image: ${imageName}`);
                     }
                 }
 
@@ -859,14 +861,13 @@ async function startSessionImp(startSessionParams) {
                     const userUtils = require('./userUtils.js')
                     const foldersValid = await userUtils.validateUserFoldersPromise(email, deviceID, deviceType);
                     if (!foldersValid) {
-                        logger.info(`startSessionImp. Folders not valid for user ${email}. Creating folders.`);
+                        logger.info(`${tag} Folders not valid for user ${email}. Creating folders.`);
                         await userUtils.createUserFoldersPromise(email, deviceID, deviceType, true, time, hrTime);
                     }
                     const nfs = await getNFSObject(email, logger);
                     session.params.nfs_ip = nfs.nfs_ip;
                     session.params.nfs_idx = nfs.nfs_idx;
                     session.nfs = nfs;
-                    logger.info(`startSessionImp. nfs_ip: ${nfs.nfs_ip}`);
 
                     // find a platform to run the session on
                     if (session.params.dedicatedplatform) {
@@ -883,7 +884,7 @@ async function startSessionImp(startSessionParams) {
                         session.params.platid = plat.params.platid;
                         session.params.platform_ip = plat.params.platform_ip;
                         session.params.send_logs = plat.params.send_logs;
-                        logger.info(`startSessionImp. platform: ${JSON.stringify(plat.params)}`);
+                        logger.info(`${tag} platform: ${session.params.platid} (${session.params.platform_ip})`);
                     } catch (err) {
                         resObj = {
                             status: 0,
@@ -912,7 +913,7 @@ async function startSessionImp(startSessionParams) {
                             let appParams = Object.assign({}, Common.appParams);
                             if (sessionType == SESSION_TYPE_MOBILE && Common.platformType == "docker") {
                                 // we load app params only to mobile devices
-                                logger.logTime(`startSessionImp before appParams`);
+                                logger.logTime(`${tag} before appParams`);
                                 const apps = await Common.db.Apps.findAll({
                                     attributes: ['packagename', 'displayprotocol'],
                                     where: {
@@ -934,7 +935,7 @@ async function startSessionImp(startSessionParams) {
                                         item.displayprotocol = app.displayprotocol;
                                         appParams[app.packagename] = item;
                                     }
-                                    logger.info(`appParams: ${JSON.stringify(appParams, null, 2)}`);
+                                    logger.info(`${tag} appParams: ${JSON.stringify(appParams, null, 2)}`);
                                 }
                             }
 
@@ -949,10 +950,11 @@ async function startSessionImp(startSessionParams) {
                             }
 
                             // attach to platform
-                            logger.logTime(`startSessionImp before attachUser`);
+                            logger.logTime(`${tag} before attachUser`);
                             try {
                                 const res = await attachUser(session,timeZone);
-                                logger.info("attachUser. res: " + JSON.stringify(res, null, 2));
+                                logger.logTime(`${tag} after attachUser`);
+                                logger.info(`${tag} attachUser. res: ${JSON.stringify(res, null, 2)}`);
                                 session.params.localid = res.localid;
                                 if (Common.platformType == "docker") {
                                     session.params.containerIpAddress = res.params.ipAddress;
@@ -965,7 +967,8 @@ async function startSessionImp(startSessionParams) {
                                     }
                                 }
                             } catch (err) {
-                                logger.error(`startSessionImp. Error attachUser: ${err}`, err);
+                                logger.logTime(`${tag} after attachUser (with error)`);
+                                logger.error(`${tag} Error attachUser: ${err}`, err);
                                 if (Common.platformType != "docker") {
                                     buildStatus.addToErrorsPlatforms = true;
                                 }
@@ -988,7 +991,7 @@ async function startSessionImp(startSessionParams) {
                                 try {
                                     await buildStatus.gatewayLock.releasePromise();
                                 } catch (err) {
-                                    logger.error(`startSessionImp. Error release gatewayLock: ${err}`, err);
+                                    logger.error(`${tag} Error release gatewayLock: ${err}`, err);
                                 }
                                 buildStatus.gatewayLock = null;
                             }
@@ -997,7 +1000,7 @@ async function startSessionImp(startSessionParams) {
                         // update platform references in redis
                         const cnt = await session.updatePlatformReferencePromise();
                         if (Common.platformParams.restartPlatformSessionsThreshold > 0 && cnt > Common.platformParams.restartPlatformSessionsThreshold) {
-                            logger.info(`Platform exceeded the "Restat Platform Session Threshold": ${cnt}. Move platform to error for restart!`);
+                            logger.info(`${tag} Platform exceeded the "Restat Platform Session Threshold": ${cnt}. Move platform to error for restart!`);
                             buildStatus.revivePlatform = true;
                         }
                         buildStatus.sessionPlatformReferenceIncresed = true;
@@ -1007,10 +1010,10 @@ async function startSessionImp(startSessionParams) {
                             try {
                                 await buildStatus.platformLock.releasePromise();
                             } catch (err) {
-                                logger.error(`startSessionImp. Error release platformLock: ${err}`, err);
+                                logger.error(`${tag} Error release platformLock: ${err}`, err);
                             }
                         } else {
-                            logger.info("Lock on platform not found");
+                            logger.info(`${tag} Lock on platform not found`);
                         }
                         buildStatus.platformLock = null;
                     }
@@ -1023,7 +1026,7 @@ async function startSessionImp(startSessionParams) {
 
                 // update user DB with data center details
                 if (Common.dcName && Common.dcURL) {
-                    logger.logTime(`startSessionImp before updateUserDataCenter`);
+                    logger.logTime(`${tag} before updateUserDataCenter`);
                     const dcname = login.getDcname() != '' ? login.getDcname() : null;
                     const dcurl = login.getDcurl() != '' ? login.getDcurl() : null;
 
@@ -1057,7 +1060,7 @@ async function startSessionImp(startSessionParams) {
                         active_seconds: 0
                     });
                 } catch (err) {
-                    logger.error(`startSessionImp. Error update session history: ${err}`, err);
+                    logger.error(`${tag} Error update session history: ${err}`, err);
                 }
 
                 //update user-device connected platform and gw
@@ -1069,17 +1072,17 @@ async function startSessionImp(startSessionParams) {
 
                 // Install/Uninstall new apps to user if needed
                 if (sessionType == SESSION_TYPE_MOBILE) {
-                    logger.logTime(`startSessionImp before startSessionInstallations`);
+                    logger.logTime(`${tag} before startSessionInstallations`);
                     try {
                         await startSessionInstallations(session, time, hrTime);
                     } catch (err) {
-                        logger.error(`startSessionImp. Error startSessionInstallations: ${err}`, err);
+                        logger.error(`${tag} Error startSessionInstallations: ${err}`, err);
                     }
                 }
             }
 
             // post session start actions
-            logger.logTime(`startSessionImp before postStartSessionProcedure`);
+            logger.logTime(`${tag} before postStartSessionProcedure`);
             if (Common.isEnterpriseEdition()) {
                 Common.getEnterprise().settings.postStartSessionProcedure(session.params.email);
             }
@@ -1093,7 +1096,7 @@ async function startSessionImp(startSessionParams) {
                     require('./SmsNotification.js').deliverPendingMessagesToSession(session);
                 }, 3000);
             } else {
-                logger.info("startOrJoinSession: join running session: " + session.params.sessid);
+                logger.info(`${tag} join running session: ${session.params.sessid}`);
                 // delete the log buffer
                 Common.specialBuffers[logger.logid] = null;
             }
@@ -1114,34 +1117,34 @@ async function startSessionImp(startSessionParams) {
             // do some cleanups incase of error before throwing the error
             if (buildStatus.userConnectedDeviceUpdated) {
                 try {
-                    logger.info("startSessionImp. clean user connected device");
+                    logger.info(`${tag} clean user connected device`);
                     await User.updateUserConnectedDevicePromise(email, deviceID, null, null, null, false);
                 } catch (err) {
-                    logger.error(`cleanUserSessionBuild: failed deleteing platform and gw of user: ${err}`, err);
+                    logger.error(`${tag} cleanUserSessionBuild: failed deleteing platform and gw of user: ${err}`, err);
                 }
             }
             if (buildStatus.platformReferenceIncresed) {
                 try {
-                    logger.info("startSessionImp. decrease platform reference");
+                    logger.info(`${tag}  decrease platform reference`);
                     await session.platform.increaseReferencePromise(-1);
                 } catch (err) {
-                    logger.error(`cleanUserSessionBuild: failed decrease platform reference: ${err}`, err);
+                    logger.error(`${tag} cleanUserSessionBuild: failed decrease platform reference: ${err}`, err);
                 }
             }
             if (buildStatus.userAttached) {
                 try {
-                    logger.info("startSessionImp. detach user after error");
+                    logger.info(`${tag} detach user after error`);
                     await detachUser(session);
                 } catch (err) {
-                    logger.error(`cleanUserSessionBuild: failed detach user: ${err}`, err);
+                    logger.error(`${tag} cleanUserSessionBuild: failed detach user: ${err}`, err);
                 }
             }
             if (buildStatus.gatewayReferenceIncresed) {
                 try {
-                    logger.info("startSessionImp. clean gateway score");
+                    logger.info(`${tag} startSessionImp. clean gateway score`);
                     await gatewayModule.updateGWSessionScorePromise(session.params.gatewayIndex, 1, session.params.sessid, logger);
                 } catch (err) {
-                    logger.error(`cleanUserSessionBuild: failed decrease gateway reference: ${err}`, err);
+                    logger.error(`${tag} cleanUserSessionBuild: failed decrease gateway reference: ${err}`, err);
                 }
             }
             if (buildStatus.addToErrorsPlatforms) {
@@ -1154,10 +1157,10 @@ async function startSessionImp(startSessionParams) {
             }
             if (buildStatus.sesionObjectCreated && session) {
                 try {
-                    logger.info("startSessionImp. delete session object");
+                    logger.info(`${tag} delete session object`);
                     await session.delPromise();
                 } catch (err) {
-                    logger.error(`cleanUserSessionBuild: failed delete session: ${err}`, err);
+                    logger.error(`${tag} cleanUserSessionBuild: failed delete session: ${err}`, err);
                 }
             }
             throw err;
@@ -1165,14 +1168,14 @@ async function startSessionImp(startSessionParams) {
             try {
                 await userDeviceLock.releasePromise();
             } catch (err) {
-                logger.error(`startSessionImp. Error release userDeviceLock: ${err}`, err);
+                logger.error(`${tag} Error release userDeviceLock: ${err}`, err);
             }
             if (buildStatus.revivePlatform) {
                 try {
-                    logger.info(`startSessionImp. Revive platform: ${session.params.platid}`);
+                    logger.info(`${tag} Revive platform: ${session.params.platid}`);
                     await session.platform.addToErrorPlatformsPromise(false, false, true)
                 } catch (err) {
-                    logger.error(`startSessionImp. Error revive platform: ${err}`, err);
+                    logger.error(`${tag} Error revive platform: ${err}`, err);
                 }
             }
         }
@@ -1180,7 +1183,7 @@ async function startSessionImp(startSessionParams) {
 
 
     } catch (err) {
-        logger.error(`startSessionImp. Error: ${err}`);
+        logger.error(`${tag} Error: ${err}`);
         console.error(err);
         if (session && login) {
             await report(session, null, login, oldSession, logger, clientIP);

@@ -189,25 +189,28 @@ var getAvailableGW = function(gw, opts, callback) {
                     return;
                 }
                 else {
-                    var lock = new Lock({
-                        key: 'lock_gateway_' + gwIndex,
-                        logger: logger,
-                        numberOfRetries: 0,
-                        waitInterval: 0,
-                        lockTimeout: 1000 * 60 * 5 // 5 minutes
-                    });
+                    // disable GW lock for now
+                    // var lock = new Lock({
+                    //     key: 'lock_gateway_' + gwIndex,
+                    //     logger: logger,
+                    //     numberOfRetries: 0,
+                    //     waitInterval: 0,
+                    //     lockTimeout: 1000 * 60 * 5 // 5 minutes
+                    // });
 
-                    lock.acquire(function(err, acquired) {
-                        if (err || !acquired) {
-                            callback(false);
-                            return;
-                        }
+                    // lock.acquire(function(err, acquired) {
+                    //     if (err || !acquired) {
+                    //         callback(false);
+                    //         return;
+                    //     }
 
-                        //logger.info("getAvailableGW: selected gateway #" + gwIndex);
-                        gw.params = gateway;
-                        gw.lock = lock;
-                        callback(true);
-                    });
+                    //     //logger.info("getAvailableGW: selected gateway #" + gwIndex);
+                    //     gw.params = gateway;
+                    //     gw.lock = lock;
+                    //     callback(true);
+                    // });
+                    gw.params = gateway;
+                    callback(true);
                 }
             });
         }, function(foundGW){

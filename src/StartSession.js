@@ -123,7 +123,7 @@ function response2Client(session, errResObj, res, isLocalIP, logger, loginToken)
         if (session.params.audioToken) {
             resobj.audioToken = session.params.audioToken;
         }
-        if (session.params.nuboglListenPort) {
+        if (session.params.nuboglListenPort || session.params.useNuboGL) {
             resobj.serverSideOpenGL = true;
         }
         if (session.params.recording) {
