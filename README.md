@@ -1,6 +1,8 @@
 # The Management Component
 ## Main Orchestrator
 
+Version 3.2
+
 It is part of the [Linux Remote Desktop](https://github.com/nubosoftware/linux-remote-desktop) system.
 
 The main orchestrator that manages all the other components. It authneticates users and handles the lifecycle of the users' sesssions.
@@ -17,3 +19,4 @@ cd nubomanagement
 ./scripts/attachDesktopModule.sh
 make docker
 ```
+
