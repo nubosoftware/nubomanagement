@@ -308,7 +308,7 @@ const { Subject } = require('await-notify');
      * @param {*} res
      * @returns
      */
-    static serve(req, res) {
+    static serve(req, res,next) {
         if (!Static.webServer) {
             logger.error(`[Static] module not loaded!`);
             res.writeHead(500, {

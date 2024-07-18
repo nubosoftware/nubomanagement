@@ -21,7 +21,7 @@ var errIllegalSessionID = -2;
 var statusOK = 0;
 
 
-function registerGateway(req, res) {
+function registerGateway(req, res,next) {
     var status = statusOK;
     var msg = "";
     res.contentType = 'json';
@@ -70,7 +70,7 @@ function registerGateway(req, res) {
 
 }
 
-function updateGatewayTtl(req, res) {
+function updateGatewayTtl(req, res,next) {
     var status = statusOK;
     var msg = "";
     res.contentType = 'json';
@@ -94,7 +94,7 @@ function updateGatewayTtl(req, res) {
     });
 }
 
-function validateUpdSession(req, res) {
+function validateUpdSession(req, res,next) {
     var status = statusOK;
     var msg = "";
     res.contentType = 'json';
@@ -270,7 +270,7 @@ function validateUpdSession(req, res) {
     });
 }
 
-function unregisterGateway(req, res) {
+function unregisterGateway(req, res,next) {
     var status = statusOK;
     var msg = "";
     res.contentType = 'json';
@@ -299,7 +299,7 @@ function unregisterGateway(req, res) {
 
 }
 
-function addPlatform2ErrsList(req, res) {
+function addPlatform2ErrsList(req, res,next) {
     var status = statusOK;
     var msg = "";
     res.contentType = 'json';
@@ -343,7 +343,7 @@ function addPlatform2ErrsList(req, res) {
     });
 }
 
-function isPlatformInPlatformsList(req, res) {
+function isPlatformInPlatformsList(req, res,next) {
     var status = statusOK;
     var msg = "";
     res.contentType = 'json';
@@ -369,7 +369,7 @@ function isPlatformInPlatformsList(req, res) {
     });
 }
 
-function checkLoginTokenOnRedis(req, res) {
+function checkLoginTokenOnRedis(req, res,next) {
     var status = statusOK;
     var msg = "";
     res.contentType = 'json';
@@ -393,7 +393,7 @@ function checkLoginTokenOnRedis(req, res) {
     });
 }
 
-function reportRecording(req, res) {
+function reportRecording(req, res,next) {
     var status = statusOK;
     var msg = "";
     res.contentType = 'json';

@@ -6,7 +6,7 @@ var Login = require('./login.js');
 var async = require('async');
 
 
-function checkBiometric(req, res) {
+function checkBiometric(req, res,next) {
     // https://oritest.nubosoftware.com/checkBiometric?loginToken=[]&token=[]
     const finish = "__finish";
 

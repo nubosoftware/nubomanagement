@@ -343,7 +343,7 @@ async function getVideo(req, res, session_id, start_time_str) {
  * @param {*} res
  * @returns
  */
-async function getProfiles(req, res) {
+async function getProfiles(req, res,next) {
     try {
         let adminLogin = req.nubodata.adminLogin;
         if (!adminLogin) {

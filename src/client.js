@@ -96,7 +96,7 @@ async function checkAuth(req,res) {
  * @param {*} req
  * @param {*} res
  */
-var apiAccess = async function(req, res) {
+var apiAccess = function (req, res,next) {
     const objectType = req.params.objectType;
     const arg1 = req.params.arg1;
     const arg2 = req.params.arg2;
@@ -114,67 +114,80 @@ var apiAccess = async function(req, res) {
         }
     }
     if (Common.pluginsEnabled) {
-        const handled = Plugin.callFirstPluginFunction("handleClientApiRequestNotAuthenticated",objectType,arg1,arg2,arg3,req,res);
+        const handled = Plugin.callFirstPluginFunction("handleClientApiRequestNotAuthenticated", objectType, arg1, arg2, arg3, req, res);
         if (handled) {
+            console.log("handled by plugin!!!!");
             return;
         }
     }
-    const login = await checkAuth(req,res);
-    if (!login) {
-        // invalid authentification. checkAuth already sent the error message
-        return;
-    }
-    if (objectType === "checkAuth") {
-        // if we pass checkAuth, the authentication is valid
+
+    // check if the authentification is valid
+    checkAuth(req, res).then((login) => {
+
+        // const login = await checkAuth(req,res);
+        if (!login) {
+            // invalid authentification. checkAuth already sent the error message
+            return;
+        }
+        if (objectType === "checkAuth") {
+            // if we pass checkAuth, the authentication is valid
+            res.send({
+                status: Common.STATUS_OK,
+                message: "Valid authentication"
+            });
+            return;
+        } else if (objectType === "password") {
+            // password management
+            if (arg1 === "check") {
+                require('./checkPasscode').func(req, res, login);
+                return;
+            } else if (arg1 === "set") {
+                require('./setPasscode').func(req, res, login);
+                return;
+            } else if (arg1 === "reset") {
+                require('./resetPasscode').func(req, res, login);
+                return;
+            }
+        } else if (objectType === "session") {
+            // session management
+            if (arg1 === "list" && req.method === "POST") {
+                // list possible sessions
+                require('./SessionController').list(req, res, login);
+                return;
+            } else if (arg1 === "start" && req.method === "POST") {
+                // start a new session
+                require('./SessionController').startSessionFromClient(req, res, login);
+                return;
+            } else if (arg1 == "logout" && req.method === "POST") {
+                // close a session
+                require('./SessionController').logoutUserImp(req, res, login);
+                return;
+            }
+        }
+
+        if (Common.pluginsEnabled) {
+            const handled = Plugin.callFirstPluginFunction("handleClientApiRequest", objectType, arg1, arg2, arg3, login, req, res);
+            if (handled) {
+                return;
+            }
+        }
+
+
+
+        logger.info("apiAccess. Unhandled request. objectType: " + objectType + " arg1: " + arg1 + " arg2: " + arg2 + " arg3: " + arg3);
         res.send({
-            status : Common.STATUS_OK,
-            message : "Valid authentication"
+            status: Common.STATUS_ERROR,
+            message: "Invalid request"
+        });
+        res.end();
+        return;
+    }).catch((err) => {
+        logger.error(`apiAccess error: ${err}`, err);
+        res.send(403, "403 Forbidden\n", {
+            "Content-Type": "text/plain"
         });
         return;
-    } else if (objectType === "password") {
-        // password management
-        if (arg1 === "check") {
-            require('./checkPasscode').func(req, res, login);
-            return;
-        } else if (arg1 === "set") {
-            require('./setPasscode').func(req, res, login);
-            return;
-        } else if (arg1 === "reset") {
-            require('./resetPasscode').func(req, res, login);
-            return;
-        }
-    } else if (objectType === "session") {
-        // session management
-        if (arg1 === "list" && req.method === "POST") {
-            // list possible sessions
-            require('./SessionController').list(req, res, login);
-            return;
-        } else if (arg1 === "start" && req.method === "POST") {
-            // start a new session
-            require('./SessionController').startSessionFromClient(req, res, login);
-            return;
-        } else if (arg1 == "logout" && req.method === "POST") {
-            // close a session
-            require('./SessionController').logoutUserImp(req, res, login);
-            return;
-        }
-    }
-
-    if (Common.pluginsEnabled) {
-        const handled = Plugin.callFirstPluginFunction("handleClientApiRequest",objectType,arg1,arg2,arg3,login,req,res);
-        if (handled) {
-            return;
-        }
-    }
-
-
-
-    res.send({
-        status : Common.STATUS_ERROR,
-        message : "Invalid request"
     });
-    res.end();
-    return;
 
     // res.send({
     //     status : Common.STATUS_OK,

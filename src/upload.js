@@ -55,7 +55,7 @@ function uploadToLoginToken(req, res, next) {
     } );
 }
 
-function uploadDummyFile(req, res) {
+function uploadDummyFile(req, res, next) {
     var loginToken = req.params.loginToken;
     if (loginToken == undefined || loginToken.length < 5) {
         var msg = "Invalid loginToken";

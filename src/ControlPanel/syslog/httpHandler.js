@@ -69,7 +69,7 @@ async function getFiles(dir, getInfo = false, originalDir = dir) {
  *  comp - filter by ComponentType
  *  mtype - filter by MessageType
  */
-function httpGet(req, res) {
+function httpGet(req, res,next) {
     var fail = function(status, msg) {
         logger.error("request req.url finished with error: " + msg);
         res.send({

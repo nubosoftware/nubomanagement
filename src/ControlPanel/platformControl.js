@@ -426,7 +426,7 @@ async function getStaticPlatformParams(platID) {
 
 }
 
-async function getPlatformDetails(req, res) {
+async function getPlatformDetails(req, res,next) {
     try {
         let login = await getSiteAdminDetails(req,res);
         var domain = login.getPlatformDomain();
@@ -526,7 +526,7 @@ async function getPlatformDetails(req, res) {
     }
 }
 
-function getPlatformList(req, res) {
+function getPlatformList(req, res,next) {
     res.contentType = 'json';
 
     loadAdminParamsFromSession(req, res, function(err, login) {

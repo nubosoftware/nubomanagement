@@ -39,7 +39,7 @@ var NUBO_MESSENGER_APP = '2';
 var NOT_SENDING_NOTIFICATION = "not sending Notification"
 var SENDING_NOTIFICATION = "sending Notification"
 
-function notifyClient(req, res) {
+function notifyClient(req, res,next) {
     var logger = new ThreadedLogger(Common.getLogger(__filename));
     var sessionId = req.params.sessionId;
     if (sessionId === undefined) {
@@ -307,7 +307,7 @@ function sendNotificationByRegId(deviceType, pushRegID, notifyTitle, notifyTime,
 
 }
 
-function notifyExchangeClient(req, res) {
+function notifyExchangeClient(req, res,next) {
 
     var status = 0;
     var emailStatus = 1;
@@ -475,7 +475,7 @@ function notifyExchangeClient(req, res) {
  https://login.nubosoftware.com//Notifications/pushNotification?email=[]&email=[]&titleText=[]&notifyTime=[]&notifyLocation=[]&appName=[]
  */
 
-function pushNotification(req, res) {
+function pushNotification(req, res,next) {
     let params = {
         email: req.params.email,
         titleText : req.params.titleText,
@@ -483,7 +483,8 @@ function pushNotification(req, res) {
         notifyLocation : req.params.notifyLocation,
         appName : req.params.appName,
         authKey : req.params.authKey,
-        adminLogin: req.nubodata.adminLogin
+        adminLogin: req.nubodata.adminLogin,
+        contentId: req.params.contentId
     }
     pushNotificationImp(params,(result) => {
         res.send(result);
@@ -531,6 +532,7 @@ function pushNotificationImp(params,cb) {
         status = 0;
         msg = msg + " - ERROR - pushNotification: remoteNotifApps not found";
     }
+    var contentId = params.contentId;
     var appData;
     var appName = params.appName;
     var authKey = params.authKey;
@@ -678,6 +680,9 @@ function pushNotificationImp(params,cb) {
                 let packageID = appData.packageID;
                 if ((appNum == "6" || appNum == "8") && packageID != "") {
                     packageID = `${appData.packageID},API${crypto.randomBytes(16).toString("hex")}`;
+                }
+                if (contentId) {
+                    packageID = `${appData.packageID},CONTENT_ID:${contentId}`;
                 }
                 notify(emailItem, titleText, notifyTime, notifyLocation, appNum, function(err) {
                     if (err) {
@@ -843,16 +848,8 @@ function notify(email, titleText, notifyTime, notifyLocation, appName, callback,
     titleText = xmlDecode(titleText);
     notifyLocation = xmlDecode(notifyLocation);
     notifyTime = xmlDecode(notifyTime);
+    sendNotificationToAllDevices(email, titleText, notifyTime, notifyLocation, appName, packageID, callback);
 
-                if (Common.withService) {
-                    if (appName >= 0) {
-                        NotificationsHistory.attachNotificationToHistory(email, titleText, notifyTime, notifyLocation, appName, callback);
-                    } else {
-                        callback("invalid appName");
-                    }
-                } else {
-                    sendNotificationToAllDevices(email, titleText, notifyTime, notifyLocation, appName, packageID, callback);
-                }
 
 
 }

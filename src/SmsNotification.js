@@ -25,7 +25,7 @@ var SmsNotification = {
 
 module.exports = SmsNotification;
 
-function sendSmsNotification(req, res) {
+function sendSmsNotification(req, res,next) {
     var status = 1;
     var msg = "OK";
     function readParam(paramName) {
@@ -273,7 +273,7 @@ function deliverSMSToNuboUser(toAssigned,toLocal, fromLocal, fromAssigned, text,
             }
         });
 }
-function receiveSMS(req, res) {
+function receiveSMS(req, res,next) {
     logger.info("Params: "+ JSON.stringify(req.params,null,2));
     //const twiml = new MessagingResponse();
     //twiml.message('The Robots are coming! Head for the hills!');
@@ -320,7 +320,7 @@ function receiveSMS(req, res) {
 
 }
 
-function platformUserSendSms(req, res) {
+function platformUserSendSms(req, res,next) {
     var status = 1;
     var msg = "OK";
     function readParam(paramName) {
@@ -482,7 +482,7 @@ function sendSmsNotificationInternal(toPhone, body, fromPhone, callback) {
  * installations Each server need to authenticate with serverID and
  * serverAuthKey
  */
-function sendSmsNotificationFromRemoteServer(req, res) {
+function sendSmsNotificationFromRemoteServer(req, res,next) {
     var status = 1;
     var msg = "OK";
     function readParam(paramName) {

@@ -632,7 +632,7 @@ function setPublicServiceServer(server) {
         var appStoreServer = new nodestatic.Server(appStorePath, {
             cache: 3600
         });
-        server.get("/appstore/*/repo/*", function (req, res, next) {
+        server.get("/appstore/*", function (req, res, next) { // */repo/
             // logger.info("GET app store file: " + req.url);
             appStoreServer.serve(req, res, (err, result) => {
                 if (err) {
@@ -646,7 +646,7 @@ function setPublicServiceServer(server) {
                 // logger.info("Served GET app store file: " + req.url);
             });
         });
-        server.head("/appstore/*/repo/*", function (req, res, next) {
+        server.head("/appstore/*", function (req, res, next) { // */repo/
             logger.info("HEAD request: " + req.url);
             appStoreServer.serve(req, res, (err, result) => {
                 if (err) {

@@ -302,18 +302,32 @@ const originalRequire = require("../scripts/originalRequire");
         // add handlers to public servers
         if (this.pluginInitResponse && this.pluginInitResponse.publicServerHandlers) {
             for (const publicServerHandler of this.pluginInitResponse.publicServerHandlers) {
-                if (newServer) {
-                    // add only to the new server
-                    const route = newServer[publicServerHandler.method](publicServerHandler.path,publicServerHandler.handler);
-                    // logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${newServer.name}`);
-                    this.publicRoutes.push({route : route, server: newServer});
-                } else {
-                    // add to existing servers
-                    for (const server of Plugin.publicServers) {
-                        const route = server[publicServerHandler.method](publicServerHandler.path,publicServerHandler.handler);
-                        // logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${server.name}`);
-                        this.publicRoutes.push({route : route, server: server});
+                try {
+
+                    const handler = publicServerHandler.handler;
+                    const isMissingNextArg = handler.length < 3;
+                    const isNotAsync = handler.constructor.name !== 'AsyncFunction';
+                     if (isMissingNextArg && isNotAsync) {
+                        // create a wrapper function that adds the next argument
+                        publicServerHandler.handler = (req,res,next) => {
+                            handler(req,res);
+                        };
                     }
+                    if (newServer) {
+                        // add only to the new server
+                        const route = newServer[publicServerHandler.method](publicServerHandler.path,publicServerHandler.handler);
+                        // logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${newServer.name}`);
+                        this.publicRoutes.push({route : route, server: newServer});
+                    } else {
+                        // add to existing servers
+                        for (const server of Plugin.publicServers) {
+                            const route = server[publicServerHandler.method](publicServerHandler.path,publicServerHandler.handler);
+                            // logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${server.name}`);
+                            this.publicRoutes.push({route : route, server: server});
+                        }
+                    }
+                } catch (err) {
+                    logger.info(`[Plugin:${this.id}] Error adding public server handler. plugin: ${this.id}, err: ${err}`);
                 }
             }
         }
@@ -1099,7 +1113,9 @@ const originalRequire = require("../scripts/originalRequire");
             const plugin = Plugin.plugins[id];
             if (plugin.status == Plugin.PLUGIN_STATUS_LOADED && plugin.pluginModule ) {
                 if (fnName in plugin.pluginModule && typeof plugin.pluginModule[fnName] === "function") {
+                    console.log(`callFirstPluginFunction. plugin: ${plugin.name}, fnName: ${fnName}`);
                     let ret = plugin.pluginModule[fnName](...args);
+                    console.log(`callFirstPluginFunction. plugin: ${plugin.name}, fnName: ${fnName}, ret: ${ret}`);
                     if (ret == true) {
                         return ret;
                     }

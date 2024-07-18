@@ -26,7 +26,7 @@ const commonUtils = require('./commonUtils.js');
  * @param {*} next
  * @returns
  */
-async function activate(req, res, next) {
+async function activate(req, res) {
     var responseSent = false;
     try {
 

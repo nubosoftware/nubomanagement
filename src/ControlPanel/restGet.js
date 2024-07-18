@@ -426,7 +426,7 @@ var loadAdminParamsFromRequest = function(req,res,cb) {
 };
 
 
-var setActiveOrgForSiteAdmin = function(req, res) {
+var setActiveOrgForSiteAdmin = function(req, res,next) {
 
     let adminLogin = req.nubodata.adminLogin;
 
@@ -769,7 +769,7 @@ var adminLoginActivate = function(email,deviceid,deviceName,resetPassword,oldAct
 
 // }
 
-var apiAccess = function(req, res) {
+var apiAccess = function(req, res,next) {
     let objectType = req.params.objectType;
     let arg1 = req.params.arg1;
     let arg2 = req.params.arg2;
@@ -1215,7 +1215,7 @@ var apiAccess = function(req, res) {
 
 }
 
-var restGet = function(req, res) {
+var restGet = function(req, res,next) {
     var resDone = false;
     var domain = "";
     var admin = "";

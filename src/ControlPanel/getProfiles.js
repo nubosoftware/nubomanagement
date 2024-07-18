@@ -23,7 +23,7 @@ function loadAdminParamsFromSession(req, res, callback) {
 }
 
 
-function getOnlineProfiles(req, res) {
+function getOnlineProfiles(req, res,next) {
     let domain;
     loadAdminParamsFromSession(req, res, function(err, login) {
         if (!setting.getDebugMode()) {
@@ -361,7 +361,7 @@ function getOnlineUser(domain, callback) {
     });
 }
 
-function getDevices(req, res) {
+function getDevices(req, res,next) {
     let adminLogin = req.nubodata.adminLogin;
 	if (adminLogin == undefined || adminLogin.getAdminConsoleLogin() != 1) {
 	  var msg = "Invalid credentials";

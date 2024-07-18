@@ -986,7 +986,8 @@ var filter = {
             "notifyTime": constraints.openTextConstrRequested,
             "notifyLocation": constraints.openTextConstrRequested,
             "appName": constraints.ExcludeSpecialCharactersRequested,
-            "authKey": constraints.ExcludeSpecialCharactersRequested
+            "authKey": constraints.ExcludeSpecialCharactersRequested,
+            "contentId": constraints.ExcludeSpecialCharactersOptional,
         },
         "bodyConstraints": {
             "session": constraints.sessionIdConstrOptional,
