@@ -366,7 +366,7 @@ function checkIfNeedRedirection(playerVersion, activationKey, clientIP, deviceId
 function getActivationData(activationKey, logger, callback) {
 
     Common.db.Activation.findAll({
-        attributes: ['activationkey', 'status', 'email', 'deviceid', 'firstlogin', 'resetpasscode', 'firstname', 'lastname', 'jobtitle', 'devicetype', 'secondAuthRegistred','expirationdate','biometric_token','otp_token','pushregid','deviceapprovaltype','public_key'],
+        attributes: ['activationkey', 'status', 'email', 'deviceid', 'firstlogin', 'resetpasscode', 'firstname', 'lastname', 'jobtitle', 'devicetype', 'devicename','secondAuthRegistred','expirationdate','biometric_token','otp_token','pushregid','deviceapprovaltype','public_key'],
         where: {
             activationkey: activationKey
         },
@@ -693,7 +693,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
             },
             function(callback) {
                 if (Common.isMobile()) {
-                    Common.getMobile().mobileUserUtils.createUserVariablesFiles(userData, logger, function(err) {
+                    Common.getMobile().mobileUserUtils.createUserVariablesFiles(userData, activationData, logger, function(err) {
                         callback(null);
                     });
                 } else {
