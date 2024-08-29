@@ -224,7 +224,10 @@ function validateUpdSession(req, res,next) {
                     callback(null);
                 });
             } else if (suspend == 1) {
-                Common.redisClient.zadd("suspend_sessions", suspend_sessions, sessionID, function (err, obj) {
+                // calculate the session timeout
+                const userSessionTimeout = parseInt(session["sessionTimeout"] || Common.sessionTimeout);
+                logger.info(`validateUpdSession. userSessionTimeout: ${userSessionTimeout} seconds`);
+                Common.redisClient.zadd("suspend_sessions", suspend_sessions + userSessionTimeout * 1000, sessionID, function (err, obj) {
                     if (err) {
                         status = errIllegalRedisData;
                         msg = "validateUpdSession. cannot zadd suspend_sessions: " + suspend_sessions + ", " + err;

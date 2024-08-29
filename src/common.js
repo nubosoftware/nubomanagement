@@ -91,6 +91,11 @@ var Common = {
     imagesPath: "/opt/Android-Nougat",
     exchange_platformpath : "/home/sharon/storage/Android/ExchangePlatformKK/nuboplatform", //sharon
     sessionTimeout : 600, // 10 minutes session timeout
+    timeoutParams: {
+        allowUserSessionTimeout: false,
+        userSessionTimeoutMin: 60,
+        userSessionTimeoutMax: 3600
+    },
     sshPrivateKey : '/home/nubodev/.ssh/id_rsa',
     platformType : 'emulator',
     defaultSignature : '- Sent from my Nubo work environment',

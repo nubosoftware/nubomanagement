@@ -129,12 +129,24 @@ var Session = function(sessid, opts, callback) {
                     if (callback) callback(err);
                 });
             } else {
-                Common.redisClient.zadd('suspend_sessions', now.getTime(), sess.params.sessid, function(err) {
+                Common.redisClient.zadd('suspend_sessions', sess.getSuspendTS(), sess.params.sessid, function(err) {
                     if (callback) callback(err);
                 });
             }
         }); // save
     }; //suspend
+
+
+    /**
+     * Get the suspend timestamp of a session in milliseconds
+     * If the session have a session timout, its now + session timeout
+     * If the session does not have a session timeout, its now + the global session timeout
+     */
+    this.getSuspendTS = function() {
+        const userSessionTimeout = parseInt(this.params.sessionTimeout || Common.sessionTimeout);
+        logger.info(`userSessionTimeout: ${userSessionTimeout} seconds`);
+        return new Date().getTime() + userSessionTimeout * 1000;
+    }
 
     this.forceExit = function(callback) {
         var now = new Date();

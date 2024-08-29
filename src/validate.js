@@ -98,6 +98,18 @@ function validate(req, res, next) {
         logger.info(`hideNuboAppPackageName: ${hideNuboAppPackageName}, newProcess: ${newProcess}`);
     }
 
+    var sessionTimeout = Common.sessionTimeout;
+    if (req.params.sessionTimeout) {
+        const userSessionTimeout = parseInt(req.params.sessionTimeout);
+        if (Common.timeoutParams && Common.timeoutParams.allowUserSessionTimeout === true) {
+            if (userSessionTimeout >= Common.timeoutParams.userSessionTimeoutMin && userSessionTimeout <= Common.timeoutParams.userSessionTimeoutMax) {
+                sessionTimeout = userSessionTimeout;
+                logger.info(`validate: user session timeout: ${sessionTimeout}`);
+            }
+        }
+    }
+
+
 
 
     if (Common.withService && !clientUserName) {
@@ -141,7 +153,7 @@ function validate(req, res, next) {
                 },
                 function(callback) {
                     logger.info("validateActivation...");
-                    validateActivation(activationKey, deviceId, userData, activationData, req.url, timeZone, clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, jwtToken, function(err, validateResponse) {
+                    validateActivation(activationKey, deviceId, userData, activationData, req.url, timeZone, clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, sessionTimeout, jwtToken, function(err, validateResponse) {
                         if (err)
                             error = err;
 
@@ -475,7 +487,7 @@ function getUserDeviceData(email, deviceID, logger, maindomain, callback) {
 }
 
 function validateActivation(activationKey, deviceID, userdata, activationdata, url, timeZone,
-    clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, jwtToken, callback) {
+    clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, sessionTimeout, jwtToken, callback) {
 
     var finish = 'finish';
     var response = null;
@@ -898,6 +910,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                 login.loginParams.public_key = activationData.public_key;
 
                 login.loginParams.hideNuboAppPackageName = hideNuboAppPackageName;
+                login.loginParams.sessionTimeout = sessionTimeout;
                 login.loginParams.clientauthtype = userData.org.clientauthtype;
                 login.loginParams.secondauthmethod = userData.org.secondauthmethod;
                 login.loginParams.otptype = userData.org.otptype;

@@ -23,8 +23,9 @@ const path = require('path');
 
 var cleanPltformLogCnt = 0;
 function cleaner(callback) {
+
     var now = new Date();
-    var timeoutTime = new Date(now.getTime() - Common.sessionTimeout * 1000).getTime();
+    var timeoutTime =  now.getTime();  //new Date(now.getTime() - Common.sessionTimeout * 1000).getTime();
     Common.redisClient.zrangebyscore('suspend_sessions', "-inf", timeoutTime, function(err, sessions) {
 
         if (cleanerStoped) {
@@ -44,6 +45,7 @@ function cleaner(callback) {
                     callback(null);
                     return;
                 }
+                logger.info("cleaner: Closing session after timeout. sessid: " + sessID);
 
                 new Session(sessID, function(err, session) {
                     if (err) {

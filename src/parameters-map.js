@@ -1219,7 +1219,8 @@ var filter = {
             "timeZone": constraints.timeZoneConstrOptional,
             "hideNuboAppPackageName": constraints.packageNameConstrOptional,
             "newProcess": constraints.boolConstrOptional,
-            "lang": constraints.timeZoneConstrOptional
+            "lang": constraints.timeZoneConstrOptional,
+            "sessionTimeout": constraints.IndexConstrOptional,
         },
         "headerConstraints": {
             'x-client-ip': constraints.ipConstrRequested,

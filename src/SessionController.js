@@ -782,6 +782,9 @@ async function startSessionImp(startSessionParams) {
                 if (login.loginParams.hideNuboAppPackageName) {
                     session.params.hideNuboAppPackageName = login.loginParams.hideNuboAppPackageName;
                 }
+                if (login.loginParams.sessionTimeout) {
+                    session.params.sessionTimeout = login.loginParams.sessionTimeout;
+                }
 
                 // create session in redis
                 session.params.activation = login.getActivationKey();
