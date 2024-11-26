@@ -4,80 +4,81 @@ var Common = require('./common.js');
 var async = require('async');
 var Lock = require('./lock.js');
 var Service = require("./service.js");
+const componentVersionManager = require('./componentVersions.js');
 
 var logger = Common.getLogger(__filename);
 
 const TTL = 30;
 
-function registerFrontEnd(frontEndParams, callback) {
+async function registerFrontEnd(frontEndParams) {
+    let frontendIndex;
 
-    var frontendIndex;
-
-    async.series([
-        function(callback) {
-            Common.redisClient.incr('frontendseq', function(err, index) {
+    try {
+        logger.info("registerFrontEnd: " + JSON.stringify(frontEndParams, null, 2));
+        // Increment frontend sequence
+        frontendIndex = await new Promise((resolve, reject) => {
+            Common.redisClient.incr('frontendseq', (err, index) => {
                 if (err) {
                     logger.error("registerFrontEnd: " + err);
-                    callback(err);
-                    return;
+                    reject(err);
                 }
-
-                frontendIndex = index;
-                callback(null);
+                resolve(index);
             });
-        },
-        function(callback) {
+        });
 
-            var frontendLock = new Lock({
-                key: "lock_frontend_" + frontendIndex,
-                logger: logger
+        // Create and execute lock
+        const frontendLock = new Lock({
+            key: "lock_frontend_" + frontendIndex,
+            logger: logger
+        });
+
+        await new Promise((resolve, reject) => {
+            frontendLock.cs(async function(callback) {
+                frontEndParams['index'] = frontendIndex;
+                const multi = Common.getRedisMulti();
+
+                multi.hmset('frontend_' + frontendIndex, frontEndParams);
+                multi.set('frontend_' + frontendIndex + '_ttl', 1);
+                multi.expire('frontend_' + frontendIndex + '_ttl', TTL);
+                multi.sadd('frontends', frontendIndex);
+                multi.exec((err, replies) => {
+                    if (err) reject(err);
+                    resolve(replies);
+                });
             });
+        });
 
-            frontendLock.cs(
-                function(callback) {
-                    frontEndParams['index'] = frontendIndex;
-                    var multi = Common.getRedisMulti();
-
-                    multi.hmset('frontend_' + frontendIndex, frontEndParams);
-                    multi.set('frontend_' + frontendIndex + '_ttl', 1);
-                    multi.expire('frontend_' + frontendIndex + '_ttl', TTL);
-                    multi.sadd('frontends', frontendIndex);
-                    multi.exec(function(err, replies) {
-                        if (err) {
-                            logger.error("registerFrontEnd: " + err);
-                            callback(err);
-                        }
-
-                        logger.info("registerFrontEnd: frontend " + frontendIndex + " registered");
-                        callback(null);
-                    });
-
-                }, callback);
+        if (frontEndParams.version && frontEndParams.buildTime) {
+            const buildTime = new Date(frontEndParams.buildTime);
+            componentVersionManager.addVersion('frontend', frontendIndex, frontEndParams.version, buildTime).then(() => {
+                logger.info("registerFrontEnd: added frontend version to db");
+            }).catch((err) => {
+                logger.error("registerFrontEnd: failed to add frontend version to db, err:", err);
+            });
         }
-    ], function(err) {
-        callback(err, frontendIndex);
-    });
+
+        return frontendIndex;
+
+    } catch (err) {
+        logger.error("registerFrontEnd: " + err);
+        throw err;
+    }
 }
 
-function registerFrontEndRestApi(req, res, next) {
+async function registerFrontEndRestApi(req, res) {
     res.contentType = 'json';
 
-    var frontEndParams = {
-        hostname: req.params.hostname
-    }
+    const frontEndParams = {
+        hostname: req.params.hostname,
+        version: req.params.version,
+        buildTime: req.params.buildTime
+    };
 
-    registerFrontEnd(frontEndParams, function(err, frontendIndex) {
-        if (err) {
-            res.send({
-                status: Common.STATUS_ERROR,
-                message: 'failed registering'
-            });
-            return;
-        }
-
+    try {
+        const frontendIndex = await registerFrontEnd(frontEndParams);
         res.send({
             status: Common.STATUS_OK,
-            message: 'frontend registered susccefully',
+            message: 'frontend registered successfully',
             index: frontendIndex,
             params: {
                 disableSignup: Common.disableSignup,
@@ -85,9 +86,12 @@ function registerFrontEndRestApi(req, res, next) {
                 deviceTypes: Common.getDeviceTypes()
             }
         });
-        return;
-
-    })
+    } catch (err) {
+        res.send({
+            status: Common.STATUS_ERROR,
+            message: 'failed registering'
+        });
+    }
 }
 
 function refreshFrontEndTTL(frontendIndex, callback) {
@@ -145,6 +149,13 @@ function unregisterFrontEnd(frontendIndex, callback) {
     var frontendLock = new Lock({
         key: "lock_frontend_" + frontendIndex,
         logger: logger
+    });
+
+    // Remove frontend record
+    componentVersionManager.removeRecord('frontend', frontendIndex).then(() => {
+        logger.info("unregisterFrontEnd: removed frontend record from db");
+    }).catch((err) => {
+        logger.error("unregisterFrontEnd: failed to remove frontend record from db, err:", err);
     });
 
     frontendLock.cs(function(callback) {

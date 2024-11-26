@@ -5,6 +5,7 @@ var Common = require('./common.js');
 var async = require('async');
 var Lock = require('./lock.js');
 var Service = require("./service.js");
+const componentVersionManager = require('./componentVersions.js');
 var logger = Common.getLogger(__filename);
 
 var GW_MAX_CONNECTIONS = 1000;
@@ -66,6 +67,16 @@ var removeGateway = function(gwIndex, callback) {
                 callback(null);
             });
 
+        },
+        function(callback) {
+            // remove the component version
+            componentVersionManager.removeRecord('gateway', gwIndex).then(() => {
+                logger.info("removeGateway: removed gateway version from db");
+            }).catch((err) => {
+                logger.error("removeGateway: failed to remove gateway version from db, err:", err);
+            });
+
+            callback(null);
         }
     ], function(err) {
         callback(err);
@@ -316,6 +327,7 @@ function registerGateway(gwParams, baseIndex, offset, callback) {
             gwLock.cs(
                 function(callback) {
                     var multi = Common.getRedisMulti();
+                    console.log("registerGateway: gwParams: ", gwParams);
 
                     multi.hmset('gateway_' + gwIdx, gwParams);
                     multi.set('gateway_' + gwIdx + '_ttl', 1);
@@ -331,6 +343,18 @@ function registerGateway(gwParams, baseIndex, offset, callback) {
                     });
 
                 }, callback);
+        },
+        function(callback) {
+            // update the component version
+            if (gwParams.version ) {
+                var buildTime = gwParams.buildTime ? new Date(gwParams.buildTime) : null;
+                componentVersionManager.addVersion('gateway', gwIdx, gwParams.version, buildTime).then(() => {
+                    logger.info("registerGateway: added gateway version to db");
+                }).catch((err) => {
+                    logger.error("registerGateway: failed to add gateway version to db, err:", err);
+                });
+            }
+            callback(null);
         }
     ], function(err) {
         if(!err){

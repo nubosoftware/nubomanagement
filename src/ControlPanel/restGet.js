@@ -1139,6 +1139,12 @@ var apiAccess = function(req, res,next) {
             require('./platformControl').platformCommand(req,res);
             return;
         }
+    } else if (objectType == "system") {
+        if (!checkPerm('@/','r')) return;
+        if (arg1 == "versions" && req.method == "GET") {
+            require('../componentVersions.js').getVersions(req,res);
+            return;
+        }
     } else if (objectType == "longOperations") {
         if (arg1 && req.method == "GET") {
             let notif = new LongOperationNotif(arg1);

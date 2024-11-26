@@ -1305,7 +1305,9 @@ var filter = {
             "index": constraints.IndexConstrOptional,
             "external_ip": constraints.adDomainNameConstrRequested,
             "player_port": constraints.portNumberConstrOptional,
-            "ssl": constraints.boolConstrRequested
+            "ssl": constraints.boolConstrRequested,
+            "version": constraints.ExcludeSpecialCharactersOptional, // Optional
+            "buildTime": constraints.ExcludeSpecialCharactersOptional // Optional
         },
         "headerConstraints": {
             'fe-user': constraints.ExcludeSpecialCharactersRequested,
@@ -1438,7 +1440,9 @@ var filter = {
     }, {
         "path": "/frontEndService/registerFrontEnd",
         "constraints": {
-            "hostname": constraints.hostConstrRequested
+            "hostname": constraints.hostConstrRequested, // Required
+            "version": constraints.ExcludeSpecialCharactersOptional, // Optional
+            "buildTime": constraints.ExcludeSpecialCharactersOptional // Optional
         },
         "headerConstraints": {
             'fe-user': constraints.ExcludeSpecialCharactersRequested,
@@ -1567,6 +1571,8 @@ var filter = {
         "path": "/selfRegisterPlatform",
         "constraints": {
             "platform_ip": constraints.hostConstrRequested,
+            "version": constraints.ExcludeSpecialCharactersOptional,
+            "buildTime": constraints.ExcludeSpecialCharactersOptional
         },
         "headerConstraints": {
             'fe-user': constraints.ExcludeSpecialCharactersRequested,

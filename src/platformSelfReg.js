@@ -6,6 +6,7 @@
 
 const Common = require('./common.js');
 const logger = Common.getLogger(__filename);
+const componentVersionManager = require('./componentVersions.js');
 const { promisify } = require("util");
 const redisGet = promisify(Common.redisClient.get).bind(Common.redisClient);
 const redisSet = promisify(Common.redisClient.set).bind(Common.redisClient);
@@ -45,6 +46,9 @@ class PlatSelfReg {
         try {
             // Read platform IP
             let platform_ip = req.params.platform_ip;
+            let version = req.params.version;
+            let buildTimeStr = req.params.buildTime;
+            logger.info(`selfRegisterPlatform. platform_ip: ${platform_ip}, version: ${version}, buildTime: ${buildTimeStr}`);
 
             if (platform_ip == "auto") {
                 // get IP from request
@@ -88,6 +92,10 @@ class PlatSelfReg {
 
                 logger.info(`Registered platfrom id: ${platid}, platform ip: ${platform_ip}`);
 
+            }
+            if (version ) {
+                const buildTime = buildTimeStr ? new Date(buildTimeStr) : null;
+                await componentVersionManager.addVersion('platform-server', platid,version, buildTime);
             }
             res.send({
                 status: statusOK,
@@ -199,6 +207,7 @@ async function removeTTLExpired() {
             if (!await redisExists(`${regPrefix}_${platid}`)) {
                 logger.info(`Remove expired platform registration: ${platid}`);
                 await redisSrem(platformRegs, platid);
+                await componentVersionManager.removeRecord('platform-server', platid);
             }
         }
     } catch (err) {

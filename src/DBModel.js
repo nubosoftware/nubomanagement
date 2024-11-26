@@ -1214,6 +1214,25 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
     }, {
         timestamps: true
     });
+
+    db.ComponentVersions = sequelize.define('component_versions', {
+        componentName: {
+            type: Sequelize.STRING(50),
+            primaryKey: true
+        },
+        componentIndex: {
+            type: Sequelize.INTEGER,
+            primaryKey: true
+        },
+        version: Sequelize.STRING(50),
+        buildTime: Sequelize.DATE
+    }, {
+        timestamps: true
+    });
+
+
+
+
     //sequelize.sync();
 }
 

@@ -42,7 +42,9 @@ function registerGateway(req, res,next) {
         "apps_port" : req.params.apps_port,
         "external_ip" : req.params.external_ip,
         "player_port" : req.params.player_port,
-        "ssl" : req.params.ssl
+        "ssl" : req.params.ssl,
+        "version" : req.params.version,
+        "buildTime" : req.params.buildTime,
     };
 
     // logger.info("registerGateway. baseIndex: " + baseIndex + ", offset: " + offset);

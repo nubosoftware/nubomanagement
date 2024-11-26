@@ -1039,6 +1039,15 @@ Common.mkdirpCB = function(folder,opts,cb) {
     });
 };
 
+Common.updateComponentVerion = async function(component,index,version,buildTime) {
+    try {
+        const componentVersionManager = require('./componentVersions.js');
+        let res = await componentVersionManager.addVersion(component,index,version,buildTime);
+    } catch (err) {
+        logger.error(`Error updateComponentVerion: ${err}`,err);
+    }
+}
+
 /**
  * Support code that call old sequalize complete method (now its promise only)
  */

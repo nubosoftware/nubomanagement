@@ -4,6 +4,8 @@ var async = require('async');
 var os = require('os');
 var Common = require('./common.js');
 const path = require('path');
+const fs = require('fs').promises;
+const componentVersionManager = require('./componentVersions.js');
 
 //================= requires =================================
 var ThreadedLogger;
@@ -194,6 +196,9 @@ var mainFunction = function(err, firstTimeLoad) {
         var dbMaintCmd = [];
         dbMaintCmd.push(nuboJobs.DATABASE_MAINT);
         nubocronAPI.addJobToDB("domain", 'databaseMaint', false, '35 0 * * *', 'Etc/UTC', dbMaintCmd.join(','), true, Common.dcName, function(err) {});
+
+        // read version.txt file and update component versions
+        updateComponentVersions();
     });
 };
 
@@ -243,6 +248,40 @@ function initParams(callback) {
         callback(null);
     });
 }
+
+
+async function updateComponentVersions() {
+    let version, buildTimeStr;
+    try {
+        // wait for db to be ready
+        await new Promise(resolve => setTimeout(resolve,10000));
+        // Attempt to read version.txt
+        const versionContent = await fs.readFile(path.join(__dirname, '../version.txt'), 'utf8');
+        const versionLines = versionContent.split('\n');
+        versionLines.forEach(line => {
+            const separatorIndex = line.indexOf(':');
+            if (separatorIndex === -1) return;
+            const key = line.slice(0, separatorIndex).trim();
+            const value = line.slice(separatorIndex + 1).trim();
+            if (key === 'VERSION') {
+                version = value;
+            } else if (key === 'BUILD_TIME') {
+                buildTimeStr = value;
+            }
+        });
+    } catch (fileErr) {
+        logger.warn(`updateComponentVersions: Unable to read version.txt: ${fileErr}`);
+    }
+    if (version) {
+        const buildTime = buildTimeStr ? new Date(buildTimeStr) : null;
+        await componentVersionManager.addVersion('management', 1, version, buildTime);
+        logger.info(`updateComponentVersions: Updated component version to ${version}, build time: ${buildTimeStr}`);
+    } else {
+        logger.warn(`updateComponentVersions: Version not found in version.txt`);
+    }
+
+}
+
 
 
 function loadRequires() {

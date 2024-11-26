@@ -58,6 +58,8 @@ ADD nubo-management-mobile ${TARGET_DIR}/nubo-management-mobile
 ADD scripts ${TARGET_DIR}/scripts
 ADD utils ${TARGET_DIR}/utils
 WORKDIR ${TARGET_DIR}
+RUN echo "VERSION: ${BUILD_VER}" > version.txt
+RUN echo "BUILD_TIME: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> version.txt
 
 # RUN npm --version && node --version
 
