@@ -1,5 +1,6 @@
 // componentVersions.js
 
+const { QueryTypes } = require('sequelize');
 var Common = require('./common.js');
 var logger = Common.getLogger(__filename);
 
@@ -86,6 +87,19 @@ class ComponentVersionManager {
             }
             // read all version from the database
             const results = await Common.db.ComponentVersions.findAll();
+
+            // read mysql version by running a query
+            const mysqlVersion = await Common.sequelize.query("SELECT VERSION() as version", { type: QueryTypes.SELECT });
+            if (mysqlVersion && mysqlVersion.length > 0) {
+                const mysqlRow = {
+                    componentName: "mysql",
+                    componentIndex: 1,
+                    version: mysqlVersion[0].version,
+                    buildTime: null
+                }
+                results.push(mysqlRow);
+            }
+
             // logger.info(`getRecordings. result: ${JSON.stringify(result,null,2)}`);
             res.send({
                 status: 1,
