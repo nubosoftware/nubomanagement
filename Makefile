@@ -108,7 +108,7 @@ docker-mobile-test:
 	docker push docker.nubosoftware.com:5000/nubo/nubomanagement-mobile:test
 
 docker-mobile:
-	docker build -t nubomanagement-mobile:$(serv_version)-$(serv_buildid) --no-cache --pull -f docker_build/Dockerfile-mobile .
+	docker build -t nubomanagement-mobile:$(serv_version)-$(serv_buildid) --build-arg BUILD_VER=$(serv_version)-$(serv_buildid) --no-cache --pull -f docker_build/Dockerfile-mobile .
 
 push-mobile: docker-mobile
 	docker tag nubomanagement-mobile:$(serv_version)-$(serv_buildid) docker.nubosoftware.com:5000/nubo/nubomanagement-mobile:$(serv_version)-$(serv_buildid)
