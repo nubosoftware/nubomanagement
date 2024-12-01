@@ -64,167 +64,164 @@ const Plugin =  require('../plugin');
 
 var setting = require('../settings.js');
 
+const ADMIN_LOGIN_REDIS_KEY = 'adminLogin:';
 
 
-
-var loginWebAdmin  = function(req,res,arg1) {
-    let userName = req.params.userName;
-    let password = req.params.password;
-    let resetPassword = false;
-    if (arg1 == "reset") {
-        password = "reset";
-        resetPassword = true;
-    }
-    if (!userName || !password ) {
-        res.send({
-            status : '0',
-            message : "Invalid parameters"
+async function logoutAdmin(req,res) {
+    try {
+        const currentLogin = req.nubodata.adminLogin;
+        await new Promise((resolve, reject) => {
+            currentLogin.delete((err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
         });
-        res.end();
-        return;
+
+        logger.info(`logoutAdmin: Logout successful. loginToken: ${currentLogin.getLoginToken()}. User: ${currentLogin.getUserName()}`);
+        res.send({
+            status: Common.STATUS_OK,
+            message: `Logout successful`,
+        });
+    } catch (err) {
+        logger.info(`logoutAdmin: Logout failed: ${err}`);
+        res.send({
+            status: Common.STATUS_ERROR,
+            message: `Logout failed: ${err}`,
+        });
     }
-
-    //let oldAuth = false;
-    let validActivation = false;
-    let deviceid = req.params.deviceid;
-    let deviceName = req.params.deviceName;
-    let activationkey = req.params.activationkey;
-    /*if (!deviceid && !deviceName) {
-        // temporary allow old authentication without activation
-        oldAuth = true;
-    }*/
-
-    let selectedDomain = req.params.selectedDomain;
+}
+async function loginWebAdminAsync(req, res, arg1) {
+    logger.info(`loginWebAdminAsync: ${JSON.stringify(req.params)}`);
     let status = Common.STATUS_ERROR;
     let message = 'Internal error';
-    let dbPasscode;
-    let passcodeSalt;
-    let passcodetypechange;
-    let passcodeTypePrev;
-    let isValidPasscode = false;
-    let login,orgdomain,isadmin;
-    let firstname,lastname,imageurl,orgname;
-    let orgs;
-    let siteAdmin = 0;
-    let platformDomain = 'common';
-    let permissions;
-    let resetpasscodeResult = 0;
-    async.series([
-        function(callback) {
-            // check activation key
-            if (!activationkey || activationkey == "") {
-                callback();
-                return;
-            }
-            Common.db.Activation.findAll({
+    let activationkey = req.params.activationkey;
+    try {
+        let userName = req.params.userName;
+        let password = req.params.password;
+        let resetPassword = false;
+        if (arg1 === "reset") {
+            password = "reset";
+            resetPassword = true;
+        }
+        if (!userName || !password) {
+            res.send({
+                status: '0',
+                message: "Invalid parameters"
+            });
+            res.end();
+            return;
+        }
+
+        let validActivation = false;
+        let deviceid = req.params.deviceid;
+        let deviceName = req.params.deviceName;
+
+
+        let selectedDomain = req.params.selectedDomain;
+
+        let dbPasscode;
+        let passcodeSalt;
+        let passcodetypechange;
+        let passcodeTypePrev;
+        let isValidPasscode = false;
+        let login, orgdomain, isadmin;
+        let firstname, lastname, imageurl, orgname;
+        let orgs;
+        let siteAdmin = 0;
+        let platformDomain = 'common';
+        let permissions;
+        let resetpasscodeResult = 0;
+
+        // Check activation key
+        if (activationkey) {
+            const results = await Common.db.Activation.findAll({
                 attributes: ['activationkey', 'status', 'email', 'deviceid', 'expirationdate', 'resetpasscode'],
                 where: {
                     activationkey: activationkey,
                     email: userName,
                     deviceid: deviceid
                 },
-            }).then(function(results) {
-                logger.info(`Activation for ${activationkey}: ${JSON.stringify(results)}`);
-                if (results && results.length == 1) {
-                    let status = results[0].status;
-                    if (status == Common.STATUS_ADMIN_ACTIVATION_VALID) {
-                        validActivation = true;
-                    }
-                    resetpasscodeResult = results[0].resetpasscode;
-                }
-                callback();
-            }).catch(function(err) {
-                callback(err);
             });
-        },
-        function(callback) {
-            // send activation email if needed
-            if (validActivation && !resetPassword) {
-                callback();
-                return;
-            }
-            activationkey = null;
-            adminLoginActivate(userName,deviceid,deviceName,resetPassword,(validActivation ? activationkey : null),function(err,activationkeyResult){
-                if (err) {
-                    callback(err);
-                    return;
+            logger.info(`Activation for ${activationkey}: ${JSON.stringify(results)}`);
+            if (results && results.length === 1) {
+                let statusResult = results[0].status;
+                if (statusResult === Common.STATUS_ADMIN_ACTIVATION_VALID) {
+                    validActivation = true;
                 }
+                resetpasscodeResult = results[0].resetpasscode;
+            }
+        }
+
+        // Send activation email if needed
+        if (!(validActivation && !resetPassword)) {
+            activationkey = null;
+            try {
+                const activationkeyResult = await adminLoginActivate(userName, deviceid, deviceName, resetPassword, validActivation ? activationkey : null);
                 activationkey = activationkeyResult;
                 status = Common.STATUS_ADMIN_ACTIVATION_PENDING;
                 message = "Please activate admin login";
-                callback(message);
-            });
-        },
-        function(callback) {
-            Common.db.User.findAll({
-                attributes: [ 'firstname', 'lastname', 'imageurl','isactive', 'passcode', 'passcodetypechange', 'passcodetypeprev','passcodesalt' , 'isadmin' , 'orgdomain'],
-                where: {
-                    isadmin: 1,
-                    isactive: 1,
-                    email: userName
-                },
-                include: [
-                    {
-                        model: Common.db.Admin,
-                        /*where : {
-                            maindomain : orgdomain,
-                        }*/
-                    }
-                ]
-            }).complete(function(err, results) {
-                if (!!err) {
-                    return callback(err);
-                }
-
-                if (!results || results == "") {
-                    status = Common.STATUS_ERROR;
-                    message = "Cannot find user or user is inactive";
-                    return callback("Cannot find user or user is inactive");
-                }
-
-                dbPasscode = results[0].passcode;
-                passcodeSalt = results[0].passcodesalt;
-                passcodetypechange = results[0].passcodetypechange != null ? results[0].passcodetypechange : 0;
-                passcodeTypePrev = results[0].passcodetypeprev != null ? results[0].passcodetypeprev : 0;
-                isadmin = results[0].isadmin != null ? results[0].isadmin : 0;
-                orgdomain = results[0].orgdomain;
-                firstname = results[0].firstname;
-                lastname = results[0].lastname;
-                imageurl = results[0].imageurl;
-                //logger.info("Results[0]: "+JSON.stringify(results[0],null,2));
-                let permissionsStr = (results[0].admin ? results[0].admin.permissions : "{}");
-                permissions = new AdminPermissions(permissionsStr);
-                //logger.info("permissions: "+permissions.getJSON());
-                if (selectedDomain && selectedDomain != "") {
-                    if (orgdomain != Common.siteAdminDomain) {
-                        //status = Common.STATUS_INVALID_CREDENTIALS;
-                        //message = "Invalid credentials for site admins";
-                        //callback(message);
-                        //return;
-                        logger.info("Cannot change selectedDomain to: "+selectedDomain);
-                        selectedDomain = orgdomain;
-                    }
-                } else {
-                    selectedDomain = orgdomain;
-                }
-                callback(null);
-            });
-        }, function(callback) {
-            // update password in case of reset password
-            if (resetpasscodeResult != 1) {
-                callback(null);
-                return;
+                throw message;
+            } catch (err) {
+                throw err;
             }
-            let newPassword = req.params.setPassword;
+        }
+
+        // Find user
+        const userResults = await Common.db.User.findAll({
+            attributes: ['firstname', 'lastname', 'imageurl', 'isactive', 'passcode', 'passcodetypechange', 'passcodetypeprev', 'passcodesalt', 'isadmin', 'orgdomain'],
+            where: {
+                isadmin: 1,
+                isactive: 1,
+                email: userName
+            },
+            include: [
+                {
+                    model: Common.db.Admin,
+                }
+            ]
+        });
+
+        if (!userResults || userResults.length === 0) {
+            status = Common.STATUS_ERROR;
+            message = "Cannot find user or user is inactive";
+            throw message;
+        }
+
+        const user = userResults[0];
+        dbPasscode = user.passcode;
+        passcodeSalt = user.passcodesalt;
+        passcodetypechange = user.passcodetypechange || 0;
+        passcodeTypePrev = user.passcodetypeprev || 0;
+        isadmin = user.isadmin || 0;
+        orgdomain = user.orgdomain;
+        firstname = user.firstname;
+        lastname = user.lastname;
+        imageurl = user.imageurl;
+        permissions = new AdminPermissions(user.admin ? user.admin.permissions : "{}");
+
+        if (selectedDomain && selectedDomain !== "") {
+            if (orgdomain !== Common.siteAdminDomain) {
+                logger.info("Cannot change selectedDomain to: " + selectedDomain);
+                selectedDomain = orgdomain;
+            }
+        } else {
+            selectedDomain = orgdomain;
+        }
+
+        // Update password if reset
+        if (resetpasscodeResult === 1) {
+            const newPassword = req.params.setPassword;
             if (!newPassword || newPassword.length < 1) {
                 status = Common.STATUS_PASSWORD_NOT_MATCH;
                 message = "Invalid password";
-                callback(message);
-                return;
+                throw message;
             }
-            var salt = setPasscode.generateUserSalt(userName);
-            var passwordHash = setPasscode.hashPassword(newPassword,salt);
-            Common.db.User.update({
+            const salt = setPasscode.generateUserSalt(userName);
+            const passwordHash = setPasscode.hashPassword(newPassword, salt);
+            await Common.db.User.update({
                 passcodeupdate: new Date(),
                 passcode: passwordHash,
                 passcodetypechange: 0,
@@ -233,175 +230,198 @@ var loginWebAdmin  = function(req,res,arg1) {
                 where: {
                     email: userName
                 }
-            }).then(function() {
-                logger.info("Password updated!");
-                isValidPasscode = true;
-                callback(null);
-            }).catch(function(err) {
-                status = Common.STATUS_ERROR;
-                message = 'Internal error';
-                callback(err);
             });
-        }, function(callback) {
-            // reset resetpasscode flag in case user changed password
-            if (resetpasscodeResult != 1) {
-                callback(null);
-                return;
-            }
-            Common.db.Activation.update({
-                resetpasscode : 0
+            logger.info("Password updated!");
+            isValidPasscode = true;
+
+            // Reset resetpasscode flag
+            await Common.db.Activation.update({
+                resetpasscode: 0
             }, {
                 where: {
                     activationkey: activationkey,
                     email: userName,
                     deviceid: deviceid
                 },
-            }).then(function() {
-                callback();
-            }).catch(function(err) {
-                callback(err);
             });
+        }
 
-        }, function(callback) {
-            if (resetpasscodeResult == 1 && isValidPasscode) {
-                callback(null);
-                return;
-            }
-
-            let hashedPasscode = setPasscode.hashPassword(password,passcodeSalt);
-
+        // Validate passcode
+        if (!isValidPasscode) {
+            const hashedPasscode = setPasscode.hashPassword(password, passcodeSalt);
             if (dbPasscode === hashedPasscode) {
                 isValidPasscode = true;
             }
-
             if (!isValidPasscode) {
                 status = Common.STATUS_PASSWORD_NOT_MATCH;
                 message = "Invalid password";
-                callback(message);
-            } else {
-                callback(null);
+                throw message;
             }
-        }, function(callback) {
-            // get org details from database
-            let qOptions;
-            if (orgdomain == Common.siteAdminDomain && Common.siteAdminDomain && Common.siteAdminDomain != "" && permissions.checkPermission("@/","rw")) {
-                siteAdmin = 1;
-                qOptions = {
-                    attributes : ['orgname','maindomain','dedicatedplatform'],
-                    order: [["orgname","ASC"],["maindomain", "ASC"]]
-                };
-            } else {
-                siteAdmin = 0;
-                qOptions = {
-                    attributes : ['orgname','maindomain','dedicatedplatform'],
-                    where : {
-                        maindomain : selectedDomain
-                    }
-                };
-            }
-            Common.db.Orgs.findAll(qOptions).complete(function(err, results) {
-
-                if (!!err) {
-                    var msg = "Error while checkUserDomain while selecting main domain: " + err;
-                    logger.info(msg);
-                    callback(msg);
-                    return;
-                }
-
-                results.forEach(row => {
-                    if (row.maindomain == selectedDomain) {
-                        orgname = row.orgname;
-                        if (row.dedicatedplatform == 1) {
-                            platformDomain = selectedDomain;
-                        }
-                    }
-                });
-
-                /*if (results.length >= 1) {
-                    orgname = results[0].orgname;
-                }*/
-                logger.info("orgname: "+orgname+", results.length: "+results.length+", selectedDomain: "+selectedDomain);
-                orgs = results;
-                callback(null);
-            });
-        }, function(callback) {
-            // create a new login token
-            new Login(null, function(err, newLogin) {
-                if (err) {
-                    status= Common.STATUS_ERROR;
-                    message= "Internal error.";
-                    callback(err);
-                    return;
-                }
-                login = newLogin;
-                callback(null);
-            });
-        }, function(callback) {
-            login.setAuthenticationRequired(false);
-            login.setPasscodeActivationRequired(false);
-            login.setValidPassword(true);
-            login.setDeviceName("Web Browser");
-            login.setDeviceID("none");
-            login.setEmail(userName);
-            login.setUserName(userName);
-            login.setIsAdmin(isadmin);
-            login.setMainDomain(selectedDomain);
-            login.setAdminConsoleLogin(1);
-            login.setSiteAdmin(siteAdmin);
-            login.setPlatformDomain(platformDomain);
-            login.setAdminPermissions(permissions.getJSON());
-            login.setValidLogin(true);
-            login.save(function(err, login) {
-                if (err) {
-                    status= Common.STATUS_ERROR;
-                    message= "Internal error.";
-                    callback(err);
-                    return;
-                }
-                status = Common.STATUS_OK;
-                message = "Login Successful";
-                callback(null);
-            });
-
         }
-    ],function(err) {
-        if (err) {
-            logger.info("loginWebAdmin error: "+err);
-            let respObj = {
-                status : status,
-                message : message
+
+        // Get org details
+        let qOptions;
+        if (orgdomain === Common.siteAdminDomain && Common.siteAdminDomain && Common.siteAdminDomain !== "" && permissions.checkPermission("@/", "rw")) {
+            siteAdmin = 1;
+            qOptions = {
+                attributes: ['orgname', 'maindomain', 'dedicatedplatform'],
+                order: [["orgname", "ASC"], ["maindomain", "ASC"]]
             };
-
-            if (status == Common.STATUS_ADMIN_ACTIVATION_PENDING) {
-                respObj.activationkey = activationkey;
-            }
-            res.send(respObj);
-            res.end();
         } else {
-            logger.info("loginWebAdmin: "+message);
-            res.send({
-                status : status,
-                message : message,
-                loginToken: login.getLoginToken(),
-                mainDomain: login.getMainDomain(),
-                firstname,
-                lastname,
-                imageurl,
-                orgname,
-                orgs,
-                edition: Common.getEdition(),
-                pluginsEnabled: Common.pluginsEnabled,
-                productName: Common.productName,
-                deviceTypes: Common.getDeviceTypes(),
-                siteAdmin: (siteAdmin == 1),
-                siteAdminDomain: (siteAdmin == 1 ? Common.siteAdminDomain : null),
-                permissions: permissions.getJSON()
-            });
-            res.end();
+            siteAdmin = 0;
+            qOptions = {
+                attributes: ['orgname', 'maindomain', 'dedicatedplatform'],
+                where: {
+                    maindomain: selectedDomain
+                }
+            };
         }
 
-    });
+        const orgResults = await Common.db.Orgs.findAll(qOptions);
+        orgResults.forEach(row => {
+            if (row.maindomain === selectedDomain) {
+                orgname = row.orgname;
+                if (row.dedicatedplatform === 1) {
+                    platformDomain = selectedDomain;
+                }
+            }
+        });
+        const oneLoginPerUser = Common.oneAdminLoginPerUser;
+        logger.info(`loginWebAdminAsync. orgname: ${orgname}, results.length: ${orgResults.length}, selectedDomain: ${selectedDomain}, oneAdminLoginPerUser: ${oneLoginPerUser}`);
+        orgs = orgResults;
 
+
+        if (oneLoginPerUser) {
+            // search redis for login token for this user
+            const redis = Common.redisClient;
+            const redisKey = `${ADMIN_LOGIN_REDIS_KEY}${userName}`;
+            const currentLoginToken = await redis.get(redisKey);
+            if (currentLoginToken) {
+                // check if that login token is still valid by trying to load it
+                const currentLogin = await new Promise((resolve, reject) => {
+                    new Login(currentLoginToken, (err, login) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(login);
+                        }
+                    });
+                });
+                let deleteCurrentLogin = false;
+                if (currentLogin){
+                    // if the user gave explicit permission to delete the current login, delete it
+                    if (req.params.deleteCurrentLogin) {
+                        logger.info(`loginWebAdminAsync: Deleting previous login for user ${userName}`);
+                        await new Promise((resolve, reject) => {
+                            currentLogin.delete((err) => {
+                                if (err) {
+                                    reject(err);
+                                } else {
+                                    resolve();
+                                }
+                            });
+                        });
+                        deleteCurrentLogin = true;
+                    } else {
+                        status = Common.STATUS_ADMIN_OTHER_SESSION;
+                        message = "This user is already logged in in another session. Approve to logout from other session.";
+                        throw message;
+                    }
+                } else {
+                    deleteCurrentLogin = true;
+                }
+                if (deleteCurrentLogin) {
+                    await redis.del(redisKey);
+                }
+            }
+
+        }
+
+        // Create new login token
+        login = await new Promise((resolve, reject) => {
+            new Login(null, (err, newLogin) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(newLogin);
+                }
+            });
+        });
+
+        login.setAuthenticationRequired(false);
+        login.setPasscodeActivationRequired(false);
+        login.setValidPassword(true);
+        login.setDeviceName("Web Browser");
+        login.setDeviceID("none");
+        login.setEmail(userName);
+        login.setUserName(userName);
+        login.setIsAdmin(isadmin);
+        login.setMainDomain(selectedDomain);
+        login.setAdminConsoleLogin(1);
+        login.setSiteAdmin(siteAdmin);
+        login.setPlatformDomain(platformDomain);
+        login.setAdminPermissions(permissions.getJSON());
+        login.setValidLogin(true);
+
+        await new Promise((resolve, reject) => {
+            login.save((err, loginInstance) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(loginInstance);
+                }
+            });
+        });
+        if (oneLoginPerUser) {
+            // add the new login token to redis
+            const redis = Common.redisClient;
+            const redisKey = `${ADMIN_LOGIN_REDIS_KEY}${userName}`;
+            await redis.set(redisKey, login.getLoginToken());
+        }
+
+        status = Common.STATUS_OK;
+        message = "Login Successful";
+        logger.info(`loginWebAdmin: ${message}`);
+        res.send({
+            status: status,
+            message: message,
+            loginToken: login.getLoginToken(),
+            mainDomain: login.getMainDomain(),
+            firstname,
+            lastname,
+            imageurl,
+            orgname,
+            orgs,
+            edition: Common.getEdition(),
+            pluginsEnabled: Common.pluginsEnabled,
+            productName: Common.productName,
+            deviceTypes: Common.getDeviceTypes(),
+            siteAdmin: siteAdmin === 1,
+            siteAdminDomain: siteAdmin === 1 ? Common.siteAdminDomain : null,
+            permissions: permissions.getJSON()
+        });
+        res.end();
+
+    } catch (err) {
+        logger.info(`loginWebAdminAsync error: ${err}`);
+        res.send({
+            status: status,
+            message: message,
+            activationkey: status === Common.STATUS_ADMIN_ACTIVATION_PENDING ? activationkey : undefined
+        });
+        res.end();
+    }
+}
+
+var loginWebAdmin  = function(req,res,arg1) {
+    loginWebAdminAsync(req,res,arg1).catch((err) => {
+        logger.error(`loginWebAdmin error: ${err}`);
+        res.send({
+            status: Common.STATUS_ERROR,
+            message: "Internal error"
+        });
+        res.end();
+    });
 }
 
 var loadAdminParamsFromRequest = function(req,res,cb) {
@@ -782,7 +802,7 @@ var apiAccess = function(req, res,next) {
         } else if(arg1 == "validate") {
             adminLoginValidateActivation(req,res);
         } else {
-            loginWebAdmin(req, res,arg1);
+            loginWebAdminAsync(req, res,arg1);
         }
         return;
     }
@@ -811,6 +831,9 @@ var apiAccess = function(req, res,next) {
 
     if (objectType =="validateLogin" ) {
         validateWebLogin(req, res);
+        return;
+    } else if (objectType === "logout") {
+        logoutAdmin(req,res);
         return;
     } else if (objectType === 'profiles') {
         if (!checkPerm('/profiles','r')) return;

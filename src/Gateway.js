@@ -327,7 +327,7 @@ function registerGateway(gwParams, baseIndex, offset, callback) {
             gwLock.cs(
                 function(callback) {
                     var multi = Common.getRedisMulti();
-                    console.log("registerGateway: gwParams: ", gwParams);
+                    // console.log("registerGateway: gwParams: ", gwParams);
 
                     multi.hmset('gateway_' + gwIdx, gwParams);
                     multi.set('gateway_' + gwIdx + '_ttl', 1);

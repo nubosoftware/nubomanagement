@@ -41,6 +41,7 @@ var Common = {
     STATUS_ADMIN_ACTIVATION_VALID : 201,
     STATUS_ADMIN_RESET_PENDING : 202,
     STATUS_NOTIF_EMPTY : 50,
+    STATUS_ADMIN_OTHER_SESSION: 203,
     ACTION_RESET_PASSCODE: 1,
     ACTION_CANCEL_RESET_PASSCODE: 2,
     ACTION_WIPE_RESET_PASSCODE: 3,
@@ -96,6 +97,7 @@ var Common = {
         userSessionTimeoutMin: 60,
         userSessionTimeoutMax: 3600
     },
+    oneAdminLoginPerUser: false,
     sshPrivateKey : '/home/nubodev/.ssh/id_rsa',
     platformType : 'emulator',
     defaultSignature : '- Sent from my Nubo work environment',
