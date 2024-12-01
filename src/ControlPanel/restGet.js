@@ -94,7 +94,7 @@ async function logoutAdmin(req,res) {
     }
 }
 async function loginWebAdminAsync(req, res, arg1) {
-    logger.info(`loginWebAdminAsync: ${JSON.stringify(req.params)}`);
+    // logger.info(`loginWebAdminAsync: ${JSON.stringify(req.params)}`);
     let status = Common.STATUS_ERROR;
     let message = 'Internal error';
     let activationkey = req.params.activationkey;
@@ -159,7 +159,14 @@ async function loginWebAdminAsync(req, res, arg1) {
         if (!(validActivation && !resetPassword)) {
             activationkey = null;
             try {
-                const activationkeyResult = await adminLoginActivate(userName, deviceid, deviceName, resetPassword, validActivation ? activationkey : null);
+                const activationkeyResult = await new Promise((resolve, reject) => {
+                    adminLoginActivate(userName, deviceid, deviceName, resetPassword, validActivation ? activationkey : null, (err, activationkey) => {
+                        if (err) {
+                            return reject(err);
+                        }
+                        resolve(activationkey);
+                    });
+                });
                 activationkey = activationkeyResult;
                 status = Common.STATUS_ADMIN_ACTIVATION_PENDING;
                 message = "Please activate admin login";
