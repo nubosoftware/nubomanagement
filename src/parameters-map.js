@@ -1222,6 +1222,9 @@ var filter = {
             "lang": constraints.timeZoneConstrOptional,
             "sessionTimeout": constraints.IndexConstrOptional,
         },
+        "bodyConstraints": {
+            "customParams": {}
+        },
         "headerConstraints": {
             'x-client-ip': constraints.ipConstrRequested,
             'fe-user': constraints.ExcludeSpecialCharactersRequested,

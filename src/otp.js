@@ -10,80 +10,93 @@ var url = require('url');
 var querystring = require('querystring');
 var path = require('path');
 const otpNubo = require('./otpNubo');
+const LoginAttempts = require('./loginAttempts.js');
+const checkPasscode = require('./checkPasscode.js');
 
 
 
 
 
-function checkOtpAuth(req, res, next) {
+async function checkOtpAuth(req, res) {
+    const logger = new ThreadedLogger(Common.getLogger(__filename));
+    const loginToken = req.params.loginToken;
+    const OTPCode = req.params.OTPCode;
+    const ip = req.connection.remoteAddress;
 
-    var finish = "__finish";
-    var logger = new ThreadedLogger(Common.getLogger(__filename));
-    var loginToken = req.params.loginToken;
-    var OTPCode = req.params.OTPCode;
-    var ip = req.connection.remoteAddress;
-
-    var response = {
+    const response = {
         status: Common.STATUS_ERROR,
         message: 'Internal error'
     };
 
-    var login;
-
-    async.series([
-        function(callback) {
-            new Login(loginToken, function(err, loginObj) {
-                if (err) {
-                    return callback(err);
-                }
-
+    try {
+        // Get login object
+        const login = await new Promise((resolve, reject) => {
+            new Login(loginToken, (err, loginObj) => {
+                if (err) reject(err);
                 if (!loginObj) {
                     response.status = Common.STATUS_EXPIRED_LOGIN_TOKEN;
                     response.message = "Invalid loginToken";
-                    return callback("shouldn't get this error!!!");
+                    reject("Invalid login token");
                 }
-
-                login = loginObj;
-                logger.user(login.getEmail());
-                logger.device(login.getDeviceID());
-                callback(null);
+                resolve(loginObj);
             });
-        },
-        function(callback) {
-            let otpProvider = getOTPProvider();
-            let func = otpProvider.checkUserOtpCode;
-            func(login, OTPCode, logger, function(err, message, status) {
-                if (err) {
-                    return callback(err);
-                }
+        });
 
+        logger.user(login.getEmail());
+        logger.device(login.getDeviceID());
+
+        let isValidOtp = true;
+        // Check OTP code
+        const otpProvider = getOTPProvider();
+        await new Promise((resolve, reject) => {
+            otpProvider.checkUserOtpCode(login, OTPCode, logger, (err, message, status) => {
+                if (err) reject(err);
                 if (message) {
                     response.message = message;
                     response.status = status;
-                    return callback(finish);
+                    isValidOtp = false;
+                    resolve();
+                } else {
+                    response.status = Common.STATUS_OK;
+                    response.message = 'OTP password ok';
+                    resolve();
                 }
+            }, Common);
+        });
 
-                response.status = Common.STATUS_OK;
-                response.message = 'OTP password ok';
-                return callback(null);
-            },Common);
-        }
-    ], function(err) {
-        if (err && err !== finish) {
-            // sssendTrack(login, ip, response.message, response.status);
-            logger.error("checkOtpAuth: " + err,{mtype: "important"});
-            res.send(response);
-            return;
+        // Handle login attempts
+        if (Common.otpLockDevice === true) {
+            if (!isValidOtp) {
+                // Increment attempts on failure
+                const result = await LoginAttempts.checkAndUpdateAttempts(login, null, false);
+                if (result.exceeded) {
+                    response.status = Common.STATUS_PASSWORD_LOCK;
+                    response.message = "You have incorrectly typed your OTP code too many times. Please contact your administrator.";
+                    const deviceapprovaltype = await checkPasscode.findUserSendLockNotification(login.getEmail(), login.getDeviceID(), login.getActivationKey(), req);
+                    response.deviceapprovaltype = deviceapprovaltype;
+                    // Delete login token
+                    await new Promise((resolve) => {
+                        Common.redisClient.del('login_' + loginToken, () => resolve());
+                    });
+                }
+            } else {
+                // Reset attempts on success
+                await LoginAttempts.checkAndUpdateAttempts(login, null, true);
+            }
         }
 
+        // Log result and send response
         if (response.status != Common.STATUS_OK) {
-            logger.info("checkOtpAuth: " + response.message,{mtype: "important"});
+            logger.info("checkOtpAuth: " + response.message, {mtype: "important"});
         } else {
-            logger.info("checkOtpAuth: OTP code is valid.",{mtype: "important"});
+            logger.info("checkOtpAuth: OTP code is valid.", {mtype: "important"});
         }
-
         res.send(response);
-    });
+
+    } catch (err) {
+        logger.error("checkOtpAuth: " + err, {mtype: "important"});
+        res.send(response);
+    }
 }
 
 

@@ -36,6 +36,8 @@ var EV_CONST = {
     EV_USER_LOCKED: 28,
     EV_DEVICE_TYPE_BLOCKED: 29,
     EV_DISABLED_USER_DEVICE: 30,
+    EV_PLUGIN_EVENT: 31,
+    EV_PLUGIN_SECURITY_EVENT: 32,
 
     EV_NAMES: [
         'NA',
@@ -69,6 +71,8 @@ var EV_CONST = {
         'User locked',
         'Device type blocked',
         'User device disabled',
+        'Plugin event',
+        'Plugin security event',
     ],
 
     // Event Levels
@@ -91,20 +95,34 @@ var EV_CONST = {
 function createEvent(event_type, email, maindomain, extra_info, level, callback) {
     var time = new Date();
 
-    //console.log("maindomain " + maindomain + ", event_type " + event_type + ", email " + email + ", time " + time);
-    Common.db.EventsLog.create({
-        eventtype : event_type,
-        email : email,
-        maindomain : maindomain,
-        extrainfo : extra_info,
-        time : time,
-        level : level
-    }).then(function(results) {
-        callback(null);
+    // If callback is provided, use it (for backward compatibility)
+    if (callback) {
+        return Common.db.EventsLog.create({
+            eventtype: event_type,
+            email: email,
+            maindomain: maindomain,
+            extrainfo: extra_info,
+            time: time,
+            level: level
+        }).then(function(results) {
+            callback(null);
+        }).catch(function(err) {
+            logger.error('reportEvent Error: Cannot Insert to table.\n' + 'event_type=' + event_type + ' email=' + email + ' maindomain=' + maindomain + '\n extra_info=' + extra_info + ' time=' + time + 'level=' + level + '\nERROR: ' + err);
+            callback(err);
+        });
+    }
+
+    // Return promise if no callback provided
+    return Common.db.EventsLog.create({
+        eventtype: event_type,
+        email: email,
+        maindomain: maindomain,
+        extrainfo: extra_info,
+        time: time,
+        level: level
     }).catch(function(err) {
-        console.log('err');
         logger.error('reportEvent Error: Cannot Insert to table.\n' + 'event_type=' + event_type + ' email=' + email + ' maindomain=' + maindomain + '\n extra_info=' + extra_info + ' time=' + time + 'level=' + level + '\nERROR: ' + err);
-        callback(err);
+        throw err;
     });
 }
 async function getEventsImp(domain,params) {

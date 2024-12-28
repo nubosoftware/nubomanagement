@@ -8,6 +8,7 @@ var crypto = require('crypto');
 const path = require('path');
 const commonUtils = require('./commonUtils.js');
 const originalRequire = require("../scripts/originalRequire");
+const eventLog = require('./eventLog.js');
 
 
 
@@ -188,6 +189,13 @@ const originalRequire = require("../scripts/originalRequire");
                         options.tableName = `p_${this.id}_${modelName}`.replaceAll("-","_").toLowerCase();
                         logger.info(`defineDBModel. modelName: ${modelName} , modelDefinition: ${JSON.stringify(modelDefinition)}, options: ${JSON.stringify(options)}`);
                         return Common.sequelize.define(modelName, modelDefinition, options);
+                    },
+                    createEvent: (isSecurityEvent, email, mainDomain, extraInfo, level) => {
+                        const eventType = isSecurityEvent ? eventLog.EV_CONST.EV_PLUGIN_SECURITY_EVENT : eventLog.EV_CONST.EV_PLUGIN_EVENT;
+                        if (!level) {
+                            level = eventLog.EV_CONST.INFO;
+                        }
+                        return eventLog.createEvent(eventType && eventType > 0 ? eventType : eventLog.EV_CONST.EV_PLUGIN_EVENT, email, mainDomain, extraInfo, level);
                     }
                 }
             }, Plugin.getCoreModule());

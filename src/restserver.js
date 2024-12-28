@@ -547,6 +547,7 @@ function setPublicServiceServer(server) {
 
     server.get('/activationLink', ActivationLink.func);
     server.get('/validate', Validate.func);
+    server.post('/validate', Validate.func);
     server.get('/captureDeviceDetails', captureDeviceDetails.captureDeviceDetails);
     server.get('/resendUnlockPasswordLink', unlockPassword.resendUnlockPasswordLink);
     server.get('/unlockPassword', unlockPassword.unlockPassword);

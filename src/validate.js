@@ -108,16 +108,9 @@ function validate(req, res, next) {
             }
         }
     }
-
-
-
-
-    if (Common.withService && !clientUserName) {
-        res.send({
-            status: Common.STATUS_ERROR,
-            message: "Invalid username"
-        });
-        return;
+    let customParams = req.body ? req.body.customParams : undefined;
+    if (customParams) {
+        logger.info(`validate: customParams: ${JSON.stringify(customParams, null, 2)}`);
     }
 
     if (Common.restrictWebClientAccess && deviceId.includes("web") && !CommonUtils.webclientAllowedToaccess(clientIP)) {
@@ -153,7 +146,7 @@ function validate(req, res, next) {
                 },
                 function(callback) {
                     logger.info("validateActivation...");
-                    validateActivation(activationKey, deviceId, userData, activationData, req.url, timeZone, clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, sessionTimeout, jwtToken, function(err, validateResponse) {
+                    validateActivation(activationKey, deviceId, userData, activationData, req.url, timeZone, clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, sessionTimeout, jwtToken, customParams, function(err, validateResponse) {
                         if (err)
                             error = err;
 
@@ -487,7 +480,7 @@ function getUserDeviceData(email, deviceID, logger, maindomain, callback) {
 }
 
 function validateActivation(activationKey, deviceID, userdata, activationdata, url, timeZone,
-    clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, sessionTimeout, jwtToken, callback) {
+    clientUserName, clientIP, logger, hideNuboAppPackageName, newProcess, sessionTimeout, jwtToken, customParams, callback) {
 
     var finish = 'finish';
     var response = null;
@@ -530,6 +523,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
             },
             // check jwt token if public key is set
             function(callback) {
+                activationData.customParams = customParams;
                 if (activationData.public_key) {
                     // jwt
                     try {
@@ -658,28 +652,6 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                 } else
                     callback(null);
             },
-            //run plugin validation if exists
-            function(callback) {
-                if (Common.pluginsEnabled) {
-                    require('./plugin').invokeTriggerWaitForResult('validation', 'before',activationData).then(function (result) {
-                        if (result === false) {
-                            error = "Plugin validation failed.";
-                            response = {
-                                status: Common.STATUS_ERROR,
-                                message: error
-                            }
-                            callback(finish);
-                        } else {
-                            callback(null);
-                        }
-                    }).catch(function (err) {
-                        logger.error('validateActivation:invokeTriggerWaitForResult. error: ' + err);
-                        callback(null);
-                    });
-                } else {
-                    callback(null);
-                }
-            },
             //get user data
             function(callback) {
                 if (userData) {
@@ -703,6 +675,28 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                     });
                 }
             },
+            //run plugin validation if exists
+            function(callback) {
+                if (Common.pluginsEnabled) {
+                    require('./plugin').invokeTriggerWaitForResult('validation', 'before',activationData,userData).then(function (result) {
+                        if (result === false) {
+                            error = "Plugin validation failed.";
+                            response = {
+                                status: Common.STATUS_ERROR,
+                                message: error
+                            }
+                            callback(finish);
+                        } else {
+                            callback(null);
+                        }
+                    }).catch(function (err) {
+                        logger.error('validateActivation:invokeTriggerWaitForResult. error: ' + err);
+                        callback(null);
+                    });
+                } else {
+                    callback(null);
+                }
+            },            
             function(callback) {
                 if (Common.isMobile()) {
                     Common.getMobile().mobileUserUtils.createUserVariablesFiles(userData, activationData, logger, function(err) {

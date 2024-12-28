@@ -15,6 +15,7 @@ var UserUtils = require('./userUtils.js');
 var Notifications = require('./Notifications.js');
 let locale = require('./locale.js').locale;
 const _ = require('underscore');
+const LoginAttempts = require('./loginAttempts.js');
 
 var MIN_DIFFERENT_DIGITS = 4;
 // user is allowed 3 login attempts. then he will be locked.
@@ -276,7 +277,6 @@ function checkPasscode(req, res, loginObj) {
 
             hashedPasscode = setPasscode.hashPassword(decryptedPassword,passcodeSalt);
 
-
             if (!alreadyCheckedPasscode) {
                 if (dbPasscode === hashedPasscode) {
                     isValidPasscode = true;
@@ -288,52 +288,27 @@ function checkPasscode(req, res, loginObj) {
                 return;
             }
 
-            Common.db.UserDevices.update({
-                loginattempts: (loginattempts + 1)
-            }, {
-                where: {
-                    email: login.getEmail(),
-                    imei: login.getDeviceID(),
-                    maindomain: login.getMainDomain()
-                }
-            }).then(function() {
-                logger.info("checkPasscode: checking login attempts for user device");
-
-                let maxLoginAttempts = MAX_LOGIN_ATTEMPTS;
-                if(Common.hasOwnProperty("maxLoginAttempts")){
-                    maxLoginAttempts = Common.maxLoginAttempts;
-                }
-                if (maxLoginAttempts > 0 && loginattempts + 1 >= maxLoginAttempts) {
-                    logger.error("checkPasscode: login attempts failed");
+            LoginAttempts.checkAndUpdateAttempts(login, null, false).then(result => {
+                if (result.exceeded) {
                     status = Common.STATUS_PASSWORD_LOCK;
                     message = "You have incorrectly typed your passcode 3 times. An email was sent to you. Open your email to open your passcode.";
 
-                    findUserNameSendEmail(login.getEmail(), login.getDeviceID(),login.getActivationKey(),req).then(function(_deviceapprovaltype) {
+                    findUserSendLockNotification(login.getEmail(), login.getDeviceID(), login.getActivationKey(), req).then(function(_deviceapprovaltype) {
                         deviceapprovaltype = _deviceapprovaltype;
                         callback(finish);
                     }).catch(function(err) {
-                        logger.error("checkPasscode. Error in findUserNameSendEmail: " + err,err);
+                        logger.error("checkPasscode. Error in findUserSendLockNotification: " + err, err);
                         callback(err);
                     });
 
-                    Common.redisClient.del('login_' + loginToken, function(err) {
-                    });
-                    // Create event in Eventlog
-                    var eventLog = require('./eventLog.js');
-                    var EV_CONST = eventLog.EV_CONST;
-                    var extra_info = `Login attempts: ${loginattempts + 1}, max login attempts: ${maxLoginAttempts}, device id: ${login.getDeviceID()}`;
-                    eventLog.createEvent(EV_CONST.EV_USER_LOCKED, login.getEmail(), login.getMainDomain(), extra_info, EV_CONST.WARN, function(err) {
-                        if(err) logger.error("createEvent failed with err: " + err);
-                    });
-
+                    Common.redisClient.del('login_' + loginToken, function(err) {});
                 } else {
                     status = Common.STATUS_ERROR;
                     message = "Invalid passcode";
-                    return callback(finish);
+                    callback(finish);
                 }
-
-            }).catch(function(err) {
-                return callback(err);
+            }).catch(err => {
+                callback(err);
             });
         },
         function(callback) {
@@ -345,18 +320,10 @@ function checkPasscode(req, res, loginObj) {
                 return callback(null);
             }
 
-            Common.db.UserDevices.update({
-                loginattempts: '0'
-            }, {
-                where: {
-                    email: login.getEmail(),
-                    imei: login.getDeviceID(),
-                    maindomain: login.getMainDomain()
-                }
-            }).then(function() {
+            LoginAttempts.checkAndUpdateAttempts(login, null, true).then(() => {
                 callback(null);
-            }).catch(function(err) {
-                return callback(err);
+            }).catch(err => {
+                callback(err);
             });
         },
         function(callback) {
@@ -451,7 +418,7 @@ function isUsersDeviceActive(isUserActive, isDeviceActive) {
 
 
 
-async function findUserNameSendEmail(userEmail, deviceID,activationKey,req) {
+async function findUserSendLockNotification(userEmail, deviceID,activationKey,req) {
 
     let user = await Common.db.User.findOne({
         attributes: ['firstname', 'lastname', 'mobilephone', 'orgdomain','orgemail'],
@@ -476,11 +443,11 @@ async function findUserNameSendEmail(userEmail, deviceID,activationKey,req) {
             email: userEmail
         }
     });
-    let deviceapprovaltype = await sendNotification(userEmail, firstname, lastname, loginEmailToken, mobilePhone, mainDomain, deviceID,orgemail,activationKey,req);
+    let deviceapprovaltype = await sendLockNotification(userEmail, firstname, lastname, loginEmailToken, mobilePhone, mainDomain, deviceID,orgemail,activationKey,req);
     return deviceapprovaltype;
 }
 
-async function sendNotification(email, first, last, loginEmailToken, mobilePhone, mainDomain, deviceID,orgemail,activationKey,req) {
+async function sendLockNotification(email, first, last, loginEmailToken, mobilePhone, mainDomain, deviceID,orgemail,activationKey,req) {
 
     try {
         let row = await Common.db.Orgs.findOne({
@@ -560,9 +527,12 @@ async function sendNotification(email, first, last, loginEmailToken, mobilePhone
 
         }  else if (deviceapprovaltype == 3) { // send SMS code to device phone
             let smscode = require('./commonUtils').generateRandomSMSCode();
+            var expirationDate = new Date();
+            expirationDate.setHours(expirationDate.getHours() + Common.activationTimeoutPeriod);
             await Common.db.Activation.update({
                 emailtoken: smscode,
                 deviceapprovaltype: deviceapprovaltype,
+                expirationdate: expirationDate,
             }, {
                 where: {
                     activationkey: activationKey
@@ -638,5 +608,5 @@ async function sendNotification(email, first, last, loginEmailToken, mobilePhone
 
 module.exports = {
     func: checkPasscode,
-    findUserNameSendEmail: findUserNameSendEmail
+    findUserSendLockNotification: findUserSendLockNotification
 };
