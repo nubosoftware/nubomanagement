@@ -118,6 +118,14 @@ function addProfileToDB(res, first, last, email, manager, country, officePhone, 
                 salt = setPasscode.generateUserSalt(email);
                 passwordHash = setPasscode.hashPassword(password,salt);
             }
+            let isactive = 1;
+            if (params.isActive !== undefined) {
+                isactive = Number(params.isActive);
+                if (isactive !== 0 && isactive !== 1) {
+                    isactive = 1;
+                }
+                // logger.info(`addProfileToDB. Update isactive for user: ${email} to ${isactive}`);
+            }
             Common.db.User.create({
                 email : email,
                 username : email,
@@ -127,7 +135,7 @@ function addProfileToDB(res, first, last, email, manager, country, officePhone, 
                 serverurl : '',
                 jobtitle : '',
                 orguser : params.orguser || '',
-                isactive : 1,
+                isactive : isactive,
                 isadmin : 0,
                 manager : manager,
                 country : country,
