@@ -92,6 +92,15 @@ function updateProfileDetailsInDB(res, first, last, officePhone, mobilePhone, ma
         obj.passcodetypechange = 0;
         obj.passcodesalt= salt;
     }
+    if (params.isActive != undefined) {
+        const isactive = Number(params.isActive);
+        if (isactive === 0 || isactive === 1) {
+            logger.info(`updateProfileDetailsInDB. Update isactive for user: ${email} to ${isactive}`);
+            obj.isactive = isactive;
+        } else {
+            logger.info(`updateProfileDetailsInDB. Invalid isactive value: ${params.isActive}`);
+        }
+    }
     Common.db.User.update(obj , {
         where : {
             email : email,
