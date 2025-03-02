@@ -221,27 +221,7 @@ async function loginWebAdminAsync(req, res, arg1) {
             selectedDomain = orgdomain;
         }
 
-        const org = await Common.db.Orgs.findOne({
-            attributes: ['admin_security_config'],
-            where: {
-                maindomain: orgdomain // we validate the login policy using the org domain
-            }
-        });
-        if (!org) {
-            status = Common.STATUS_ERROR;
-            message = "Cannot find organization";
-            throw message;
-        }
-        const adminSecurityConfigStr = org.admin_security_config;
-        if (!adminSecurityConfigStr) {
-            adminSecurityConfigStr = setPasscode.defaultAdminSecurityConfig;
-        }
-        const adminSecurityConfig = JSON.parse(adminSecurityConfigStr);
-        if (adminSecurityConfig.maxLoginAttempts === undefined) {
-            adminSecurityConfig.maxLoginAttempts = 3;
-        }
-
-
+        const adminSecurityConfig = setPasscode.getAdminSecurityConfig(orgdomain);
         // Find user device
         let userDevice = await Common.db.UserDevices.findOne({
             attributes: ['active', 'loginattempts'],
@@ -804,7 +784,6 @@ async function adminLoginValidateActivation(req, res) {
                 }
             });
             if (!userDevice) {
-                logger.info(`userDevice not found. deviceid: ${deviceid}, deviceName: ${deviceName}`);
                 userDevice = await Common.db.UserDevices.create({
                     imei: deviceid,
                     email: email,
