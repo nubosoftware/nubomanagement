@@ -234,7 +234,7 @@ async function loginWebAdminAsync(req, res, arg1) {
         }
         const adminSecurityConfigStr = org.admin_security_config;
         if (!adminSecurityConfigStr) {
-            adminSecurityConfigStr = defaultAdminSecurityConfig;
+            adminSecurityConfigStr = setPasscode.defaultAdminSecurityConfig;
         }
         const adminSecurityConfig = JSON.parse(adminSecurityConfigStr);
         if (adminSecurityConfig.maxLoginAttempts === undefined) {
@@ -720,16 +720,6 @@ var setActiveOrgForSiteAdmin = function(req, res,next) {
 
 }
 
-
-const defaultAdminSecurityConfig = `{
-    "minLength": 9,
-    "requiredCharacterTypes": ["uppercase", "lowercase", "number", "special"],
-    "avoidUserId": true,
-    "noRepeatedChars": true,
-    "noSequentialChars": true,
-    "passwordHistoryMonths": 3,
-    "maxLoginAttempts": 3
-}`;
 
 
 var adminLoginActivateLink = function(req,res) {

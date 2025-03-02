@@ -523,7 +523,8 @@ var setPasscodeE = {
     hashPassword: hashPassword,
     updateUserPasswordImp,
     checkAdminPasswordHistory,
-    getAdminSecurityConfig
+    getAdminSecurityConfig,
+    defaultAdminSecurityConfig
 };
 
 module.exports = setPasscodeE;

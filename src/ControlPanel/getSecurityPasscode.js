@@ -7,6 +7,7 @@ var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
 var async = require('async');
 var Common = require('../common.js');
+const { defaultAdminSecurityConfig } = require('../setPasscode.js');
 var logger = Common.getLogger(__filename);
 
 var ILLEGAL_PASSCODETYPECHANGE = -1;
