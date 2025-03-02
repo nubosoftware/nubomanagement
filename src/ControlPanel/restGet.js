@@ -221,7 +221,7 @@ async function loginWebAdminAsync(req, res, arg1) {
             selectedDomain = orgdomain;
         }
 
-        const adminSecurityConfig = setPasscode.getAdminSecurityConfig(orgdomain);
+        const adminSecurityConfig = await setPasscode.getAdminSecurityConfig(orgdomain);
         // Find user device
         let userDevice = await Common.db.UserDevices.findOne({
             attributes: ['active', 'loginattempts'],

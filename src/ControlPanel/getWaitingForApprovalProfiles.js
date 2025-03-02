@@ -76,11 +76,6 @@ async function getWaitingApprovalProfilesFromDB(res, domain) {
 
         if (!results || results == "") {
             logger.info('No pending approval devices');
-            res.send({
-                status : '1',
-                message : "No pending approval devices",
-                profiles : []
-            });
             return [];
         }
 
