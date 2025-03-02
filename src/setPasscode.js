@@ -465,7 +465,7 @@ async function getAdminSecurityConfig(domain) {
             maindomain: domain
         }
     });
-    const adminSecurityConfigStr = org?.admin_security_config;
+    const adminSecurityConfigStr = org ? org.admin_security_config : defaultAdminSecurityConfig;
     if (!adminSecurityConfigStr) {
         adminSecurityConfigStr = defaultAdminSecurityConfig;
     }

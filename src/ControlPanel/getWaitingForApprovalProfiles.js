@@ -29,48 +29,49 @@ async function getWaitingForApprovalProfiles(req, res, domain) {
     } catch (err) {
         res.send({
             status : Common.STATUS_ERROR,
-            message : err
+            message : `Error getting waiting for approval profiles: ${err}`
         });
         return;
     }
 }
 
 async function getWaitingApprovalProfilesFromDB(res, domain) {
-    var profiles = {};
-    var retProfiles = [];
-    var expirationDateInit = new Date();
-
-    var query = 'select a1.email, a1.firstname, a1.lastname, a1.deviceid, a1.resetpasscode, a1.devicetype, a1.status,'
-        + ' u2.loginattempts, a1.devicename,'
-        + ' u3.firstname ufirst, u3.lastname ulast'
-        + ' FROM activations as a1'
-        + ' LEFT JOIN user_devices as u2'
-        + ' ON a1.email=u2.email AND'
-        + ' a1.deviceid=u2.imei'
-        + ' LEFT JOIN users as u3'
-        + ' ON a1.email=u3.email ';
-
-    var queryWhereClause = ' WHERE '
-        + ' a1.maindomain= :domain'
-        + ' AND ((a1.status=0 AND expirationdate >= :expirationDateInit)'
-        + ' OR (a1.status=1 AND u2.loginattempts>=:maxLoginAttempts AND u2.active=1)' // end user locked
-        + ' OR (a1.status=201 AND u2.loginattempts>=:maxLoginAttemptsAdmin AND u2.active=1)' // admin locked
-        + ' OR (a1.status=200 AND expirationdate >= :expirationDateInit)'
-        + ' OR (a1.status=202 AND expirationdate >= :expirationDateInit)'
-        + ' OR (a1.status=101 AND expirationdate >= :expirationDateInit)'
-        + ' OR (a1.status=102 AND expirationdate >= :expirationDateInit)'
-        + ' OR (a1.status=100 AND expirationdate >= :expirationDateInit));';
-
-    const maxLoginAttempts = Common.hasOwnProperty("maxLoginAttempts") ? 
-        Common.maxLoginAttempts : 3;
-    
-        
-    // load the org security config
-    const adminSecurityConfig = await getAdminSecurityConfig(domain);
-    const maxLoginAttemptsAdmin = adminSecurityConfig.maxLoginAttempts || 99999;
-    var queryParams = {domain:domain, expirationDateInit:expirationDateInit, maxLoginAttempts:maxLoginAttempts, maxLoginAttemptsAdmin:maxLoginAttemptsAdmin};
-
     try {
+        var profiles = {};
+        var retProfiles = [];
+        var expirationDateInit = new Date();
+
+        var query = 'select a1.email, a1.firstname, a1.lastname, a1.deviceid, a1.resetpasscode, a1.devicetype, a1.status,'
+            + ' u2.loginattempts, a1.devicename,'
+            + ' u3.firstname ufirst, u3.lastname ulast'
+            + ' FROM activations as a1'
+            + ' LEFT JOIN user_devices as u2'
+            + ' ON a1.email=u2.email AND'
+            + ' a1.deviceid=u2.imei'
+            + ' LEFT JOIN users as u3'
+            + ' ON a1.email=u3.email ';
+
+        var queryWhereClause = ' WHERE '
+            + ' a1.maindomain= :domain'
+            + ' AND ((a1.status=0 AND expirationdate >= :expirationDateInit)'
+            + ' OR (a1.status=1 AND u2.loginattempts>=:maxLoginAttempts AND u2.active=1)' // end user locked
+            + ' OR (a1.status=201 AND u2.loginattempts>=:maxLoginAttemptsAdmin AND u2.active=1)' // admin locked
+            + ' OR (a1.status=200 AND expirationdate >= :expirationDateInit)'
+            + ' OR (a1.status=202 AND expirationdate >= :expirationDateInit)'
+            + ' OR (a1.status=101 AND expirationdate >= :expirationDateInit)'
+            + ' OR (a1.status=102 AND expirationdate >= :expirationDateInit)'
+            + ' OR (a1.status=100 AND expirationdate >= :expirationDateInit));';
+
+        const maxLoginAttempts = Common.hasOwnProperty("maxLoginAttempts") ? 
+            Common.maxLoginAttempts : 3;
+        
+            
+        // load the org security config
+        const adminSecurityConfig = await getAdminSecurityConfig(domain);
+        const maxLoginAttemptsAdmin = adminSecurityConfig.maxLoginAttempts || 99999;
+        var queryParams = {domain:domain, expirationDateInit:expirationDateInit, maxLoginAttempts:maxLoginAttempts, maxLoginAttemptsAdmin:maxLoginAttemptsAdmin};
+
+    
         const results = await Common.sequelize.query(query + queryWhereClause, { replacements: queryParams, type: QueryTypes.SELECT});
 
         if (!results || results == "") {
