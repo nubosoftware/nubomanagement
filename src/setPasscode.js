@@ -465,11 +465,11 @@ async function getAdminSecurityConfig(domain) {
             maindomain: domain
         }
     });
-    const adminSecurityConfigStr = org ? org.admin_security_config : defaultAdminSecurityConfig;
+    let adminSecurityConfigStr = org ? org.admin_security_config : defaultAdminSecurityConfig;
     if (!adminSecurityConfigStr) {
         adminSecurityConfigStr = defaultAdminSecurityConfig;
     }
-    const adminSecurityConfig = JSON.parse(adminSecurityConfigStr);
+    let adminSecurityConfig = JSON.parse(adminSecurityConfigStr);
     if (adminSecurityConfig.maxLoginAttempts === undefined) {
         adminSecurityConfig.maxLoginAttempts = 3;
     }
