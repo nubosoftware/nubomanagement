@@ -288,7 +288,7 @@ function checkPasscode(req, res, loginObj) {
                 return;
             }
 
-            LoginAttempts.checkAndUpdateAttempts(login, null, false).then(result => {
+            LoginAttempts.checkAndUpdateAttempts(login.getEmail(), login.getDeviceID(), login.getMainDomain(), null, false).then(result => {
                 if (result.exceeded) {
                     status = Common.STATUS_PASSWORD_LOCK;
                     message = "You have incorrectly typed your passcode 3 times. An email was sent to you. Open your email to open your passcode.";
@@ -320,7 +320,7 @@ function checkPasscode(req, res, loginObj) {
                 return callback(null);
             }
 
-            LoginAttempts.checkAndUpdateAttempts(login, null, true).then(() => {
+            LoginAttempts.checkAndUpdateAttempts(login.getEmail(), login.getDeviceID(), login.getMainDomain(), null, true).then(() => {
                 callback(null);
             }).catch(err => {
                 callback(err);

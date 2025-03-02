@@ -34,6 +34,7 @@ var Common = {
     STATUS_PASSWORD_NOT_INCLUDE_LETTER: 34,
     STATUS_PASSWORD_NOT_INCLUDE_SPECIAL_CHAR: 35,
     STATUS_INVALID_CREDENTIALS : 36,
+    STATUS_PASSWORD_HISTORY_NOT_MATCH: 37,
     STATUS_RESET_PASSCODE_PENDING : 100,
     STATUS_RESET_BIOMETRIC_PENDING : 101,
     STATUS_RESET_OTP_PENDING : 102,
@@ -742,7 +743,6 @@ function parse_configs(parseConfigCB) {
                     let urlObj = new URL(Common.dcURL);
                     urlObj.port = 6443;
                     Common.controlPanelURL = urlObj.href;
-                    //logger.info(`Default controlPanelURL: ${Common.controlPanelURL}`);
                 }
                 if (!Common.recording_path) {
                     Common.recording_path =  Common.path.join(Common.nfshomefolder,"recording");

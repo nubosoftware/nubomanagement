@@ -102,13 +102,17 @@ module.exports = {
     // admin activation
     "adminActivationEmailSubject": "Administrator Login Verification",
     "adminActivationEmailBody": "Dear %s %s, \nClick the following link to activate your web based control panel login.\n\n%s\n\n- The Nubo Team",
-    "adminActivationBodyHTML": "<p>Dear %s %s,</p><p> \nClick the following link to activate your web based control panel login.</p>\n\n" + "<p><a href=\"%s\">%s %s – Control Panel Activation</a></p>  \n\n<p>- The Nubo Team</p>",
+    "adminActivationBodyHTML": "<p>Dear %s %s,</p><p> \nClick the following link to activate your web based control panel login.</p>\n\n" + "<p><a href=\"%s\">%s %s - Control Panel Activation</a></p>  \n\n<p>- The Nubo Team</p>",
 
     // admin reset
     "adminResetEmailSubject": "Reset Password",
     "adminResetEmailBody": "Dear %s %s, \nClick the following link to reset your password.\n\n%s\n\n- The Nubo Team",
-    "adminResetBodyHTML": "<p>Dear %s %s,</p><p> \nClick the following link to reset your password.</p>\n\n" + "<p><a href=\"%s\">%s %s – Reset password</a></p>  \n\n<p>- The Nubo Team</p>",
+    "adminResetBodyHTML": "<p>Dear %s %s,</p><p> \nClick the following link to reset your password.</p>\n\n" + "<p><a href=\"%s\">%s %s - Reset password</a></p>  \n\n<p>- The Nubo Team</p>",
 
+    // unlock admin
+    "adminUnlockEmailSubject": "Unlock Password",
+    "adminUnlockEmailBody": "Dear %s %s, \nClick the following link to unlock your password.\n\n%s\n\n- The Nubo Team",
+    "adminUnlockBodyHTML": "<p>Dear %s %s,</p><p> \nClick the following link to unlock your password.</p>\n\n" + "<p><a href=\"%s\">%s %s - Unlock password</a></p>  \n\n<p>- The Nubo Team</p>",
 
     // otp
     "otpCode": "Your OTP code: %s",

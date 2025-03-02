@@ -11,28 +11,60 @@ class LoginAttempts {
             Common.maxLoginAttempts : 3;
     }
 
+    getMaxLoginAttempts() {
+        return this.maxLoginAttempts;
+    }
+
+    checkIfloginAttemptsExceeded(currentAttempts,adminSecurityConfig) {
+        let maxAttempts = adminSecurityConfig ? adminSecurityConfig.maxLoginAttempts : this.maxLoginAttempts;
+        // logger.info(`checkIfloginAttemptsExceeded: currentAttempts: ${currentAttempts}, maxAttempts: ${maxAttempts}, isAdminSecurityConfig: ${adminSecurityConfig !== undefined}`);
+        return maxAttempts > 0 && currentAttempts >= maxAttempts;
+    }
+
     /**
      * Check and update login attempts for a user device
-     * @param {Object} login Login object containing user details
+     * @param {Object|string} loginOrEmail Login object containing user details or email string
+     * @param {string} [deviceId] Device ID (required if email is provided directly)
+     * @param {string} [mainDomain] Main domain (required if email is provided directly)
      * @param {number} [currentAttempts] Current number of login attempts (optional)
      * @param {boolean} resetAttempts Whether to reset attempts to 0 (on successful login)
      * @returns {Object} Status object containing {exceeded: boolean, attempts: number}
      */
-    async checkAndUpdateAttempts(login, currentAttempts = null, resetAttempts = false) {
+    async checkAndUpdateAttempts(loginOrEmail, deviceId, mainDomain, currentAttempts = null, resetAttempts = false,adminSecurityConfig = null) {
         try {
+            // Extract parameters based on whether a login object or direct parameters were provided
+            let email, imei, domain;
+            
+            if (typeof loginOrEmail === 'object' && loginOrEmail !== null) {
+                // Login object provided
+                email = loginOrEmail.getEmail();
+                imei = loginOrEmail.getDeviceID();
+                domain = loginOrEmail.getMainDomain();
+            } else {
+                // Direct parameters provided
+                email = loginOrEmail;
+                imei = deviceId;
+                domain = mainDomain;
+            }
+
+            // Validate required parameters
+            if (!email || !imei || !domain) {
+                throw new Error('Missing required parameters: email, deviceId, and mainDomain are required');
+            }
+
             // If currentAttempts not provided, query it from database
             if (currentAttempts === null) {
                 const result = await Common.db.UserDevices.findOne({
                     attributes: ['loginattempts'],
                     where: {
-                        email: login.getEmail(),
-                        imei: login.getDeviceID(),
-                        maindomain: login.getMainDomain()
+                        email: email,
+                        imei: imei,
+                        maindomain: domain
                     }
                 });
                 
                 if (!result) {
-                    throw new Error(`User device not found for email: ${login.getEmail()}, device: ${login.getDeviceID()}`);
+                    throw new Error(`User device not found for email: ${email}, device: ${imei}`);
                 }
                 
                 currentAttempts = result.loginattempts || 0;
@@ -43,9 +75,9 @@ class LoginAttempts {
                     { loginattempts: 0 },
                     {
                         where: {
-                            email: login.getEmail(),
-                            imei: login.getDeviceID(),
-                            maindomain: login.getMainDomain()
+                            email: email,
+                            imei: imei,
+                            maindomain: domain
                         }
                     }
                 );
@@ -60,23 +92,23 @@ class LoginAttempts {
                 { loginattempts: newAttempts },
                 {
                     where: {
-                        email: login.getEmail(),
-                        imei: login.getDeviceID(),
-                        maindomain: login.getMainDomain()
+                        email: email,
+                        imei: imei,
+                        maindomain: domain
                     }
                 }
             );
 
-            const exceeded = this.maxLoginAttempts > 0 && newAttempts >= this.maxLoginAttempts;
+            const exceeded = this.checkIfloginAttemptsExceeded(newAttempts,adminSecurityConfig);
             
             if (exceeded) {
                 logger.error("Login attempts exceeded maximum allowed attempts");
                 // Create event in Eventlog
-                const extra_info = `Login attempts: ${newAttempts}, max login attempts: ${this.maxLoginAttempts}, device id: ${login.getDeviceID()}`;
+                const extra_info = `Login attempts: ${newAttempts}, max login attempts: ${this.maxLoginAttempts}, device id: ${imei}`;
                 await eventLog.createEvent(
                     EV_CONST.EV_USER_LOCKED,
-                    login.getEmail(),
-                    login.getMainDomain(),
+                    email,
+                    domain,
                     extra_info,
                     EV_CONST.WARN
                 );

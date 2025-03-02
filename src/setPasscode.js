@@ -1,6 +1,7 @@
 "use strict";
 
 var Common = require('./common.js');
+var logger = Common.getLogger(__filename);
 var crypto = require('crypto');
 var util = require('util');
 var Login = require('./login.js');
@@ -8,6 +9,8 @@ var async = require('async');
 var ThreadedLogger = require('./ThreadedLogger.js');
 var Otp = require('./otp.js');
 var CommonUtils = require("./commonUtils.js");
+const Sequelize = require('sequelize');
+const Op = Sequelize.Op;
 
 var MIN_DIFFERENT_DIGITS = 4;
 
@@ -366,6 +369,7 @@ var updateUserPasswordImp = async function (email,newPassword) {
 
 
 
+
 function checkPasscodeHistory(login, decryptedPassword, finish, callback) {
 
     if (Common.savedPasscodeHistory <= 0) {
@@ -444,13 +448,82 @@ function checkPasscodeHistory(login, decryptedPassword, finish, callback) {
     });
 }
 
+const defaultAdminSecurityConfig = `{
+    "minLength": 9,
+    "requiredCharacterTypes": ["uppercase", "lowercase", "number", "special"],
+    "avoidUserId": true,
+    "noRepeatedChars": true,
+    "noSequentialChars": true,
+    "passwordHistoryMonths": 3,
+    "maxLoginAttempts": 3
+}`;
+
+async function getAdminSecurityConfig(domain) {
+    const org = await Common.db.Orgs.findOne({
+        attributes: ['admin_security_config'],
+        where: {
+            maindomain: domain
+        }
+    });
+    const adminSecurityConfigStr = org?.admin_security_config;
+    if (!adminSecurityConfigStr) {
+        adminSecurityConfigStr = defaultAdminSecurityConfig;
+    }
+    const adminSecurityConfig = JSON.parse(adminSecurityConfigStr);
+    if (adminSecurityConfig.maxLoginAttempts === undefined) {
+        adminSecurityConfig.maxLoginAttempts = 3;
+    }
+    return adminSecurityConfig;
+}
+
+async function checkAdminPasswordHistory(email, historyHash, domain) {
+    try {
+        // check the org policy
+        const adminSecurityConfig = await getAdminSecurityConfig(domain);
+        if (adminSecurityConfig.passwordHistoryMonths > 0) {
+            // check the password history
+            const result = await Common.db.PasscodeHistory.findAll({
+                where: {
+                    email: `${email}_admin`,
+                    passcode: historyHash,
+                    maindomain: domain,
+                    lastupdate: {
+                        [Op.gt]: new Date(Date.now() - adminSecurityConfig.passwordHistoryMonths * 30 * 24 * 60 * 60 * 1000)
+                    }
+                }
+            });
+            if (result.length > 0) {
+                logger.info(`checkAdminPasswordHistory. Password history check failed for email: ${email}, domain: ${domain}, last password change: ${result[0].lastupdate}`);
+                return { validPassword: false, message: 'Password history check failed' };
+            }
+
+            // add the new password to the history
+            await Common.db.PasscodeHistory.create({
+                email: `${email}_admin`,
+                passcode: historyHash,
+                maindomain: domain,
+                lastupdate: new Date()
+            });
+            return { validPassword: true, message: 'Password history check passed' };
+        } else {
+            return { validPassword: true, message: 'No password history policy set, allow the password change' };
+        }
+
+    } catch (error) {
+        logger.error(`checkAdminPasswordHistory. Error: ${error}`);
+        return { validPassword: false, message: 'Internal error' };
+    }
+}
+
 var setPasscodeE = {
     func: setPasscode,
     validatePassword: validatePassword,
     checkPasscodeHistory: checkPasscodeHistory,
     generateUserSalt: generateUserSalt,
     hashPassword: hashPassword,
-    updateUserPasswordImp
+    updateUserPasswordImp,
+    checkAdminPasswordHistory,
+    getAdminSecurityConfig
 };
 
 module.exports = setPasscodeE;

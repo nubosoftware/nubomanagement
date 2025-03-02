@@ -29,7 +29,8 @@ function getSecurityPasscode(req, res, domain) {
             passcodeType : obj.passcodeType,
             passcodeMinChars : obj.passcodeMinChars,
             passcodeExpirationDays : obj.passcodeExpirationDays,
-            passcodetypechange : obj.passcodetypechange
+            passcodetypechange : obj.passcodetypechange,
+            adminSecurityConfig: obj.adminSecurityConfig
         };
         if (req.nubodata.adminLogin) {
             resobj.clientauthtype = obj.clientauthtype;
@@ -47,7 +48,7 @@ function getSecurityPasscode(req, res, domain) {
 function getSecurityPolicyFromDB(req, res, domain, callback) {
 
     Common.db.Orgs.findAll({
-        attributes : [ 'passcodetype', 'passcodeminchars', 'passcodeexpirationdays','clientauthtype' , 'secondauthmethod' , 'otptype' ],
+        attributes : [ 'passcodetype', 'passcodeminchars', 'passcodeexpirationdays','clientauthtype' , 'secondauthmethod' , 'otptype', 'admin_security_config' ],
         where : {
             maindomain : domain
         },
@@ -71,6 +72,16 @@ function getSecurityPolicyFromDB(req, res, domain, callback) {
         var passcodeMinChars = row.passcodeminchars != null ? row.passcodeminchars : 0;
         var passcodeExpirationDays = row.passcodeexpirationdays != null ? row.passcodeexpirationdays : '';
         var passcodetypechange = req.params.getpasscodetypechange;
+        let adminSecurityConfigStr;
+        if (!row.admin_security_config) {
+            adminSecurityConfigStr = defaultAdminSecurityConfig;
+        } else {
+            adminSecurityConfigStr = row.admin_security_config;
+        }
+        const adminSecurityConfig = JSON.parse(adminSecurityConfigStr);
+        if (adminSecurityConfig.maxLoginAttempts === undefined) {
+            adminSecurityConfig.maxLoginAttempts = 3;
+        }
 
         var obj = {
                 passcodeType: passcodeType,
@@ -79,7 +90,8 @@ function getSecurityPolicyFromDB(req, res, domain, callback) {
                 passcodetypechange: passcodetypechange,
                 clientauthtype: row.clientauthtype,
                 secondauthmethod: row.secondauthmethod,
-                otptype: row.otptype
+                otptype: row.otptype,
+                adminSecurityConfig: adminSecurityConfig
         };
 
         async.series([

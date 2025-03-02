@@ -284,7 +284,7 @@ function ApproveUsers(req, res, domain, admin) {
     var resetOTP = false;
 
 
-    if (approveType && approveType == 'unlock passcode') {
+    if (approveType && (approveType == 'unlock passcode' || approveType == 'unlock admin')) {
         isNeedToUnlock = true;
     } else if (approveType && approveType == 'reset passcode') {
         resetPasscode = true;

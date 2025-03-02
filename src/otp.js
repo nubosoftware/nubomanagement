@@ -68,7 +68,13 @@ async function checkOtpAuth(req, res) {
         if (Common.otpLockDevice === true) {
             if (!isValidOtp) {
                 // Increment attempts on failure
-                const result = await LoginAttempts.checkAndUpdateAttempts(login, null, false);
+                const result = await LoginAttempts.checkAndUpdateAttempts(
+                    login.getEmail(), 
+                    login.getDeviceID(), 
+                    login.getMainDomain(), 
+                    null, 
+                    false
+                );
                 if (result.exceeded) {
                     response.status = Common.STATUS_PASSWORD_LOCK;
                     response.message = "You have incorrectly typed your OTP code too many times. Please contact your administrator.";
@@ -81,7 +87,13 @@ async function checkOtpAuth(req, res) {
                 }
             } else {
                 // Reset attempts on success
-                await LoginAttempts.checkAndUpdateAttempts(login, null, true);
+                await LoginAttempts.checkAndUpdateAttempts(
+                    login.getEmail(), 
+                    login.getDeviceID(), 
+                    login.getMainDomain(), 
+                    null, 
+                    true
+                );
             }
         }
 

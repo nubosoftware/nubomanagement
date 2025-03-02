@@ -103,6 +103,7 @@ function activationLink(req, res, next) {
                     status = 1;
                     // invalid parameter
                     msg = "Token not found!";
+                    logger.info(`activationLink: Token not found! activationWhere: ${JSON.stringify(activationWhere, null, 2)}`);
                     cb(msg);
                     /*logger.info("activationLink:" +msg);
                     res.send({
@@ -620,7 +621,7 @@ function activationLink(req, res, next) {
                 });
             }
         } else {
-            let redirectURL = Common.controlPanelURL+"/html/admin/#/Message?"+qs.stringify({
+            let redirectURL = Common.controlPanelURL+"html/admin/#/Message?"+qs.stringify({
                 message: msg,
                 status: status
             });

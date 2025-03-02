@@ -30,6 +30,7 @@ var noFilterList = {
     '/api/auth/activate': 1,
     '/api/auth/validate': 1,
     '/api/auth/reset': 1,
+    '/api/auth/salt': 1,
 
 };
 
@@ -266,6 +267,7 @@ var excludeList = {
         '/api/auth/activate': 1,
         '/api/auth/validate': 1,
         '/api/auth/reset': 1,
+        '/api/auth/salt': 1,
     },
     'WEB_ADMIN_TOKEN': {
         '/Notifications/pushNotification': 1

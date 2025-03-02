@@ -332,8 +332,11 @@ function resetPasscode(req, res, loginObj) {
                                                     }
                                                     if (phoneNumber) {
                                                         let smscode =commonUtils.generateRandomSMSCode();
+                                                        var expirationDate = new Date();
+                                                        expirationDate.setHours(expirationDate.getHours() + Common.activationTimeoutPeriod);
                                                         Common.db.Activation.update({
                                                             emailtoken: smscode,
+                                                            expirationdate: expirationDate,
                                                             deviceapprovaltype: deviceapprovaltype,
                                                         }, {
                                                             where: {

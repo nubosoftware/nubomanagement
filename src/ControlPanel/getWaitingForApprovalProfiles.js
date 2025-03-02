@@ -7,40 +7,38 @@
 var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 const { QueryTypes } = require('sequelize');
+const { getAdminSecurityConfig } = require('../setPasscode.js');
 
 // first call goes to here
-function getWaitingForApprovalProfiles(req, res, domain) {
+async function getWaitingForApprovalProfiles(req, res, domain) {
     // http://login.nubosoftware.com/getWaitingForApprovalProfiles?session=[]
     res.contentType = 'json';
     var status = 1;
     var msg = "";
 
-    getWaitingApprovalProfilesFromDB(res, domain, function(err, obj) {
-        if (err) {
-            res.send({
-                status : Common.STATUS_ERROR,
-                message : err
-            });
-            return;
-        }
-
+    try {
+        const profiles = await getWaitingApprovalProfilesFromDB(res, domain);
         var json = {
             status : Common.STATUS_OK,
             message : 'Get pending approval profiles succeeded',
-            profiles : obj
+            profiles : profiles
         };
 
         res.send(json);
         return;
-    });
-
+    } catch (err) {
+        res.send({
+            status : Common.STATUS_ERROR,
+            message : err
+        });
+        return;
+    }
 }
 
-function getWaitingApprovalProfilesFromDB(res, domain, callback) {
-
+async function getWaitingApprovalProfilesFromDB(res, domain) {
     var profiles = {};
     var retProfiles = [];
-    var expirationDateInit = (Common.withService) ? new Date(0) : new Date();
+    var expirationDateInit = new Date();
 
     var query = 'select a1.email, a1.firstname, a1.lastname, a1.deviceid, a1.resetpasscode, a1.devicetype, a1.status,'
         + ' u2.loginattempts, a1.devicename,'
@@ -55,15 +53,25 @@ function getWaitingApprovalProfilesFromDB(res, domain, callback) {
     var queryWhereClause = ' WHERE '
         + ' a1.maindomain= :domain'
         + ' AND ((a1.status=0 AND expirationdate >= :expirationDateInit)'
-        + ' OR (a1.status=1 AND u2.loginattempts>=3 AND u2.active=1)'
+        + ' OR (a1.status=1 AND u2.loginattempts>=:maxLoginAttempts AND u2.active=1)' // end user locked
+        + ' OR (a1.status=201 AND u2.loginattempts>=:maxLoginAttemptsAdmin AND u2.active=1)' // admin locked
         + ' OR (a1.status=200 AND expirationdate >= :expirationDateInit)'
         + ' OR (a1.status=202 AND expirationdate >= :expirationDateInit)'
         + ' OR (a1.status=101 AND expirationdate >= :expirationDateInit)'
         + ' OR (a1.status=102 AND expirationdate >= :expirationDateInit)'
         + ' OR (a1.status=100 AND expirationdate >= :expirationDateInit));';
-    var queryParams = {domain:domain, expirationDateInit:expirationDateInit};
 
-    Common.sequelize.query(query + queryWhereClause, { replacements: queryParams, type: QueryTypes.SELECT}).then(function(results) {
+    const maxLoginAttempts = Common.hasOwnProperty("maxLoginAttempts") ? 
+        Common.maxLoginAttempts : 3;
+    
+        
+    // load the org security config
+    const adminSecurityConfig = await getAdminSecurityConfig(domain);
+    const maxLoginAttemptsAdmin = adminSecurityConfig.maxLoginAttempts || 99999;
+    var queryParams = {domain:domain, expirationDateInit:expirationDateInit, maxLoginAttempts:maxLoginAttempts, maxLoginAttemptsAdmin:maxLoginAttemptsAdmin};
+
+    try {
+        const results = await Common.sequelize.query(query + queryWhereClause, { replacements: queryParams, type: QueryTypes.SELECT});
 
         if (!results || results == "") {
             logger.info('No pending approval devices');
@@ -72,7 +80,7 @@ function getWaitingApprovalProfilesFromDB(res, domain, callback) {
                 message : "No pending approval devices",
                 profiles : []
             });
-            return;
+            return [];
         }
 
         results.forEach(function(row) {
@@ -101,8 +109,10 @@ function getWaitingApprovalProfilesFromDB(res, domain, callback) {
                     } else {
                         type = 'reset passcode' // Need to Reset Passcode
                     }
-                } else if (status == 1 && loginattempts >= 3) {
+                } else if (status == 1 && loginattempts >= maxLoginAttempts) {
                     type = 'unlock passcode' // Need to unlock
+                } else if (status == 201 && loginattempts >= maxLoginAttemptsAdmin) {
+                    type = 'unlock admin' // Need to unlock
                 } else if (status == Common.STATUS_RESET_PASSCODE_PENDING) {
                     type = 'reset passcode' // Need to Reset Passcode
                 } else if (status == Common.STATUS_ADMIN_ACTIVATION_PENDING) {
@@ -116,7 +126,6 @@ function getWaitingApprovalProfilesFromDB(res, domain, callback) {
                 }
 
                 if (email in profiles) {
-
                     var device = {
                         deviceid : deviceid,
                         devicetype : devicename,
@@ -124,7 +133,6 @@ function getWaitingApprovalProfilesFromDB(res, domain, callback) {
                     }
                     profiles[email].devices.push(device);
                 } else {
-
                     // if false, set the 1st deviceType
                     profiles[email] = {
                         email : email,
@@ -137,7 +145,6 @@ function getWaitingApprovalProfilesFromDB(res, domain, callback) {
                         }]
                     };
                 }
-
         });
 
         // convert profiles map to array
@@ -145,43 +152,35 @@ function getWaitingApprovalProfilesFromDB(res, domain, callback) {
             retProfiles.push(profiles[email]);
         }
 
-        callback(null, retProfiles);
-        return;
+        return retProfiles;
 
-    }).catch(function(err) {
+    } catch (err) {
         logger.info('Cant select pending users: ' + err);
-       callback(err, null);
-        return;
-    });
-
+        throw err;
+    }
 }
 
-function getDeviceName(res, email, deviceid, domain, callback) {
-
-    Common.db.UserDevices.findAll( {
-        attributes : ['devicename'],
-        where : {
-            email : email,
-            imei : deviceid,
-            maindomain : domain
-        },
-    } ).complete( function(err, results) {
-
-        if (err) {
-            callback( err, null );
-            return;
-        }
+async function getDeviceName(res, email, deviceid, domain) {
+    try {
+        const results = await Common.db.UserDevices.findAll({
+            attributes: ['devicename'],
+            where: {
+                email: email,
+                imei: deviceid,
+                maindomain: domain
+            },
+        });
 
         if (!results || results == "") {
-            callback( null, null );
-            return;
+            return null;
         }
 
         var row = results[0];
         var deviceName = row.devicename != null ? row.devicename : '';
-        callback( null, deviceName );
-        return;
-    } );
+        return deviceName;
+    } catch (err) {
+        throw err;
+    }
 }
 
 var GetWaitingForApprovalProfiles = {

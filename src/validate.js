@@ -292,6 +292,8 @@ function checkIfNeedRedirection(playerVersion, activationKey, clientIP, deviceId
                 logger.info(`Invalid player version for device type ${activationData.devicetype}, player version: ${playerVersion}, minumum version: ${deviceTypeVersion}`);
                 callback(finish);
                 return;
+            } else {
+                logger.info(`Valid player version for device type ${activationData.devicetype}, player version: ${JSON.stringify(playerVer)}, minumum version: ${JSON.stringify(minVer)}`);
             }
             callback(null);
         },
@@ -735,18 +737,6 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
             },
             //check user data
             function(callback) {
-                //validate username on motorola project
-                if (Common.withService) {
-                    if (userData.username != clientUserName) {
-                        response = {
-                            status: Common.STATUS_ERROR,
-                            message: "Could not find username: " + clientUserName
-                        }
-                        callback(finish);
-                        return;
-                    }
-                }
-
                 if (userData.user.isactive == 0) {
                     response = {
                         status: Common.STATUS_DISABLE_USER,
@@ -1128,16 +1118,19 @@ function parseVersion(verStr) {
         val1: 0,
         val2: 0
     };
+    
     var arr = verStr.split(".");
     if (arr.length >= 2) {
-        ver.major = arr[0];
-        ver.minor = arr[1];
+        // Extract only numeric part and convert to number
+        ver.major = parseInt(arr[0].match(/^\d+/)[0] || 0);
+        ver.minor = parseInt(arr[1].match(/^\d+/)[0] || 0);
     }
     if (arr.length >= 3) {
-        ver.val1 = arr[2];
+        ver.val1 = parseInt(arr[2].match(/^\d+/)[0] || 0);
         if (arr.length >= 4) {
-            ver.val2 = arr[3];
+            ver.val2 = parseInt(arr[3].match(/^\d+/)[0] || 0);
         }
     }
+    // logger.info(`parseVersion. ver: ${JSON.stringify(ver,null,2)}`);
     return ver;
 }

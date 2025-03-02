@@ -221,6 +221,7 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         owaurlpostauth: Sequelize.STRING,
         refererurl: Sequelize.STRING,
         inviteurl: Sequelize.STRING,
+        admin_security_config: Sequelize.STRING,
     }, {
 
         timestamps: false

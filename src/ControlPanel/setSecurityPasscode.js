@@ -64,8 +64,45 @@ function setSecurityPasscode(req, res, domain) {
     });
 }
 
+async function setAdminAuthentication(req, res) {
+    try {
+        let adminLogin = req.nubodata.adminLogin;
+        if (!adminLogin) {
+            res.writeHead(403, {
+                "Content-Type": "text/plain"
+            });
+            res.end("403 Forbidden\n");
+            return;
+        }
+        let selectedDomain = adminLogin.getMainDomain();    
+        const adminSecurityConfig = req.params.adminSecurityConfig;
+        if (!adminSecurityConfig) {
+            throw new Error('adminSecurityConfig is required');
+        }
+        logger.info(`setAdminAuthentication. domain: ${selectedDomain}, adminSecurityConfig: ${JSON.stringify(adminSecurityConfig,null,2)}`);
+        await Common.db.Orgs.update({
+            admin_security_config: JSON.stringify(adminSecurityConfig),
+        }, {
+            where: {
+                maindomain: selectedDomain
+            }
+        });
+        res.send({
+            status: '1',
+            message: 'Admin authentication updated successfully'
+        });
+    } catch (error) {
+        logger.error(`setAdminAuthentication. Error: ${error}`);
+        res.send({
+            status: '0',
+            message: error
+        });
+    }
+}
+
 var SetSecurityPasscode = {
-    get: setSecurityPasscode
+    get: setSecurityPasscode,
+    setAdminAuthentication: setAdminAuthentication
 };
 
 module.exports = SetSecurityPasscode;

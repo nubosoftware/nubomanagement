@@ -61,8 +61,10 @@ const LongOperationNotif = require('../longOperationsNotif.js');
 const AdminPermissions = require('../adminPermissions');
 const orgsModule = require('./orgs');
 const Plugin =  require('../plugin');
+const LoginAttempts = require('../loginAttempts.js');
 
 var setting = require('../settings.js');
+const checkPasscode = require('../checkPasscode.js');
 
 const ADMIN_LOGIN_REDIS_KEY = 'adminLogin:';
 
@@ -101,12 +103,13 @@ async function loginWebAdminAsync(req, res, arg1) {
     try {
         let userName = req.params.userName;
         let password = req.params.password;
+        let passwordHash = req.params.passwordHash;
         let resetPassword = false;
         if (arg1 === "reset") {
             password = "reset";
             resetPassword = true;
         }
-        if (!userName || !password) {
+        if (!userName || (!password && !passwordHash)) {
             res.send({
                 status: '0',
                 message: "Invalid parameters"
@@ -218,6 +221,57 @@ async function loginWebAdminAsync(req, res, arg1) {
             selectedDomain = orgdomain;
         }
 
+        const org = await Common.db.Orgs.findOne({
+            attributes: ['admin_security_config'],
+            where: {
+                maindomain: orgdomain // we validate the login policy using the org domain
+            }
+        });
+        if (!org) {
+            status = Common.STATUS_ERROR;
+            message = "Cannot find organization";
+            throw message;
+        }
+        const adminSecurityConfigStr = org.admin_security_config;
+        if (!adminSecurityConfigStr) {
+            adminSecurityConfigStr = defaultAdminSecurityConfig;
+        }
+        const adminSecurityConfig = JSON.parse(adminSecurityConfigStr);
+        if (adminSecurityConfig.maxLoginAttempts === undefined) {
+            adminSecurityConfig.maxLoginAttempts = 3;
+        }
+
+
+        // Find user device
+        let userDevice = await Common.db.UserDevices.findOne({
+            attributes: ['active', 'loginattempts'],
+            where: {
+                email: userName,
+                imei: deviceid
+            }
+        });
+        if (!userDevice) {
+            logger.info(`userDevice not found. deviceid: ${deviceid}, deviceName: ${deviceName}`);
+            userDevice = await Common.db.UserDevices.create({
+                imei: deviceid,
+                email: userName,
+                active: 1,
+                maindomain: user.orgdomain,
+                devicename: deviceName,
+                loginattempts: 0,
+                inserttime: new Date()
+            })
+        }
+        let loginattempts = userDevice.loginattempts;
+        logger.info(`userDevice: ${JSON.stringify(userDevice)}, loginattempts: ${loginattempts}`);
+        if (LoginAttempts.checkIfloginAttemptsExceeded(loginattempts,adminSecurityConfig)) {
+            status = Common.STATUS_PASSWORD_LOCK;
+            message = "You have incorrectly typed your password too many times. Please contact your administrator.";
+            await sendLockAdminNotification(userName, deviceid, selectedDomain,firstname,lastname);  
+            throw message;
+        }
+
+
         // Update password if reset
         if (resetpasscodeResult === 1) {
             const newPassword = req.params.setPassword;
@@ -226,11 +280,19 @@ async function loginWebAdminAsync(req, res, arg1) {
                 message = "Invalid password";
                 throw message;
             }
-            const salt = setPasscode.generateUserSalt(userName);
-            const passwordHash = setPasscode.hashPassword(newPassword, salt);
+             
+            const newSalt = req.params.setSalt;
+            const salt = newSalt || setPasscode.generateUserSalt(userName);
+            const newPasswordHash =  passwordHash ? newPassword : setPasscode.hashPassword(newPassword, salt);
+            const { validPassword, message } = await setPasscode.checkAdminPasswordHistory(userName, newPasswordHash, user.orgdomain);
+            if (!validPassword) {
+                status = Common.STATUS_PASSWORD_HISTORY_NOT_MATCH;
+                message = message;
+                throw message;
+            }
             await Common.db.User.update({
                 passcodeupdate: new Date(),
-                passcode: passwordHash,
+                passcode: newPasswordHash,
                 passcodetypechange: 0,
                 passcodesalt: salt
             }, {
@@ -255,14 +317,43 @@ async function loginWebAdminAsync(req, res, arg1) {
 
         // Validate passcode
         if (!isValidPasscode) {
-            const hashedPasscode = setPasscode.hashPassword(password, passcodeSalt);
+            const hashedPasscode = passwordHash ? passwordHash : setPasscode.hashPassword(password, passcodeSalt);
             if (dbPasscode === hashedPasscode) {
                 isValidPasscode = true;
             }
+          
+            logger.info(`isValidPasscode: ${isValidPasscode}`);
             if (!isValidPasscode) {
-                status = Common.STATUS_PASSWORD_NOT_MATCH;
-                message = "Invalid password";
-                throw message;
+                // Increment attempts on failure
+                const result = await LoginAttempts.checkAndUpdateAttempts(
+                    userName, 
+                    deviceid, 
+                    selectedDomain, 
+                    null, 
+                    false,
+                    adminSecurityConfig
+                );
+                logger.info(`checkAndUpdateAttempts result: ${JSON.stringify(result)}`);
+                if (result.exceeded) {
+                    status = Common.STATUS_PASSWORD_LOCK;
+                    message = "You have incorrectly typed your password too many times. Please contact your administrator.";
+                    await sendLockAdminNotification(userName, deviceid, selectedDomain,firstname,lastname);  
+                    throw message;
+                } else {
+                    status = Common.STATUS_PASSWORD_NOT_MATCH;
+                    message = "Invalid password";
+                    throw message;
+                }
+            } else {
+                // Reset attempts on success
+                await LoginAttempts.checkAndUpdateAttempts(
+                    userName, 
+                    deviceid, 
+                    selectedDomain, 
+                    null, 
+                    true,
+                    adminSecurityConfig
+                );
             }
         }
 
@@ -420,6 +511,117 @@ async function loginWebAdminAsync(req, res, arg1) {
     }
 }
 
+
+const adminLoginUnlock = async (req,res) => {
+    let email = req.params.email;
+    let loginemailtoken = req.params.token;
+    let deviceID = req.params.deviceid;
+    const qs = require('qs');
+
+    try {
+        if (!email || !loginemailtoken || !deviceID) {
+            throw new Error("Invalid parameters");
+        }
+        // check if the loginemailtoken is valid
+        const results = await Common.db.User.findAll({
+            attributes: ['loginemailtoken'],
+            where: {
+                email: email,
+                loginemailtoken: loginemailtoken
+            }
+        });
+        if (!results || results.length != 1) {
+            throw new Error("Invalid token");
+        }
+
+        // update loginattempts to 0
+        await Common.db.UserDevices.update({
+            loginattempts: 0
+        }, {
+            where: {
+                email: email,
+                imei: deviceID
+            }
+        });
+
+        // redirect (302) to control panel with success message
+        let redirectURL = Common.controlPanelURL+"html/admin/#/Message?"+qs.stringify({
+            message: "Password unlocked",
+            status: 0
+        });
+        res.writeHead(302, {
+            'Location': redirectURL
+        });
+        res.end();
+    } catch (err) {
+        logger.error("Error in adminLoginUnlock", err);
+        let redirectURL = Common.controlPanelURL+"html/admin/#/Message?"+qs.stringify({
+            message: "Invalid token",
+            status: 1
+        });
+        res.writeHead(302, {
+            'Location': redirectURL
+        });
+        res.end();
+    }
+}
+
+const sendLockAdminNotification = async (email, deviceid, selectedDomain,firstname,lastname) => {
+    try {
+        var loginEmailToken = Common.crypto.randomBytes(48).toString('hex');
+        //update loginemailtoken and send unlock email to user
+
+        await Common.db.User.update({
+            loginemailtoken: loginEmailToken
+        }, {
+            where: {
+                email: email
+            }
+        });
+
+        // send email to admin
+        var activationLinkURL = Common.controlPanelURL + "api/auth/activate?unlock=Y&token=" + encodeURIComponent(loginEmailToken) + "&email=" + encodeURIComponent(email)+ "&deviceid=" + encodeURIComponent(deviceid);
+        logger.info(`Unlock Link: ${activationLinkURL}, email: ${email}`);
+        var senderEmail = Common.emailSender.senderEmail;
+        var senderName = Common.emailSender.senderName;
+        let toName = `${firstname} ${lastname}`;
+        let emailSubject = locale.getValue("adminUnlockEmailSubject",Common.defaultLocale);
+
+        // setup e-mail data with unicode symbols
+        var mailOptions = {
+            from: senderEmail,
+            // sender address
+            fromname: senderName,
+            to: email,
+            // list of receivers
+            toname: toName,
+            subject: emailSubject,
+            // Subject line
+            text: locale.format("adminUnlockEmailBody",firstname,lastname,activationLinkURL),
+            //"Dear " + first + " " + last + ", \nClick the following link to connect to your working environment, and then continue working from your mobile device.\n\n" + activationLinkURL + "\n\n- The Nubo Team",
+            // plaintext body
+            html: locale.format("adminUnlockBodyHTML",firstname,lastname,activationLinkURL,firstname,lastname)
+            //"<p>Dear " + first + " " + last + ",</p><p> \nClick the following link to connect to your working environment, and then continue working from your mobile device.</p>\n\n" + "<p><a href=\"" + activationLinkURL + "\">" + first + " " + last + " – Player Activation</a></p>  \n\n<p>- The Nubo Team</p>" // html body
+        };
+        
+        logger.info(`sendLockAdminNotification. mailOptions: ${JSON.stringify(mailOptions)}`);
+
+        await new Promise((resolve, reject) => {
+            Common.mailer.send(mailOptions, function (success, message) {
+                if (!success) {
+                    logger.info("sendLockAdminNotification. email error: " + message);
+                    reject(message);
+                } else {
+                    logger.info("sendLockAdminNotification. email sent to admin");
+                    resolve();
+                }
+            });
+        });
+    } catch (err) {
+        logger.error("Error in sendLockAdminNotification", err);
+    }
+}
+
 var loginWebAdmin  = function(req,res,arg1) {
     loginWebAdminAsync(req,res,arg1).catch((err) => {
         logger.error(`loginWebAdmin error: ${err}`);
@@ -519,7 +721,23 @@ var setActiveOrgForSiteAdmin = function(req, res,next) {
 }
 
 
+const defaultAdminSecurityConfig = `{
+    "minLength": 9,
+    "requiredCharacterTypes": ["uppercase", "lowercase", "number", "special"],
+    "avoidUserId": true,
+    "noRepeatedChars": true,
+    "noSequentialChars": true,
+    "passwordHistoryMonths": 3,
+    "maxLoginAttempts": 3
+}`;
+
+
 var adminLoginActivateLink = function(req,res) {
+    // check if its unlock link
+    if (req.params.unlock) {
+        adminLoginUnlock(req,res);
+        return;
+    }
     req.params.isControlPanel = true;
     require('../activationLink').func(req,res);
 };
@@ -540,62 +758,122 @@ var validateWebLogin = function(req,res) {
 };
 
 
-var adminLoginValidateActivation  = function(req,res) {
+async function adminLoginValidateActivation(req, res) {
     let email = req.params.email;
     let activationkey = req.params.activationkey;
-    let deviceid  = req.params.deviceid;
-    if (!email || email == "" | !activationkey || activationkey == "" || !deviceid) {
+    let deviceid = req.params.deviceid;
+    
+    if (!email || email == "" || !activationkey || activationkey == "" || !deviceid) {
         res.writeHead(400, {
             "Content-Type": "text/plain"
         });
         res.end("403 Bad Request \n");
         return;
     }
-    Common.db.Activation.findAll({
-        attributes: [ 'status','resetpasscode'],
-        where: {
-            email: email,
-            deviceid : deviceid,
-            activationkey: activationkey,
-        },
-    }).then(function(results) {
+
+    try {
+        const results = await Common.db.Activation.findAll({
+            attributes: ['status', 'resetpasscode', 'maindomain', 'devicename'],
+            where: {
+                email: email,
+                deviceid: deviceid,
+                activationkey: activationkey,
+            },
+        });
+
         if (!results || results.length != 1) {
             res.send({
-                status : '0',
-                message : "Not found"
+                status: '0',
+                message: "Not found"
             });
             res.end();
             return;
         }
+
         let status = results[0].status;
         if (status == Common.STATUS_ADMIN_ACTIVATION_PENDING || status == Common.STATUS_ADMIN_RESET_PENDING) {
             res.send({
-                status : status,
-                message : "Activation pending"
+                status: status,
+                message: "Activation pending"
             });
             res.end();
         } else if (status == Common.STATUS_ADMIN_ACTIVATION_VALID) {
+            const maindomain = results[0].maindomain;
+            const devicename = results[0].devicename;
+
+            const adminSecurityConfig = await setPasscode.getAdminSecurityConfig(maindomain);
+            
+            
+            // check that user device not exceeded max login attempts
+            // Find user device
+            let userDevice = await Common.db.UserDevices.findOne({
+                attributes: ['active', 'loginattempts'],
+                where: {
+                    email: email,
+                    imei: deviceid
+                }
+            });
+            if (!userDevice) {
+                logger.info(`userDevice not found. deviceid: ${deviceid}, deviceName: ${deviceName}`);
+                userDevice = await Common.db.UserDevices.create({
+                    imei: deviceid,
+                    email: email,
+                    active: 1,
+                    maindomain: maindomain,
+                    devicename: devicename,
+                    loginattempts: 0,
+                    inserttime: new Date()
+                })
+            }
+            let loginattempts = userDevice.loginattempts;
+            // logger.info(`userDevice: ${JSON.stringify(userDevice)}, loginattempts: ${loginattempts}`);
+            if (LoginAttempts.checkIfloginAttemptsExceeded(loginattempts,adminSecurityConfig)) {
+                status = Common.STATUS_PASSWORD_LOCK;
+                // logger.info(`loginattempts exceeded. email: ${email}, deviceid: ${deviceid}, maindomain: ${maindomain}, activationkey: ${activationkey}`);
+                const message = "You have incorrectly typed your password too many times. Account locked.";
+                if (req.params.resendEmail) {
+                    // read firstname and lastname from user table
+                    const user = await Common.db.User.findOne({
+                        attributes: ['firstname', 'lastname'],
+                        where: {
+                            email: email
+                        }
+                    });
+                    await sendLockAdminNotification(email, deviceid, maindomain, user?.firstname || "", user?.lastname || "");
+                }
+                
+                res.send({
+                    status: status,
+                    message: message,
+                });
+                res.end();
+                return;
+            }
+
+
             res.send({
-                status : status,
-                message : "Activation is valid",
-                resetpasscode: results[0].resetpasscode
+                status: status,
+                message: "Activation is valid",
+                resetpasscode: results[0].resetpasscode,
+                adminSecurityConfig: adminSecurityConfig
             });
             res.end();
         } else {
             res.send({
-                status : '0',
-                message : "Not found"
+                status: '0',
+                message: "Not found"
             });
             res.end();
         }
-    }).catch(function(err) {
-        logger.error("adminLoginValidateActivation error",err);
+
+    } catch (err) {
+        logger.error("adminLoginValidateActivation error", err);
         res.send({
-            status : '0',
-            message : "Not found"
+            status: '0',
+            message: "Not found"
         });
         res.end();
-    });
+    }
 }
 
 /**
@@ -808,6 +1086,8 @@ var apiAccess = function(req, res,next) {
             adminLoginActivateLink(req,res);
         } else if(arg1 == "validate") {
             adminLoginValidateActivation(req,res);
+        } else if (arg1 == "salt") {
+            adminLoginGetSalt(req,res);
         } else {
             loginWebAdminAsync(req, res,arg1);
         }
@@ -1106,6 +1386,11 @@ var apiAccess = function(req, res,next) {
                 requestType = "updateBlockedDevicesRule";
             } else if (req.method == "DELETE") {
                 requestType = "deleteBlockedDevicesRule";
+            }
+        } else if (arg1 == "adminAuthentication") {
+            if (req.method == "POST") {
+                securityPasscodeModule.setAdminAuthentication(req,res);
+                return;
             }
         }
 
@@ -1525,6 +1810,96 @@ var restGet = function(req, res,next) {
     );
 
 };
+
+async function adminLoginGetSalt(req, res) {
+    try {
+        const userName = req.params.userName;
+        const activationkey = req.params.activationkey;
+        const deviceid = req.params.deviceid;
+
+        if (!userName) {
+            res.send({
+                status: Common.STATUS_ERROR,
+                message: "Missing userName parameter"
+            });
+            return;
+        }
+
+        // Check activation key if provided
+        let validActivation = false;
+        if (activationkey) {
+            const results = await Common.db.Activation.findAll({
+                attributes: ['activationkey', 'status', 'email', 'deviceid', 'expirationdate'],
+                where: {
+                    activationkey: activationkey,
+                    email: userName,
+                    deviceid: deviceid
+                },
+            });
+            if (results && results.length === 1) {
+                let statusResult = results[0].status;
+                if (statusResult === Common.STATUS_ADMIN_ACTIVATION_VALID) {
+                    validActivation = true;
+                }
+            }
+        }
+
+        // Send activation email if needed
+        if (!validActivation) {
+            try {
+                const activationkeyResult = await new Promise((resolve, reject) => {
+                    adminLoginActivate(userName, deviceid, req.params.deviceName, false, null, (err, activationkey) => {
+                        if (err) {
+                            return reject(err);
+                        }
+                        resolve(activationkey);
+                    });
+                });
+                res.send({
+                    status: Common.STATUS_ADMIN_ACTIVATION_PENDING,
+                    message: "Please activate admin login",
+                    activationkey: activationkeyResult
+                });
+                return;
+            } catch (err) {
+                throw err;
+            }
+        }
+
+        // Find user and get their salt
+        const userResults = await Common.db.User.findAll({
+            attributes: ['passcodesalt'],
+            where: {
+                isadmin: 1,
+                isactive: 1,
+                email: userName
+            }
+        });
+
+        if (!userResults || userResults.length === 0) {
+            logger.info(`adminLoginGetSalt. User not found for ${userName}`);
+            res.send({
+                status: Common.STATUS_ERROR,
+                message: "User not found"
+            });
+            return;
+        }
+
+        const user = userResults[0];
+        logger.info(`adminLoginGetSalt. User found for ${userName}. Salt: ${user.passcodesalt}`);
+        res.send({
+            status: Common.STATUS_OK,
+            salt: user.passcodesalt
+        });
+
+    } catch (err) {
+        logger.error(`adminLoginGetSalt error: ${err}`, err);
+        res.send({
+            status: Common.STATUS_ERROR,
+            message: "Internal error"
+        });
+    }
+}
 
 module.exports = {
     get: restGet,
