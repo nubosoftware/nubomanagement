@@ -59,7 +59,6 @@ class LoginAttempts {
                     where: {
                         email: email,
                         imei: imei,
-                        maindomain: domain
                     }
                 });
                 

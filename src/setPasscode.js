@@ -455,7 +455,9 @@ const defaultAdminSecurityConfig = `{
     "noRepeatedChars": true,
     "noSequentialChars": true,
     "passwordHistoryMonths": 3,
-    "maxLoginAttempts": 3
+    "maxLoginAttempts": 3,
+    "expireSeconds": 600,
+    "oneLoginPerUser": false
 }`;
 
 async function getAdminSecurityConfig(domain) {

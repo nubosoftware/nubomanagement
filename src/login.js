@@ -36,7 +36,10 @@ module.exports = function(token, callback) {
                     return;
                 } else {
                     let exptime;
-                    if (login.loginParams.adminLogin == 1) {
+                    if (login.loginParams.expireSeconds && !isNaN(login.loginParams.expireSeconds)) {
+                        exptime =  Number(login.loginParams.expireSeconds);
+                        logger.info(`login.setExpireSeconds. exptime: ${exptime}`);
+                    } else if (login.loginParams.adminLogin == 1) {
                         exptime = 60 * 60;
                     } else {
                         exptime = 60 * 10;
@@ -56,6 +59,10 @@ module.exports = function(token, callback) {
     this.delete = function(callback){
          Common.redisClient.del("login_" + this.loginParams.loginToken, callback);
     }
+
+    this.setExpireSeconds = function(expireSeconds) {
+        this.loginParams.expireSeconds = expireSeconds;
+    };
 
     this.setEmail = function(email) {
         this.loginParams.email = email;

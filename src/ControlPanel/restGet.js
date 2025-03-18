@@ -364,7 +364,7 @@ async function loginWebAdminAsync(req, res, arg1) {
                 }
             }
         });
-        const oneLoginPerUser = Common.oneAdminLoginPerUser;
+        const oneLoginPerUser = adminSecurityConfig.oneLoginPerUser !== undefined ? adminSecurityConfig.oneLoginPerUser : Common.oneAdminLoginPerUser;
         logger.info(`loginWebAdminAsync. orgname: ${orgname}, results.length: ${orgResults.length}, selectedDomain: ${selectedDomain}, oneAdminLoginPerUser: ${oneLoginPerUser}`);
         orgs = orgResults;
 
@@ -440,6 +440,11 @@ async function loginWebAdminAsync(req, res, arg1) {
         login.setPlatformDomain(platformDomain);
         login.setAdminPermissions(permissions.getJSON());
         login.setValidLogin(true);
+        if (adminSecurityConfig.expireSeconds) {
+            login.setExpireSeconds(adminSecurityConfig.expireSeconds);
+        } else {
+            login.setExpireSeconds(600); // default 10 minutes
+        }
 
         await new Promise((resolve, reject) => {
             login.save((err, loginInstance) => {
