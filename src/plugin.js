@@ -230,7 +230,11 @@ const eventLog = require('./eventLog.js');
             this.initialized = false;
             if (this.pluginModule) {
                 if (this.pluginModule.deinit) {
-                    this.pluginModule.deinit();
+                    const result = this.pluginModule.deinit();
+                    if (result instanceof Promise) {
+                        // wait for the deinit to finish
+                        await result;
+                    }
                 }
                 this.pluginModule = undefined;
 

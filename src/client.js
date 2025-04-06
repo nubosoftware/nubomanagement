@@ -102,7 +102,7 @@ var apiAccess = function (req, res,next) {
     const arg2 = req.params.arg2;
     const arg3 = req.params.arg3;
 
-    logger.info("Client.apiAccess: objectType: " + objectType + " arg1: " + arg1 + " arg2: " + arg2 + " arg3: " + arg3);
+    // logger.info("Client.apiAccess: objectType: " + objectType + " arg1: " + arg1 + " arg2: " + arg2 + " arg3: " + arg3);
 
     if (objectType === "auth") {
         if (arg1 === "activate") {
