@@ -122,27 +122,45 @@ function getProfiles(req, res, next) {
 
         let sortBy = req.params.sortBy;
         let order = [['lastname'], ['firstname']];
-        if (sortBy && sortBy != "") {
-            if (!util.isArray(sortBy)) {
-                sortBy = [sortBy];
+        try {
+            if (sortBy && sortBy !== "") {
+                if (!util.isArray(sortBy)) {
+                    sortBy = [sortBy];
+                }
+                order = [];
+                sortBy.forEach(function (sortcol) {
+                    if (typeof sortcol === 'string' && sortcol.trim() !== '') {
+                        order.push([sortcol.toLowerCase()]);
+                    } else {
+                        logger.warn(`getProfiles: sortBy contained an invalid (non-string or empty) element: ${JSON.stringify(sortcol)}. Skipping this sort criterion.`);
+                    }
+                });
+                
+                // If no valid sort criteria were added, fall back to default order
+                if (order.length === 0) {
+                    order = [['lastname'], ['firstname']];
+                }
             }
-            order = [];
-            sortBy.forEach(function (sortcol) {
-                order.push([sortcol.toLowerCase()]);
-            });
-        }
 
-        let sortDesc = req.params.sortDesc;
-        if (sortDesc && sortDesc != "") {
-            if (!util.isArray(sortDesc)) {
-                sortDesc = [sortDesc];
+            let sortDesc = req.params.sortDesc;
+            if (sortDesc && sortDesc !== "") {
+                if (!util.isArray(sortDesc)) {
+                    sortDesc = [sortDesc];
+                }
+                let ind = 0;
+                sortDesc.forEach(function (coldesc) {
+                    if (ind < order.length) {
+                        if (coldesc === true || (typeof coldesc === 'string' && coldesc.toLowerCase() === 'true')) {
+                            order[ind].push("DESC");
+                        }
+                    }
+                    ind++;
+                });
             }
-            let ind = 0;
-            sortDesc.forEach(function (coldesc) {
-                if (coldesc == true)
-                    order[ind].push("DESC");
-                ind++;
-            });
+        } catch (err) {
+            logger.error("Error processing sort parameters: " + err.message);
+            // Fall back to default sort order if there's an error
+            order = [['lastname'], ['firstname']];
         }
 
         let search = req.params.search;

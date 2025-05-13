@@ -931,4 +931,6 @@ PRIMARY KEY (hardwaredesc, devicemodel));"
 , "1.5.0.3.101" : "ALTER TABLE static_platforms ADD COLUMN send_logs int default 0;"
 , "1.5.0.4.100": "CREATE TABLE component_versions (componentName VARCHAR(50) NOT NULL, componentIndex INT NOT NULL, version VARCHAR(50), buildTime DATETIME, createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (componentName, componentIndex));"
 , "1.5.0.4.101": "ALTER TABLE orgs ADD COLUMN admin_security_config TEXT;"
+, "1.5.0.4.102" : "ALTER TABLE orgs ALTER COLUMN showfullnotif SET DEFAULT 1;;"
+, "1.5.0.4.103" : "UPDATE orgs SET showfullnotif = 1;"
 }

@@ -980,18 +980,27 @@ var filter = {
         "path": "/Notifications/pushNotification",
         "constraints": {
             "email": {
-                array: constraints.userNameConstrRequested
+                array: constraints.userNameConstrOptional
             },
-            "titleText": constraints.openTextConstrRequested,
-            "notifyTime": constraints.openTextConstrRequested,
-            "notifyLocation": constraints.openTextConstrRequested,
-            "appName": constraints.ExcludeSpecialCharactersRequested,
-            "authKey": constraints.ExcludeSpecialCharactersRequested,
+            "titleText": constraints.openTextConstrOptional,
+            "notifyTime": constraints.openTextConstrOptional,
+            "notifyLocation": constraints.openTextConstrOptional,
+            "appName": constraints.ExcludeSpecialCharactersOptional,
+            "authKey": constraints.ExcludeSpecialCharactersOptional,
             "contentId": constraints.ExcludeSpecialCharactersOptional,
         },
         "bodyConstraints": {
             "session": constraints.sessionIdConstrOptional,
             "adminLoginToken": constraints.loginTokenConstrOptional,
+            "email": {
+                array: constraints.userNameConstrOptional
+            },
+            "titleText": constraints.openTextConstrOptional,
+            "notifyTime": constraints.openTextConstrOptional,
+            "notifyLocation": constraints.openTextConstrOptional,
+            "appName": constraints.ExcludeSpecialCharactersOptional,
+            "authKey": constraints.ExcludeSpecialCharactersOptional,
+            "contentId": constraints.ExcludeSpecialCharactersOptional
         },
         "headerConstraints": {
             "controlpanelid": constraints.controlPanelIDConstrOptional
