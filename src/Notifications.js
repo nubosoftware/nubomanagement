@@ -480,7 +480,7 @@ function pushNotification(req, res,next) {
         email: req.params.email,
         titleText : req.params.titleText,
         notifyTime : req.params.notifyTime,
-        notifyLocation : req.params.notifyLocation,
+        notifyLocation : req.params.notifyBody || req.params.notifyLocation, // notifyLocation nad notifyBody map to the same field
         appName : req.params.appName,
         authKey : req.params.authKey,
         adminLogin: req.nubodata.adminLogin,
