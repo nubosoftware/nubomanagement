@@ -415,6 +415,21 @@ async function loginWebAdminAsync(req, res, arg1) {
 
         }
 
+        // get the list of active plugins and return in the response
+        let activePlugins = [];
+        if (Common.pluginsEnabled) {
+            try {
+                for (const pluginId in Plugin.plugins) {
+                    const plugin = Plugin.plugins[pluginId];
+                    if (plugin.active && plugin.status === Plugin.PLUGIN_STATUS_LOADED) {
+                        activePlugins.push(pluginId);
+                    }
+                }
+            } catch (err) {
+                logger.error(`Error getting active plugins: ${err}`);
+            }
+        }
+
         // Create new login token
         login = await new Promise((resolve, reject) => {
             new Login(null, (err, newLogin) => {
@@ -477,6 +492,7 @@ async function loginWebAdminAsync(req, res, arg1) {
             orgs,
             edition: Common.getEdition(),
             pluginsEnabled: Common.pluginsEnabled,
+            activePlugins: activePlugins,
             productName: Common.productName,
             deviceTypes: Common.getDeviceTypes(),
             siteAdmin: siteAdmin === 1,
@@ -725,9 +741,24 @@ var validateWebLogin = function(req,res) {
         res.end("403 Forbidden\n");
         return;
     }
+    // get the list of active plugins and return in the response
+    let activePlugins = [];
+    if (Common.pluginsEnabled) {
+        try {
+            for (const pluginId in Plugin.plugins) {
+                const plugin = Plugin.plugins[pluginId];
+                if (plugin.active && plugin.status === Plugin.PLUGIN_STATUS_LOADED) {
+                    activePlugins.push(pluginId);
+                }
+            }
+        } catch (err) {
+            logger.error(`Error getting active plugins: ${err}`);
+        }
+    }
     res.send({
         status : Common.STATUS_OK,
-        message : "Validated."
+        message : "Validated.",
+        activePlugins: activePlugins
     });
     res.end();
 };

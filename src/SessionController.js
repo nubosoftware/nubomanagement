@@ -777,6 +777,9 @@ async function startSessionImp(startSessionParams) {
                 // set app usage file name
                 session.params.appUsageFileName = `appUsage_${session.params.sessid}.csv`;
 
+                // set up activity monitor temporary from Settings
+                session.params.activity_monitor = Common.activity_monitor;
+
 
 
                 if (login.loginParams.hideNuboAppPackageName) {

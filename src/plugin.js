@@ -15,6 +15,14 @@ const eventLog = require('./eventLog.js');
 
 /**
  * Plugin management class
+ * 
+ * Plugin Configuration Description TypeScript type:
+ * @typedef {Object} PluginConfigurationDescription
+ * @property {string} key - The configuration key
+ * @property {string} name - Display name for the configuration
+ * @property {'string'|'number'|'boolean'|'object'|'array'} dataType - Data type of the configuration value
+ * @property {*} defaultValue - Default value for the configuration
+ * @property {boolean} [secretValue] - Whether the value is secret (password, private key, etc.). Only allowed for string dataType.
  */
  class Plugin {
 
@@ -168,6 +176,12 @@ const eventLog = require('./eventLog.js');
 
             if (this.pluginModule.getConfDesciptions) {
                 this.confDescriptions = this.pluginModule.getConfDesciptions();
+                // Decrypt secret values in configuration now that we have the descriptions
+                const hasSecrets = this.confDescriptions.some(desc => desc.secretValue === true);
+                if (hasSecrets) {
+                    logger.info(`Plugin ${this.id}: Decrypting secret configuration values`);
+                }
+                this.configuration = this.decryptSecretValues(this.configuration, this.confDescriptions);
             }
 
             if (!this.active) {
@@ -187,15 +201,39 @@ const eventLog = require('./eventLog.js');
                     defineDBModel: (modelName, modelDefinition, options) => {
                         options = options || {};
                         options.tableName = `p_${this.id}_${modelName}`.replaceAll("-","_").toLowerCase();
-                        logger.info(`defineDBModel. modelName: ${modelName} , modelDefinition: ${JSON.stringify(modelDefinition)}, options: ${JSON.stringify(options)}`);
+                        logger.info(`defineDBModel. modelName: ${modelName}`);
                         return Common.sequelize.define(modelName, modelDefinition, options);
                     },
-                    createEvent: (isSecurityEvent, email, mainDomain, extraInfo, level) => {
+                    createEvent: (isSecurityEvent, email, mainDomain, extraInfo, level) => {    
                         const eventType = isSecurityEvent ? eventLog.EV_CONST.EV_PLUGIN_SECURITY_EVENT : eventLog.EV_CONST.EV_PLUGIN_EVENT;
                         if (!level) {
                             level = eventLog.EV_CONST.INFO;
                         }
                         return eventLog.createEvent(eventType && eventType > 0 ? eventType : eventLog.EV_CONST.EV_PLUGIN_EVENT, email, mainDomain, extraInfo, level);
+                    },
+                    sendSmsMessage: async (phoneNumber, message) => {
+                        return new Promise((resolve, reject) => {
+                            smsNotification.sendSmsNotificationInternal(phoneNumber, message, null, function (message, status) {
+                                logger.info(message);
+                                if (status == 0) {
+                                    reject(message);
+                                } else {
+                                    resolve(message);
+                                }
+                            });
+                        });
+                    },
+                    sendEmailMessage: async (mailOptions) => {                      
+                        return new Promise((resolve, reject) => {
+                            Common.mailer.send(mailOptions, function (success, message) {
+                                if (!success) {
+                                    logger.info("email send error: " + message);
+                                    reject(message);
+                                } else {
+                                    resolve(message);
+                                }
+                            });
+                        });
                     }
                 }
             }, Plugin.getCoreModule());
@@ -685,6 +723,12 @@ const eventLog = require('./eventLog.js');
                 throw new Error(`Plugin not found: ${id}`);
             }
             let pluginRes = _.pick(plugin,"id","version","name","description","active","status","error","configuration","confDescriptions")
+            
+            // Filter secret values in configuration for API response
+            if (pluginRes.configuration && pluginRes.confDescriptions) {
+                pluginRes.configuration = plugin.filterSecretValuesForResponse(pluginRes.configuration, pluginRes.confDescriptions);
+            }
+            
             // logger.info(`getPlugin. configuration: s${JSON.stringify(pluginRes.configuration,null,2)}`);
             res.send({
                 status: Common.STATUS_OK,
@@ -770,20 +814,81 @@ const eventLog = require('./eventLog.js');
                 throw new Error(`Update. Invalid parameter`);
             }
             if (req.params.configuration) {
-                // compare new configuration with old one
+                // Handle plugin configuration update with secret value support
+                // - "***SECRET_VALUE_SET***" means preserve existing secret value
+                // - Empty string means set secret value to empty
+                // - Any other value means update secret value to new value
                 let newConf = req.params.configuration;
                 let oldConf = plugin.configuration;
+                
+                // Get existing encrypted configuration from database for secret value preservation
+                let existingEncryptedConf = null;
+                if (plugin.dbItem.configuration) {
+                    try {
+                        existingEncryptedConf = JSON.parse(plugin.dbItem.configuration);
+                    } catch (err) {
+                        logger.error(`Error parsing existing encrypted configuration for plugin ${plugin.id}. err: ${err}`, err);
+                    }
+                }
+                
+                // Check if configuration actually changed (ignoring secret placeholders)
                 let changed = false;
                 for (const key in newConf) {
-                    if (newConf[key] !== oldConf[key]) {
+                    // For secret values, if they sent the placeholder, don't consider it changed
+                    let isSecretPlaceholder = false;
+                    if (plugin.confDescriptions) {
+                        const desc = plugin.confDescriptions.find(d => d.key === key);
+                        if (desc && desc.secretValue === true && newConf[key] === "***SECRET_VALUE_SET***") {
+                            isSecretPlaceholder = true;
+                        }
+                    }
+                    
+                    if (!isSecretPlaceholder && newConf[key] !== oldConf[key]) {
                         changed = true;
                         break;
                     }
                 }
+                
                 if (changed) {
                     logger.info(`Plugin configuration changed. Updating`);
-                    plugin.configuration = newConf;
-                    plugin.dbItem.configuration =  JSON.stringify(newConf);
+                    
+                    // Build runtime configuration by handling secret placeholders
+                    let runtimeConf = JSON.parse(JSON.stringify(newConf)); // start with new config
+                    if (plugin.confDescriptions) {
+                        for (const desc of plugin.confDescriptions) {
+                            if (desc.secretValue === true && desc.dataType === 'string') {
+                                const key = desc.key;
+                                if (runtimeConf[key] === "***SECRET_VALUE_SET***") {
+                                    // Keep existing decrypted value
+                                    if (oldConf[key] !== undefined) {
+                                        runtimeConf[key] = oldConf[key];
+                                    } else {
+                                        runtimeConf[key] = "";
+                                    }
+                                }
+                                // For other values (empty string or new values), use as provided
+                            }
+                        }
+                    }
+                    plugin.configuration = runtimeConf;
+                    
+                    // Handle secret value placeholders for database storage
+                    let processedConf = newConf;
+                    if (plugin.confDescriptions) {
+                        processedConf = plugin.handleSecretValuesForUpdate(newConf, existingEncryptedConf, plugin.confDescriptions);
+                    }
+                    
+                    // Encrypt secret values before saving to database (but preserve already encrypted ones)
+                    let encryptedConf = processedConf;
+                    if (plugin.confDescriptions) {
+                        const hasSecrets = plugin.confDescriptions.some(desc => desc.secretValue === true);
+                        if (hasSecrets) {
+                            logger.info(`Plugin ${plugin.id}: Processing secret configuration values before saving`);
+                        }
+                        encryptedConf = plugin.encryptSecretValuesForUpdate(processedConf, plugin.confDescriptions);
+                    }
+                    
+                    plugin.dbItem.configuration = JSON.stringify(encryptedConf);
                     logger.info(`Plugin configuration changed: ${plugin.dbItem.configuration}}`);
                     await plugin.dbItem.save();
                     // if (plugin.active) {
@@ -892,6 +997,18 @@ const eventLog = require('./eventLog.js');
                         }
                         if (typeof pluginModule.init !== 'function') {
                             throw new Error("Init not found in plugin module");
+                        }
+                        
+                        // Validate confDescriptions if present
+                        if (pluginModule.getConfDesciptions) {
+                            const confDescriptions = pluginModule.getConfDesciptions();
+                            if (Array.isArray(confDescriptions)) {
+                                for (const desc of confDescriptions) {
+                                    if (desc.secretValue === true && desc.dataType !== 'string') {
+                                        throw new Error(`Configuration '${desc.key}': secretValue can only be true for string dataType`);
+                                    }
+                                }
+                            }
                         }
                     } finally {
                         originalRequire.unrequire(moduleJS);
@@ -1159,6 +1276,181 @@ const eventLog = require('./eventLog.js');
             }
         }
         return false;
+    }
+
+    /**
+     * Encrypt secret values in configuration based on confDescriptions
+     * @param {Object} configuration - The configuration object
+     * @param {Array} confDescriptions - Array of configuration descriptions
+     * @returns {Object} - Configuration with secret values encrypted
+     */
+    encryptSecretValues(configuration, confDescriptions) {
+        if (!configuration || !confDescriptions) {
+            return configuration;
+        }
+
+        // Check if there are any secret values to encrypt
+        const hasSecretValues = confDescriptions.some(desc => desc.secretValue === true && desc.dataType === 'string');
+        if (!hasSecretValues) {
+            return configuration;
+        }
+
+        const encrypted = JSON.parse(JSON.stringify(configuration)); // deep clone
+        
+        for (const desc of confDescriptions) {
+            if (desc.secretValue === true && desc.dataType === 'string' && encrypted[desc.key]) {
+                // Only encrypt if not already encrypted
+                if (typeof encrypted[desc.key] === 'string' && encrypted[desc.key].indexOf("enc:") !== 0) {
+                    encrypted[desc.key] = Common.enc(encrypted[desc.key]);
+                }
+            }
+        }
+        
+        return encrypted;
+    }
+
+    /**
+     * Decrypt secret values in configuration based on confDescriptions
+     * @param {Object} configuration - The configuration object
+     * @param {Array} confDescriptions - Array of configuration descriptions
+     * @returns {Object} - Configuration with secret values decrypted
+     */
+    decryptSecretValues(configuration, confDescriptions) {
+        if (!configuration || !confDescriptions) {
+            return configuration;
+        }
+
+        // Check if there are any secret values to decrypt
+        const hasSecretValues = confDescriptions.some(desc => desc.secretValue === true && desc.dataType === 'string');
+        if (!hasSecretValues) {
+            return configuration;
+        }
+
+        const decrypted = JSON.parse(JSON.stringify(configuration)); // deep clone
+        
+        for (const desc of confDescriptions) {
+            if (desc.secretValue === true && desc.dataType === 'string' && decrypted[desc.key]) {
+                // Only decrypt if encrypted
+                if (typeof decrypted[desc.key] === 'string' && decrypted[desc.key].indexOf("enc:") === 0) {
+                    decrypted[desc.key] = Common.dec(decrypted[desc.key]);
+                }
+            }
+        }
+        
+        return decrypted;
+    }
+
+    /**
+     * Filter secret values for API response
+     * @param {Object} configuration - The configuration object
+     * @param {Array} confDescriptions - Array of configuration descriptions
+     * @returns {Object} - Configuration with secret values replaced by indicators
+     */
+    filterSecretValuesForResponse(configuration, confDescriptions) {
+        if (!configuration || !confDescriptions) {
+            return configuration;
+        }
+
+        // Check if there are any secret values to filter
+        const hasSecretValues = confDescriptions.some(desc => desc.secretValue === true && desc.dataType === 'string');
+        if (!hasSecretValues) {
+            return configuration;
+        }
+
+        const filtered = JSON.parse(JSON.stringify(configuration)); // deep clone
+        
+        for (const desc of confDescriptions) {
+            if (desc.secretValue === true && desc.dataType === 'string') {
+                if (filtered[desc.key] !== undefined) {
+                    // Replace secret value with indicator of whether it's empty or not
+                    const hasValue = filtered[desc.key] && filtered[desc.key].length > 0;
+                    filtered[desc.key] = hasValue ? "***SECRET_VALUE_SET***" : "";
+                }
+            }
+        }
+        
+        return filtered;
+    }
+
+    /**
+     * Handle secret values during configuration updates
+     * If a secret value is set to "***SECRET_VALUE_SET***", preserve the existing encrypted value
+     * @param {Object} newConfiguration - The new configuration from the frontend
+     * @param {Object} existingEncryptedConfiguration - The existing encrypted configuration from database
+     * @param {Array} confDescriptions - Array of configuration descriptions
+     * @returns {Object} - Configuration ready for encryption/saving
+     */
+    handleSecretValuesForUpdate(newConfiguration, existingEncryptedConfiguration, confDescriptions) {
+        if (!newConfiguration || !confDescriptions) {
+            return newConfiguration;
+        }
+
+        // Check if there are any secret values to handle
+        const hasSecretValues = confDescriptions.some(desc => desc.secretValue === true && desc.dataType === 'string');
+        if (!hasSecretValues) {
+            return newConfiguration;
+        }
+
+        const processed = JSON.parse(JSON.stringify(newConfiguration)); // deep clone
+        
+        for (const desc of confDescriptions) {
+            if (desc.secretValue === true && desc.dataType === 'string') {
+                const key = desc.key;
+                if (processed[key] === "***SECRET_VALUE_SET***") {
+                    // Preserve existing encrypted value - don't change it
+                    if (existingEncryptedConfiguration && existingEncryptedConfiguration[key]) {
+                        // Use the existing encrypted value directly
+                        processed[key] = existingEncryptedConfiguration[key];
+                        logger.info(`Plugin configuration update: Preserving existing secret value for key '${key}'`);
+                    } else {
+                        // No existing value, set to empty
+                        processed[key] = "";
+                        logger.info(`Plugin configuration update: No existing secret value for key '${key}', setting to empty`);
+                    }
+                } else if (processed[key] === "") {
+                    // Explicitly setting to empty - allow it
+                    logger.info(`Plugin configuration update: Setting secret value for key '${key}' to empty`);
+                } else if (processed[key] && processed[key].length > 0) {
+                    // New value provided - will be encrypted normally
+                    logger.info(`Plugin configuration update: New secret value provided for key '${key}'`);
+                }
+            }
+        }
+        
+        return processed;
+    }
+
+    /**
+     * Encrypt secret values in configuration based on confDescriptions
+     * Modified to skip values that are already encrypted (preserve existing encrypted values)
+     * @param {Object} configuration - The configuration object
+     * @param {Array} confDescriptions - Array of configuration descriptions
+     * @returns {Object} - Configuration with secret values encrypted
+     */
+    encryptSecretValuesForUpdate(configuration, confDescriptions) {
+        if (!configuration || !confDescriptions) {
+            return configuration;
+        }
+
+        // Check if there are any secret values to encrypt
+        const hasSecretValues = confDescriptions.some(desc => desc.secretValue === true && desc.dataType === 'string');
+        if (!hasSecretValues) {
+            return configuration;
+        }
+
+        const encrypted = JSON.parse(JSON.stringify(configuration)); // deep clone
+        
+        for (const desc of confDescriptions) {
+            if (desc.secretValue === true && desc.dataType === 'string' && encrypted[desc.key]) {
+                // Only encrypt if not already encrypted (skip preserved encrypted values)
+                if (typeof encrypted[desc.key] === 'string' && encrypted[desc.key].indexOf("enc:") !== 0) {
+                    encrypted[desc.key] = Common.enc(encrypted[desc.key]);
+                }
+                // If it's already encrypted (starts with "enc:"), leave it as is (preserved value)
+            }
+        }
+        
+        return encrypted;
     }
 }
 

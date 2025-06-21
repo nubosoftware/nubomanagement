@@ -453,8 +453,8 @@ function sendSmsNotificationInternal(toPhone, body, fromPhone, callback) {
     if (Common.NotificationGateway != null && Common.NotificationGateway.smsUrl != null
             && Common.NotificationGateway.smsUrl.length > 0) {
         // send SMS to remote server
-        sendSmsNotificationToRemoteSever(toPhone, body, function(returnMessage) {
-            callback(returnMessage,status);
+        sendSmsNotificationToRemoteSever(toPhone, body, function(returnMessage,returnStatus) {
+            callback(returnMessage,returnStatus);
             return;
         });
     } else {
@@ -611,10 +611,10 @@ function sendSmsNotificationToRemoteSever(toPhone, body, callback) {
         if (error) {
             logger.info('error: ' + error);
             var msg = "Connection error";
-            callback(msg);
+            callback(msg,0);
             return;
         } else {
-            callback(body);
+            callback(body,response.statusCode === 200 ? 1 : 0);
         }
     });
 }
