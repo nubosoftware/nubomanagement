@@ -7,17 +7,15 @@ const EV_CONST = eventLog.EV_CONST;
 
 class LoginAttempts {
     constructor() {
-        this.maxLoginAttempts = Common.hasOwnProperty("maxLoginAttempts") ? 
+        this.maxLoginAttempts = Common.maxLoginAttempts !== undefined && Common.maxLoginAttempts !== null ?
             Common.maxLoginAttempts : 3;
     }
 
-    getMaxLoginAttempts() {
-        return this.maxLoginAttempts;
-    }
-
     checkIfloginAttemptsExceeded(currentAttempts,adminSecurityConfig) {
+        this.maxLoginAttempts = Common.maxLoginAttempts !== undefined && Common.maxLoginAttempts !== null ?
+            Common.maxLoginAttempts : 3;
         let maxAttempts = adminSecurityConfig ? adminSecurityConfig.maxLoginAttempts : this.maxLoginAttempts;
-        // logger.info(`checkIfloginAttemptsExceeded: currentAttempts: ${currentAttempts}, maxAttempts: ${maxAttempts}, isAdminSecurityConfig: ${adminSecurityConfig !== undefined}`);
+        logger.info(`checkIfloginAttemptsExceeded: currentAttempts: ${currentAttempts}, maxAttempts: ${maxAttempts}, isAdminSecurityConfig: ${adminSecurityConfig !== undefined && adminSecurityConfig !== null}`);
         return maxAttempts > 0 && currentAttempts >= maxAttempts;
     }
 
@@ -34,7 +32,7 @@ class LoginAttempts {
         try {
             // Extract parameters based on whether a login object or direct parameters were provided
             let email, imei, domain;
-            
+
             if (typeof loginOrEmail === 'object' && loginOrEmail !== null) {
                 // Login object provided
                 email = loginOrEmail.getEmail();
@@ -61,11 +59,11 @@ class LoginAttempts {
                         imei: imei,
                     }
                 });
-                
+
                 if (!result) {
                     throw new Error(`User device not found for email: ${email}, device: ${imei}`);
                 }
-                
+
                 currentAttempts = result.loginattempts || 0;
             }
 
@@ -99,7 +97,7 @@ class LoginAttempts {
             );
 
             const exceeded = this.checkIfloginAttemptsExceeded(newAttempts,adminSecurityConfig);
-            
+
             if (exceeded) {
                 logger.error("Login attempts exceeded maximum allowed attempts");
                 // Create event in Eventlog
@@ -125,4 +123,4 @@ class LoginAttempts {
     }
 }
 
-module.exports = new LoginAttempts(); 
+module.exports = new LoginAttempts();
