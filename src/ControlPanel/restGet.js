@@ -130,7 +130,7 @@ async function loginWebAdminAsync(req, res, arg1) {
         let passcodetypechange;
         let passcodeTypePrev;
         let isValidPasscode = false;
-        let login, orgdomain, isadmin;
+        let login, orgdomain, isadmin, orgemail;
         let firstname, lastname, imageurl, orgname;
         let orgs;
         let siteAdmin = 0;
@@ -159,7 +159,7 @@ async function loginWebAdminAsync(req, res, arg1) {
         }
 
         // Send activation email if needed
-        if (!(validActivation && !resetPassword)) {
+        if (!validActivation || resetPassword) {
             activationkey = null;
             try {
                 const activationkeyResult = await new Promise((resolve, reject) => {
@@ -181,7 +181,7 @@ async function loginWebAdminAsync(req, res, arg1) {
 
         // Find user
         const userResults = await Common.db.User.findAll({
-            attributes: ['firstname', 'lastname', 'imageurl', 'isactive', 'passcode', 'passcodetypechange', 'passcodetypeprev', 'passcodesalt', 'isadmin', 'orgdomain'],
+            attributes: ['firstname', 'lastname', 'imageurl', 'isactive', 'passcode', 'passcodetypechange', 'passcodetypeprev', 'passcodesalt', 'isadmin', 'orgdomain','orgemail'],
             where: {
                 isadmin: 1,
                 isactive: 1,
@@ -207,6 +207,7 @@ async function loginWebAdminAsync(req, res, arg1) {
         passcodeTypePrev = user.passcodetypeprev || 0;
         isadmin = user.isadmin || 0;
         orgdomain = user.orgdomain;
+        orgemail = user.orgemail;
         firstname = user.firstname;
         lastname = user.lastname;
         imageurl = user.imageurl;
@@ -247,7 +248,7 @@ async function loginWebAdminAsync(req, res, arg1) {
         if (LoginAttempts.checkIfloginAttemptsExceeded(loginattempts,adminSecurityConfig)) {
             status = Common.STATUS_PASSWORD_LOCK;
             message = "You have incorrectly typed your password too many times. Please contact your administrator.";
-            await sendLockAdminNotification(userName, deviceid, selectedDomain,firstname,lastname);  
+            await sendLockAdminNotification(userName, deviceid, selectedDomain,firstname,lastname,orgemail || userName);
             throw message;
         }
 
@@ -260,7 +261,7 @@ async function loginWebAdminAsync(req, res, arg1) {
                 message = "Invalid password";
                 throw message;
             }
-             
+
             const newSalt = req.params.setSalt;
             const salt = newSalt || setPasscode.generateUserSalt(userName);
             const newPasswordHash =  passwordHash ? newPassword : setPasscode.hashPassword(newPassword, salt);
@@ -301,15 +302,15 @@ async function loginWebAdminAsync(req, res, arg1) {
             if (dbPasscode === hashedPasscode) {
                 isValidPasscode = true;
             }
-          
+
             logger.info(`isValidPasscode: ${isValidPasscode}`);
             if (!isValidPasscode) {
                 // Increment attempts on failure
                 const result = await LoginAttempts.checkAndUpdateAttempts(
-                    userName, 
-                    deviceid, 
-                    selectedDomain, 
-                    null, 
+                    userName,
+                    deviceid,
+                    selectedDomain,
+                    null,
                     false,
                     adminSecurityConfig
                 );
@@ -317,7 +318,7 @@ async function loginWebAdminAsync(req, res, arg1) {
                 if (result.exceeded) {
                     status = Common.STATUS_PASSWORD_LOCK;
                     message = "You have incorrectly typed your password too many times. Please contact your administrator.";
-                    await sendLockAdminNotification(userName, deviceid, selectedDomain,firstname,lastname);  
+                    await sendLockAdminNotification(userName, deviceid, selectedDomain,firstname,lastname,orgemail || userName);
                     throw message;
                 } else {
                     status = Common.STATUS_PASSWORD_NOT_MATCH;
@@ -327,10 +328,10 @@ async function loginWebAdminAsync(req, res, arg1) {
             } else {
                 // Reset attempts on success
                 await LoginAttempts.checkAndUpdateAttempts(
-                    userName, 
-                    deviceid, 
-                    selectedDomain, 
-                    null, 
+                    userName,
+                    deviceid,
+                    selectedDomain,
+                    null,
                     true,
                     adminSecurityConfig
                 );
@@ -567,7 +568,7 @@ const adminLoginUnlock = async (req,res) => {
     }
 }
 
-const sendLockAdminNotification = async (email, deviceid, selectedDomain,firstname,lastname) => {
+const sendLockAdminNotification = async (email, deviceid, selectedDomain,firstname,lastname,toEmail) => {
     try {
         var loginEmailToken = Common.crypto.randomBytes(48).toString('hex');
         //update loginemailtoken and send unlock email to user
@@ -593,7 +594,7 @@ const sendLockAdminNotification = async (email, deviceid, selectedDomain,firstna
             from: senderEmail,
             // sender address
             fromname: senderName,
-            to: email,
+            to: toEmail,
             // list of receivers
             toname: toName,
             subject: emailSubject,
@@ -604,7 +605,7 @@ const sendLockAdminNotification = async (email, deviceid, selectedDomain,firstna
             html: locale.format("adminUnlockBodyHTML",firstname,lastname,activationLinkURL,firstname,lastname)
             //"<p>Dear " + first + " " + last + ",</p><p> \nClick the following link to connect to your working environment, and then continue working from your mobile device.</p>\n\n" + "<p><a href=\"" + activationLinkURL + "\">" + first + " " + last + " – Player Activation</a></p>  \n\n<p>- The Nubo Team</p>" // html body
         };
-        
+
         logger.info(`sendLockAdminNotification. mailOptions: ${JSON.stringify(mailOptions)}`);
 
         await new Promise((resolve, reject) => {
@@ -768,7 +769,7 @@ async function adminLoginValidateActivation(req, res) {
     let email = req.params.email;
     let activationkey = req.params.activationkey;
     let deviceid = req.params.deviceid;
-    
+
     if (!email || email == "" || !activationkey || activationkey == "" || !deviceid) {
         res.writeHead(400, {
             "Content-Type": "text/plain"
@@ -808,8 +809,8 @@ async function adminLoginValidateActivation(req, res) {
             const devicename = results[0].devicename;
 
             const adminSecurityConfig = await setPasscode.getAdminSecurityConfig(maindomain);
-            
-            
+
+
             // check that user device not exceeded max login attempts
             // Find user device
             let userDevice = await Common.db.UserDevices.findOne({
@@ -839,14 +840,14 @@ async function adminLoginValidateActivation(req, res) {
                 if (req.params.resendEmail) {
                     // read firstname and lastname from user table
                     const user = await Common.db.User.findOne({
-                        attributes: ['firstname', 'lastname'],
+                        attributes: ['firstname', 'lastname', 'orgemail'],
                         where: {
                             email: email
                         }
                     });
-                    await sendLockAdminNotification(email, deviceid, maindomain, user?.firstname || "", user?.lastname || "");
+                    await sendLockAdminNotification(email, deviceid, maindomain, user?.firstname || "", user?.lastname || "", user?.orgemail || email);
                 }
-                
+
                 res.send({
                     status: status,
                     message: message,
@@ -893,12 +894,13 @@ var adminLoginActivate = function(email,deviceid,deviceName,resetPassword,oldAct
     let emailtoken;
     let firstname;
     let lastname;
+    let orgemail;
     const devicetype = "NuboAdmin";
     async.series([
         (cb) => {
             // validate this is active admin
             Common.db.User.findAll({
-                attributes: [ 'orgdomain','firstname', 'lastname'],
+                attributes: [ 'orgdomain','firstname', 'lastname','orgemail'],
                 where: {
                     isadmin: 1,
                     isactive: 1,
@@ -912,6 +914,7 @@ var adminLoginActivate = function(email,deviceid,deviceName,resetPassword,oldAct
                 domain = results[0].orgdomain;
                 firstname = results[0].firstname;
                 lastname = results[0].lastname;
+                orgemail = results[0].orgemail;
                 cb();
             }).catch(function(err) {
                 cb(err);
@@ -1031,13 +1034,15 @@ var adminLoginActivate = function(email,deviceid,deviceName,resetPassword,oldAct
             var senderName = Common.emailSender.senderName;
             let toName = `${firstname} ${lastname}`;
             let emailSubject = locale.getValue((resetPassword ? "adminResetEmailSubject" : "adminActivationEmailSubject"),Common.defaultLocale);
+            let toEmail = orgemail || email;
+            logger.info(`Activation. toEmail: ${toEmail}, orgemail: ${orgemail}, userName: ${email}`);
 
             // setup e-mail data with unicode symbols
             var mailOptions = {
                 from: senderEmail,
                 // sender address
                 fromname: senderName,
-                to: email,
+                to: toEmail,
                 // list of receivers
                 toname: toName,
                 subject: emailSubject,
