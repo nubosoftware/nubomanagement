@@ -53,6 +53,12 @@ var getOnlineUsersGroupDashboardModule = require('./getOnlineUsersGroupDashboard
 var getTabletDashboardModule = require('./getTabletDashboard.js');
 var getAppUsageWeeklyDashboardModule = require('./getAppUsageWeeklyDashboard.js');
 var resetLoginAttemptsToUserModule = require('./resetLoginAttemptsToUser.js');
+var deleteUserDeviceStorageModule = require('./deleteUserDeviceStorage.js');
+var deleteUserGeneralStorageModule = require('./deleteUserGeneralStorage.js');
+var deleteAllUserStorageModule = require('./deleteAllUserStorage.js');
+var getUserDeviceStorageSizeModule = require('./getUserDeviceStorageSize.js');
+var getUserGeneralStorageSizeModule = require('./getUserGeneralStorageSize.js');
+var getAllUserStorageSizeModule = require('./getAllUserStorageSize.js');
 let locale = require('../locale.js').locale;
 var logger = Common.getLogger(__filename);
 var setPasscode = require('../setPasscode.js');
@@ -1502,6 +1508,62 @@ var apiAccess = function(req, res,next) {
             });
             return;
         }
+    } else if (objectType === 'storage') {
+        if (!arg1) {
+            // Missing email parameter
+            res.writeHead(400, {"Content-Type": "text/plain"});
+            res.end("400 Bad Request - Missing email parameter\n");
+            return;
+        }
+        
+        req.params.email = arg1;
+        
+        if (!arg2) {
+            // Storage operations for user level
+            if (req.method == "DELETE") {
+                if (!checkPerm('/profiles','w')) return; // Delete requires write permission
+                requestType = 'deleteAllUserStorage';
+            } else if (req.method == "GET") {
+                if (!checkPerm('/profiles','r')) return; // Size calculation requires read permission
+                requestType = 'getAllUserStorageSize';
+            }
+        } else if (arg2 === 'general') {
+            if (!arg3) {
+                // /api/storage/{email}/general - general storage operations
+                if (req.method == "DELETE") {
+                    if (!checkPerm('/profiles','w')) return;
+                    requestType = 'deleteUserGeneralStorage';
+                } else if (req.method == "GET") {
+                    if (!checkPerm('/profiles','r')) return;
+                    requestType = 'getUserGeneralStorageSize';
+                }
+            } else if (arg3 === 'size') {
+                // /api/storage/{email}/general/size - get general storage size
+                if (req.method == "GET") {
+                    if (!checkPerm('/profiles','r')) return;
+                    requestType = 'getUserGeneralStorageSize';
+                }
+            }
+        } else {
+            // Device-specific operations
+            req.params.deviceId = arg2;
+            if (!arg3) {
+                // /api/storage/{email}/{deviceId} - device storage operations
+                if (req.method == "DELETE") {
+                    if (!checkPerm('/profiles','w')) return;
+                    requestType = 'deleteUserDeviceStorage';
+                } else if (req.method == "GET") {
+                    if (!checkPerm('/profiles','r')) return;
+                    requestType = 'getUserDeviceStorageSize';
+                }
+            } else if (arg3 === 'size') {
+                // /api/storage/{email}/{deviceId}/size - get device storage size
+                if (req.method == "GET") {
+                    if (!checkPerm('/profiles','r')) return;
+                    requestType = 'getUserDeviceStorageSize';
+                }
+            }
+        }
     }
     if (!requestType) {
         if (Common.isEnterpriseEdition()) {
@@ -1799,6 +1861,30 @@ var restGet = function(req, res,next) {
 
                 if(req.params.requestType === 'resetLoginAttemptsToUser') {
                     resetLoginAttemptsToUserModule.get(req, res);
+                    resDone = true;
+                }
+                if(req.params.requestType === 'deleteUserDeviceStorage') {
+                    deleteUserDeviceStorageModule.get(req, res);
+                    resDone = true;
+                }
+                if(req.params.requestType === 'deleteUserGeneralStorage') {
+                    deleteUserGeneralStorageModule.get(req, res);
+                    resDone = true;
+                }
+                if(req.params.requestType === 'deleteAllUserStorage') {
+                    deleteAllUserStorageModule.get(req, res);
+                    resDone = true;
+                }
+                if(req.params.requestType === 'getUserDeviceStorageSize') {
+                    getUserDeviceStorageSizeModule.get(req, res);
+                    resDone = true;
+                }
+                if(req.params.requestType === 'getUserGeneralStorageSize') {
+                    getUserGeneralStorageSizeModule.get(req, res);
+                    resDone = true;
+                }
+                if(req.params.requestType === 'getAllUserStorageSize') {
+                    getAllUserStorageSizeModule.get(req, res);
                     resDone = true;
                 }
                 if (!resDone && Common.isMobile()) {

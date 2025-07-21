@@ -2483,6 +2483,322 @@ function updateAppProgress(appType,packageName, fileName, versionName, versionCo
     }
 }
 
+/**
+ * Delete storage for a specific user device
+ * @param {string} email - User email
+ * @param {string} deviceId - Device ID
+ * @param {function} callback - Callback function (err)
+ */
+function deleteUserDeviceStorage(email, deviceId, callback) {
+    logger.info(`deleteUserDeviceStorage: Starting deletion for email: ${email}, deviceId: ${deviceId}`);
+    
+    let sessionModule = require('./session.js');
+    let StartSession = require('./StartSession.js');
+    let nfsModule = require('./nfs.js');
+    let nfs;
+
+    async.series([
+        // End specific device sessions
+        (cb) => {
+            sessionModule.getSessionsOfUser(email, function(sessions) {
+                let deviceSessions = sessions.filter(session => session.params.deviceid === deviceId);
+                async.eachSeries(deviceSessions, function(session, callback) {
+                    var sessId = session.params.sessid;
+                    StartSession.endSession(sessId, function(err) {
+                        if (err) {
+                            logger.error(`Error ending session ${sessId}: ${err}`);
+                        } else {
+                            logger.info("Killed device session: " + sessId);
+                        }
+                        callback(null); // Continue even if session end fails
+                    });
+                }, function(err) {
+                    cb(null); // Always continue
+                });
+            });
+        },
+        // Get NFS object
+        (cb) => {
+            nfsModule({
+                nfs_idx: Common.nfsId,
+                logger: logger
+            }, function(err, nfsobj) {
+                if (err) {
+                    cb("Cannot create nfs object err: " + err);
+                    return;
+                }
+                nfs = nfsobj;
+                cb(null);
+            });
+        },
+        // Delete device-specific folder
+        (cb) => {
+            var deviceFolder = commonUtils.buildPath(nfs.params.nfs_path, userModule.getUserDeviceDataFolder(email, deviceId));
+            logger.info("Delete device folder: " + deviceFolder);
+            var rmParams = ["-rf", deviceFolder];
+            execFile(Common.globals.RM, rmParams, function(err, stdout, stderr) {
+                if (err) {
+                    logger.warn("delete device folder: " + stderr);
+                    logger.warn("delete device folder: failed to remove " + deviceFolder);
+                }
+                cb(err);
+            });
+        }
+    ], (err) => {
+        if (err) {
+            logger.error(`deleteUserDeviceStorage failed: ${err}`);
+        } else {
+            logger.info(`deleteUserDeviceStorage completed successfully for ${email}:${deviceId}`);
+        }
+        callback(err);
+    });
+}
+
+/**
+ * Delete general user storage (storage folder) while preserving device-specific folders
+ * @param {string} email - User email
+ * @param {function} callback - Callback function (err)
+ */
+function deleteUserGeneralStorage(email, callback) {
+    logger.info(`deleteUserGeneralStorage: Starting deletion for email: ${email}`);
+    
+    let nfsModule = require('./nfs.js');
+    let nfs;
+
+    async.series([
+        // Get NFS object
+        (cb) => {
+            nfsModule({
+                nfs_idx: Common.nfsId,
+                logger: logger
+            }, function(err, nfsobj) {
+                if (err) {
+                    cb("Cannot create nfs object err: " + err);
+                    return;
+                }
+                nfs = nfsobj;
+                cb(null);
+            });
+        },
+        // Delete general storage folder
+        (cb) => {
+            var storageFolder = commonUtils.buildPath(nfs.params.nfs_path_slow || nfs.params.nfs_path, userModule.getUserStorageFolder(email));
+            logger.info("Delete storage folder: " + storageFolder);
+            var rmParams = ["-rf", storageFolder];
+            execFile(Common.globals.RM, rmParams, function(err, stdout, stderr) {
+                if (err) {
+                    logger.warn("delete storage folder: " + stderr);
+                    logger.warn("delete storage folder: failed to remove " + storageFolder);
+                }
+                cb(err);
+            });
+        }
+    ], (err) => {
+        if (err) {
+            logger.error(`deleteUserGeneralStorage failed: ${err}`);
+        } else {
+            logger.info(`deleteUserGeneralStorage completed successfully for ${email}`);
+        }
+        callback(err);
+    });
+}
+
+/**
+ * Delete all user storage (both general storage and all device folders)
+ * @param {string} email - User email
+ * @param {function} callback - Callback function (err)
+ */
+function deleteAllUserStorage(email, callback) {
+    logger.info(`deleteAllUserStorage: Starting deletion for email: ${email}`);
+    
+    let sessionModule = require('./session.js');
+    let StartSession = require('./StartSession.js');
+    let nfsModule = require('./nfs.js');
+    let nfs;
+
+    async.series([
+        // End all user sessions
+        (cb) => {
+            sessionModule.getSessionsOfUser(email, function(sessions) {
+                async.eachSeries(sessions, function(session, callback) {
+                    var sessId = session.params.sessid;
+                    StartSession.endSession(sessId, function(err) {
+                        if (err) {
+                            logger.error(`Error ending session ${sessId}: ${err}`);
+                        } else {
+                            logger.info("Killed session: " + sessId);
+                        }
+                        callback(null); // Continue even if session end fails
+                    });
+                }, function(err) {
+                    cb(null); // Always continue
+                });
+            });
+        },
+        // Get NFS object
+        (cb) => {
+            nfsModule({
+                nfs_idx: Common.nfsId,
+                logger: logger
+            }, function(err, nfsobj) {
+                if (err) {
+                    cb("Cannot create nfs object err: " + err);
+                    return;
+                }
+                nfs = nfsobj;
+                cb(null);
+            });
+        },
+        // Delete entire user home folder (includes both storage and device folders)
+        (cb) => {
+            deleteUserFolders(email, nfs, cb);
+        }
+    ], (err) => {
+        if (err) {
+            logger.error(`deleteAllUserStorage failed: ${err}`);
+        } else {
+            logger.info(`deleteAllUserStorage completed successfully for ${email}`);
+        }
+        callback(err);
+    });
+}
+
+/**
+ * Calculate storage size for a specific user device
+ * @param {string} email - User email
+ * @param {string} deviceId - Device ID
+ * @param {function} callback - Callback function (err, sizeInKB)
+ */
+function getUserDeviceStorageSize(email, deviceId, callback) {
+    logger.info(`getUserDeviceStorageSize: Calculating size for email: ${email}, deviceId: ${deviceId}`);
+    
+    let nfsModule = require('./nfs.js');
+    
+    nfsModule({
+        nfs_idx: Common.nfsId,
+        logger: logger
+    }, function(err, nfsobj) {
+        if (err) {
+            callback("Cannot create nfs object err: " + err);
+            return;
+        }
+        
+        var deviceFolder = commonUtils.buildPath(nfsobj.params.nfs_path, userModule.getUserDeviceDataFolder(email, deviceId));
+        logger.info(`getUserDeviceStorageSize: Calculating size of folder: ${deviceFolder}`);
+        
+        // Check if folder exists first
+        Common.fs.exists(deviceFolder, function(exists) {
+            if (!exists) {
+                logger.warn(`getUserDeviceStorageSize: Device folder does not exist: ${deviceFolder}`);
+                callback(null, 0); // Return 0 if folder doesn't exist
+                return;
+            }
+            
+            var duParams = ["--max-depth=0", "-B1024", deviceFolder];
+            execFile(Common.globals.DU, duParams, function(error, stdout, stderr) {
+                if (error) {
+                    logger.error(`getUserDeviceStorageSize error: ${error}`);
+                    callback("Error calculating device storage size: " + error);
+                } else {
+                    var sizeInKB = parseInt(stdout);
+                    logger.info(`getUserDeviceStorageSize: Size for ${email}:${deviceId} = ${sizeInKB} KB`);
+                    callback(null, sizeInKB);
+                }
+            });
+        });
+    });
+}
+
+/**
+ * Calculate storage size for user's general storage folder
+ * @param {string} email - User email
+ * @param {function} callback - Callback function (err, sizeInKB)
+ */
+function getUserGeneralStorageSize(email, callback) {
+    logger.info(`getUserGeneralStorageSize: Calculating size for email: ${email}`);
+    
+    let nfsModule = require('./nfs.js');
+    
+    nfsModule({
+        nfs_idx: Common.nfsId,
+        logger: logger
+    }, function(err, nfsobj) {
+        if (err) {
+            callback("Cannot create nfs object err: " + err);
+            return;
+        }
+        
+        var storageFolder = commonUtils.buildPath(nfsobj.params.nfs_path_slow || nfsobj.params.nfs_path, userModule.getUserStorageFolder(email));
+        logger.info(`getUserGeneralStorageSize: Calculating size of folder: ${storageFolder}`);
+        
+        // Check if folder exists first
+        Common.fs.exists(storageFolder, function(exists) {
+            if (!exists) {
+                logger.warn(`getUserGeneralStorageSize: Storage folder does not exist: ${storageFolder}`);
+                callback(null, 0); // Return 0 if folder doesn't exist
+                return;
+            }
+            
+            var duParams = ["--max-depth=0", "-B1024", storageFolder];
+            execFile(Common.globals.DU, duParams, function(error, stdout, stderr) {
+                if (error) {
+                    logger.error(`getUserGeneralStorageSize error: ${error}`);
+                    callback("Error calculating general storage size: " + error);
+                } else {
+                    var sizeInKB = parseInt(stdout);
+                    logger.info(`getUserGeneralStorageSize: Size for ${email} general storage = ${sizeInKB} KB`);
+                    callback(null, sizeInKB);
+                }
+            });
+        });
+    });
+}
+
+/**
+ * Calculate total storage size for user (all folders)
+ * @param {string} email - User email
+ * @param {function} callback - Callback function (err, sizeInKB)
+ */
+function getAllUserStorageSize(email, callback) {
+    logger.info(`getAllUserStorageSize: Calculating size for email: ${email}`);
+    
+    let nfsModule = require('./nfs.js');
+    
+    nfsModule({
+        nfs_idx: Common.nfsId,
+        logger: logger
+    }, function(err, nfsobj) {
+        if (err) {
+            callback("Cannot create nfs object err: " + err);
+            return;
+        }
+        
+        var userHomeFolder = commonUtils.buildPath(nfsobj.params.nfs_path, userModule.getUserHomeFolder(email));
+        logger.info(`getAllUserStorageSize: Calculating size of folder: ${userHomeFolder}`);
+        
+        // Check if folder exists first
+        Common.fs.exists(userHomeFolder, function(exists) {
+            if (!exists) {
+                logger.warn(`getAllUserStorageSize: User home folder does not exist: ${userHomeFolder}`);
+                callback(null, 0); // Return 0 if folder doesn't exist
+                return;
+            }
+            
+            var duParams = ["--max-depth=0", "-B1024", userHomeFolder];
+            execFile(Common.globals.DU, duParams, function(error, stdout, stderr) {
+                if (error) {
+                    logger.error(`getAllUserStorageSize error: ${error}`);
+                    callback("Error calculating total storage size: " + error);
+                } else {
+                    var sizeInKB = parseInt(stdout);
+                    logger.info(`getAllUserStorageSize: Total size for ${email} = ${sizeInKB} KB`);
+                    callback(null, sizeInKB);
+                }
+            });
+        });
+    });
+}
+
 module.exports = {
     createDomainForUser: createDomainForUser,
     createOrReturnUserAndDomain: createOrReturnUserAndDomain,
@@ -2522,6 +2838,11 @@ module.exports = {
     createUserFoldersPromise,
     getUserDataSizePromise,
     createOrReturnUserAndDomainPromise,
+    deleteUserDeviceStorage: deleteUserDeviceStorage,
+    deleteUserGeneralStorage: deleteUserGeneralStorage,
+    deleteAllUserStorage: deleteAllUserStorage,
+    getUserDeviceStorageSize: getUserDeviceStorageSize,
+    getUserGeneralStorageSize: getUserGeneralStorageSize,
+    getAllUserStorageSize: getAllUserStorageSize,
 
 };
-
