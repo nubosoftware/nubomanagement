@@ -440,18 +440,23 @@ function activationLink(req, res, next) {
         (cb) => {
             // mark old activation from the same device and email as invalid
             // cloneActivation if exist, has different deviceid (HTML5 client) so we can run it here, asynchronously with cloneActivation update
-
+            const where = {
+                deviceid: deviceid,
+            }
+            if (!Common.singleUserPerDevice) {
+                where.email = email;
+            } 
             Common.db.Activation.findAll({
                 attributes: ['deviceid', 'activationkey', 'status', 'pushregid', 'email', 'firstname', 'lastname', 'jobtitle', 'devicetype'],
-                where: {
-                    deviceid: deviceid,
-                    email: email
-                },
+                where: where,
             }).then(function (results) {
 
                 results.forEach(function (row) {
                     var otherActivationKey = row.activationkey != null ? row.activationkey : '';
                     if (otherActivationKey != oldActivationKey) {
+                        if (Common.singleUserPerDevice) {
+                            logger.info(`Disable old activation from the same device: ${deviceid}, email: ${row.email}`);
+                        }
                         Common.db.Activation.update({
                             status: 2
                         }, {
