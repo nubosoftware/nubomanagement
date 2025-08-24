@@ -15,6 +15,8 @@ var path = require('path');
 var commonUtils = require('./commonUtils.js');
 const { sessionTimeout } = require('./common.js');
 const { nextTick } = require('process');
+var eventLog = require('./eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 const MAX_SESSIONS_IN_PARALLEL = 20;
 
@@ -119,6 +121,7 @@ var Session = function(sessid, opts, callback) {
         var now = new Date();
         this.params.suspend = suspend;
         this.params.suspendtime = now.toFormat("YYYY-MM-DD HH24:MI:SS");
+        var self = this;
         this.save(function(err, sess) {
             if (err) {
                 if (callback) callback(err);
@@ -129,6 +132,11 @@ var Session = function(sessid, opts, callback) {
                     if (callback) callback(err);
                 });
             } else {
+                // Log session lock event
+                if (sess.params.email && sess.params.mainDomain) {
+                    var lockInfo = `Session suspended/locked, session ID: ${sess.params.sessid}, device: ${sess.params.deviceid}`;
+                    eventLog.createEvent(EV_CONST.EV_SESSION_LOCK, sess.params.email, sess.params.mainDomain, lockInfo, EV_CONST.INFO);
+                }
                 Common.redisClient.zadd('suspend_sessions', sess.getSuspendTS(), sess.params.sessid, function(err) {
                     if (callback) callback(err);
                 });

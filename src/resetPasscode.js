@@ -13,6 +13,8 @@ const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 const _ = require('underscore');
 const commonUtils = require('./commonUtils.js');
+var eventLog = require('./eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 var isFirstTime = "";
 
@@ -172,6 +174,10 @@ function resetPasscode(req, res, loginObj) {
                                                 message: msg,
                                                 deviceapprovaltype: deviceapprovaltype
                                             });
+
+                                            // Log password reset event
+                                            var resetInfo = `Password reset initiated for device: ${deviceid}, device type: ${devicetype}, approval type: ${deviceapprovaltype}`;
+                                            eventLog.createEvent(EV_CONST.EV_RESET_PASSCODE, email, emailDomain, resetInfo, EV_CONST.INFO);
 
                                             var senderEmail = Common.emailSender.senderEmail;
                                             var senderName = Common.emailSender.senderName;

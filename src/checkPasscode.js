@@ -16,6 +16,8 @@ var Notifications = require('./Notifications.js');
 let locale = require('./locale.js').locale;
 const _ = require('underscore');
 const LoginAttempts = require('./loginAttempts.js');
+var eventLog = require('./eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 var MIN_DIFFERENT_DIGITS = 4;
 // user is allowed 3 login attempts. then he will be locked.
@@ -293,6 +295,10 @@ function checkPasscode(req, res, loginObj) {
                     status = Common.STATUS_PASSWORD_LOCK;
                     message = "You have incorrectly typed your passcode 3 times. An email was sent to you. Open your email to open your passcode.";
 
+                    // Log account locked event
+                    const lockedAccountInfo = `Account locked due to excessive failed login attempts, device: ${login.getDeviceID()}, client IP: ${clientIP}`;
+                    eventLog.createEvent(EV_CONST.EV_ACCOUNT_LOCKED, login.getEmail(), login.getMainDomain(), lockedAccountInfo, EV_CONST.ERR);
+
                     findUserSendLockNotification(login.getEmail(), login.getDeviceID(), login.getActivationKey(), req).then(function(_deviceapprovaltype) {
                         deviceapprovaltype = _deviceapprovaltype;
                         callback(finish);
@@ -305,6 +311,11 @@ function checkPasscode(req, res, loginObj) {
                 } else {
                     status = Common.STATUS_ERROR;
                     message = "Invalid passcode";
+                    
+                    // Log failed login attempt
+                    const failedLoginInfo = `Failed login attempt, device: ${login.getDeviceID()}, client IP: ${clientIP}`;
+                    eventLog.createEvent(EV_CONST.EV_LOGIN_FAILED, login.getEmail(), login.getMainDomain(), failedLoginInfo, EV_CONST.WARN);
+                    
                     callback(finish);
                 }
             }).catch(err => {
@@ -370,6 +381,10 @@ function checkPasscode(req, res, loginObj) {
                 status = Common.STATUS_OK;
                 message = "Passcode checked";
                 login.setValidLogin(true);
+                
+                // Log successful login event
+                const loginInfo = `User successful login, device: ${login.getDeviceID()}, client IP: ${clientIP}`;
+                eventLog.createEvent(EV_CONST.EV_LOGIN, login.getEmail(), login.getMainDomain(), loginInfo, EV_CONST.INFO);
             }
 
             login.save(callback);

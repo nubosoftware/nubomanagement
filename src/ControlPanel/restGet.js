@@ -71,6 +71,8 @@ const LoginAttempts = require('../loginAttempts.js');
 
 var setting = require('../settings.js');
 const checkPasscode = require('../checkPasscode.js');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 const ADMIN_LOGIN_REDIS_KEY = 'adminLogin:';
 
@@ -78,6 +80,11 @@ const ADMIN_LOGIN_REDIS_KEY = 'adminLogin:';
 async function logoutAdmin(req,res) {
     try {
         const currentLogin = req.nubodata.adminLogin;
+        
+        // Log admin logout event before deleting login
+        const logoutInfo = `Admin logout, domain: ${currentLogin.getMainDomain()}`;
+        eventLog.createEvent(EV_CONST.EV_LOGOUT, currentLogin.getUserName(), currentLogin.getMainDomain(), logoutInfo, EV_CONST.INFO);
+        
         await new Promise((resolve, reject) => {
             currentLogin.delete((err) => {
                 if (err) {
@@ -288,6 +295,11 @@ async function loginWebAdminAsync(req, res, arg1) {
                 }
             });
             logger.info("Password updated!");
+            
+            // Log admin password change event
+            const adminPasswordChangeInfo = `Admin password changed after reset, domain: ${selectedDomain}, device: ${deviceName || 'Web Browser'}`;
+            eventLog.createEvent(EV_CONST.EV_ADMIN_PASSWORD_CHANGE, userName, selectedDomain, adminPasswordChangeInfo, EV_CONST.INFO);
+            
             isValidPasscode = true;
 
             // Reset resetpasscode flag
@@ -329,6 +341,11 @@ async function loginWebAdminAsync(req, res, arg1) {
                 } else {
                     status = Common.STATUS_PASSWORD_NOT_MATCH;
                     message = "Invalid password";
+                    
+                    // Log admin failed login attempt
+                    const failedAdminLoginInfo = `Admin failed login attempt, domain: ${selectedDomain}, device: ${deviceName || 'Web Browser'}`;
+                    eventLog.createEvent(EV_CONST.EV_LOGIN_FAILED, userName, selectedDomain, failedAdminLoginInfo, EV_CONST.WARN);
+                    
                     throw message;
                 }
             } else {
@@ -487,6 +504,11 @@ async function loginWebAdminAsync(req, res, arg1) {
         status = Common.STATUS_OK;
         message = "Login Successful";
         logger.info(`loginWebAdmin: ${message}`);
+        
+        // Log successful admin login event
+        const loginInfo = `Admin successful login, domain: ${selectedDomain}, device: ${deviceName || 'Web Browser'}`;
+        eventLog.createEvent(EV_CONST.EV_LOGIN, userName, selectedDomain, loginInfo, EV_CONST.INFO);
+        
         res.send({
             status: status,
             message: message,

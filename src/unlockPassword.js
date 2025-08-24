@@ -1,6 +1,8 @@
 var Common = require('./common.js');
 var checkPasscode = require('./checkPasscode.js');
 var logger = Common.getLogger(__filename);
+var eventLog = require('./eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 function resendUnlockPasswordLink(req, res, next) {
     var activationKey = req.params.activationKey;
@@ -111,6 +113,14 @@ function unlockPassword(req, res, next) {
                 }
             }).then(function() {
                 var msg = "password of user " + email + " is successfully unlocked";
+                
+                // Log password unlock event
+                const User = require('./user.js');
+                User.getUserDomainPromise(email).then(domain => {
+                    const unlockInfo = `Password unlocked via email link, device: ${deviceID}`;
+                    eventLog.createEvent(EV_CONST.EV_RESET_PASSCODE, email, domain, unlockInfo, EV_CONST.INFO);
+                });
+                
                 res.send({
                     status : Common.STATUS_OK,
                     message : msg

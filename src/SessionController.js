@@ -22,6 +22,8 @@ const gatewayModule = require('./Gateway.js');
 const Plugin = require('./plugin.js');
 const { Op } = require('sequelize');
 const _ = require('underscore');
+const eventLog = require('./eventLog.js');
+const EV_CONST = eventLog.EV_CONST;
 
 const SESSION_TYPE_MOBILE = "vmi_mobile";
 const SESSION_TYPE_DESKTOP = "vmi_desktop";
@@ -1992,6 +1994,12 @@ async function logoutUserImp(req, res, login) {
             });
             logger.info("logoutUser. deleted session_cache_params..");
         }
+        // Log logout event before ending session
+        const User = require('./user.js');
+        const domain = await User.getUserDomainPromise(email);
+        const logoutInfo = `User logout, session ID: ${session.params.sessid}, device: ${deviceID}`;
+        eventLog.createEvent(EV_CONST.EV_LOGOUT, email, domain, logoutInfo, EV_CONST.INFO);
+
         // end session
         await endSession(session.params.sessid,"logoutUser",doNotRemoveLoginToken);
         resObj = {
@@ -2046,5 +2054,3 @@ function sendEmailToAdmin(subj, text) {
         }); //Common.mailer.send
     });
 }
-
-

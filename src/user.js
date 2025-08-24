@@ -5,6 +5,8 @@ var logger = Common.getLogger(__filename);
 var async = require('async');
 var commonUtils = require('./commonUtils.js');
 const { Op } = require('sequelize');
+var eventLog = require('./eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 function createUserApplicationNotif(email, domain) {
 
@@ -94,6 +96,11 @@ function setUserDetails(email, firstName, lastName, jobTitle, callback) {
                 email : email
             }
         }).then(function() {
+            // Log user details change
+            getUserDomainPromise(email).then(domain => {
+                var changeInfo = `User details updated - firstName: ${firstName}, lastName: ${lastName}, jobTitle: ${jobTitle}`;
+                eventLog.createEvent(EV_CONST.EV_USER_CHANGE, email, domain, changeInfo, EV_CONST.INFO);
+            });
             callback(null, email, firstName, lastName, jobTitle);
             // return data withno error
         }).catch(function(err) {
@@ -838,4 +845,3 @@ var User = {
 };
 
 module.exports = User;
-

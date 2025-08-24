@@ -11,6 +11,8 @@ var Otp = require('./otp.js');
 var CommonUtils = require("./commonUtils.js");
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
+var eventLog = require('./eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 var MIN_DIFFERENT_DIGITS = 4;
 
@@ -212,6 +214,9 @@ function setPasscode(req, res, loginObj) {
                 if (validatePassword(logger, passcode) === 0) {
                     response.status = Common.STATUS_ERROR;
                     response.message = "Invalid passcode";
+                    // Log password validation failure
+                    eventLog.createEvent(EV_CONST.EV_PASSWORD_OPERATION_FAILED, login.getEmail(), login.getMainDomain(), 
+                        "Password validation failed: " + response.message, EV_CONST.WARN);
                     return callback(response.message);
                 } else {
                     decryptedPassword = passcode;
@@ -221,6 +226,9 @@ function setPasscode(req, res, loginObj) {
 
             Common.getEnterprise().passwordUtils.virtaulKeyboardDecrypt(login,passcode,true,passcode2,response,function(err,decPass) {
                 if (err) {
+                    // Log password decryption failure
+                    eventLog.createEvent(EV_CONST.EV_PASSWORD_OPERATION_FAILED, login.getEmail(), login.getMainDomain(), 
+                        "Password decryption failed: " + err, EV_CONST.WARN);
                     callback(err);
                     return;
                 }
@@ -289,6 +297,10 @@ function setPasscode(req, res, loginObj) {
                 response.status = Common.STATUS_OK;
                 response.message = "Passcode updated";
                 login.setValidLogin(true);
+                
+                // Log successful password change
+                eventLog.createEvent(EV_CONST.EV_PASSWORD_CHANGE, login.getEmail(), login.getMainDomain(), 
+                    "User password successfully changed, device: " + login.getDeviceID(), EV_CONST.INFO);
             }
 
             login.save(callback);
