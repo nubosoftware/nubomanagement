@@ -100,15 +100,7 @@ class LoginAttempts {
 
             if (exceeded) {
                 logger.error("Login attempts exceeded maximum allowed attempts");
-                // Create event in Eventlog
-                const extra_info = `Login attempts: ${newAttempts}, max login attempts: ${this.maxLoginAttempts}, device id: ${imei}`;
-                await eventLog.createEvent(
-                    EV_CONST.EV_USER_LOCKED,
-                    email,
-                    domain,
-                    extra_info,
-                    EV_CONST.WARN
-                );
+                // Note: Event logging is handled by checkPasscode.js to avoid duplicate events
             }
 
             return {

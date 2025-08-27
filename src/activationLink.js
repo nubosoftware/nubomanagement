@@ -10,6 +10,8 @@ var async = require('async');
 let locale = require('./locale.js').locale;
 const { Op, QueryTypes } = require('sequelize');
 const qs = require('qs');
+var eventLog = require('./eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 var status;
 var msg;
 
@@ -306,6 +308,10 @@ function activationLink(req, res, next) {
                     }
                 }).then(function () {
                     logger.info("UserDevices.update success");
+                    
+                    // Log account unlock event with unlock method
+                    const unlockInfo = `Account unlocked via activation link, device: ${row.deviceid}, unlock method: activation_link`;
+                    eventLog.createEvent(EV_CONST.EV_ACCOUNT_UNLOCKED, email, maindomain, unlockInfo, EV_CONST.INFO);
                 }).catch(function (err) {
                     logger.error("UserDevices.update error: "+err);
                 });

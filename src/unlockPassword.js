@@ -114,12 +114,9 @@ function unlockPassword(req, res, next) {
             }).then(function() {
                 var msg = "password of user " + email + " is successfully unlocked";
                 
-                // Log password unlock event
-                const User = require('./user.js');
-                User.getUserDomainPromise(email).then(domain => {
-                    const unlockInfo = `Password unlocked via email link, device: ${deviceID}`;
-                    eventLog.createEvent(EV_CONST.EV_RESET_PASSCODE, email, domain, unlockInfo, EV_CONST.INFO);
-                });
+                // Log account unlock event with unlock method
+                const unlockInfo = `Account unlocked via email link, device: ${deviceID}, unlock method: email`;
+                eventLog.createEvent(EV_CONST.EV_ACCOUNT_UNLOCKED, email, mainDomain, unlockInfo, EV_CONST.INFO);
                 
                 res.send({
                     status : Common.STATUS_OK,

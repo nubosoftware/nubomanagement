@@ -11,6 +11,8 @@ var Session = sessionModule.Session;
 var setting = require('../settings.js');
 var User = require('../user.js');
 var userUtils = require('../userUtils.js');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 function loadAdminParamsFromSession(req, res, callback) {
     setting.loadAdminParamsFromSession(req, res, callback);
@@ -87,6 +89,10 @@ function resetLoginAttemptsToUserInDB(res, email, domain, callback) {
             orgdomain : domain
         }
     }).then(function() {
+        // Log account unlock event with unlock method
+        const unlockInfo = `Account unlocked by admin, unlock method: admin_reset`;
+        eventLog.createEvent(EV_CONST.EV_ACCOUNT_UNLOCKED, email, domain, unlockInfo, EV_CONST.INFO);
+        
         callback(null);
     }).catch(function(err) {
         var msg = "Internal error while reseting login attempts for user: " + email + 'err: ' + err;

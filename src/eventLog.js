@@ -53,6 +53,7 @@ var EV_CONST = {
     EV_ADMIN_SECURITY_FUNCTION: 45,
     EV_LOGIN_FAILED: 46,
     EV_ACCOUNT_LOCKED: 47,
+    EV_ACCOUNT_UNLOCKED: 48,
 
     // Event Categories
     EV_CATEGORIES: {
@@ -103,6 +104,7 @@ var EV_CONST = {
         45: 'SECURITY_ADMINISTRATION',  // EV_ADMIN_SECURITY_FUNCTION
         46: 'SECURITY_INCIDENTS',       // EV_LOGIN_FAILED
         47: 'SECURITY_INCIDENTS',       // EV_ACCOUNT_LOCKED
+        48: 'SECURITY_INCIDENTS',       // EV_ACCOUNT_UNLOCKED
     },
 
     EV_CATEGORY_NAMES: {
@@ -169,6 +171,7 @@ var EV_CONST = {
         'Admin security function',
         'Login failed',
         'Account locked',
+        'Account unlocked',
     ],
 
     // Event Levels
