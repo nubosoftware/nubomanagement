@@ -35,6 +35,7 @@ var Common = {
     STATUS_PASSWORD_NOT_INCLUDE_SPECIAL_CHAR: 35,
     STATUS_INVALID_CREDENTIALS : 36,
     STATUS_PASSWORD_HISTORY_NOT_MATCH: 37,
+    STATUS_PLUGIN_VALIDATION_ERROR: 38,
     STATUS_RESET_PASSCODE_PENDING : 100,
     STATUS_RESET_BIOMETRIC_PENDING : 101,
     STATUS_RESET_OTP_PENDING : 102,
@@ -139,6 +140,13 @@ var Common = {
         cleanPlatformsMode: false
     },
     logLevel: "info",
+    // useOTL: false, // OpenTelemetry flag - default false
+    // otlConfig: { // OpenTelemetry configuration - SigNoz compatible
+    //     serviceName: "nubomanagement",
+    //     host: "http://localhost:4317", // traces endpoint
+    //     logEndpoint: "http://localhost:4318/v1/logs", // logs endpoint (SigNoz default)
+    //     traceEndpoint: null // will default to host + "/v1/traces"
+    // },
     hideControlPanel : false,
     //TODO change the name to something more appropriate!!!
     withService : false,
@@ -316,6 +324,28 @@ function createIntLogger() {
     });
 
 }
+
+// Initialize OpenTelemetry early if enabled via environment variable
+// This MUST happen before Winston loggers are created for instrumentation to work
+// if (process.env.ENABLE_OTEL === 'true' || process.env.USE_OTL === 'true') {
+//     console.log('OpenTelemetry is enabled via environment variable, initializing early...');
+//     try {
+//         const otel = require('./otel');
+//         // Create a simple console logger for early initialization
+//         const earlyLogger = {
+//             info: (msg) => console.log(`[EARLY-OTL] INFO: ${msg}`),
+//             warn: (msg) => console.log(`[EARLY-OTL] WARN: ${msg}`),
+//             error: (msg, err) => console.log(`[EARLY-OTL] ERROR: ${msg}`, err || ''),
+//         };
+//         otel.initializeOTL(earlyLogger);
+//         console.log('Early OpenTelemetry initialization completed');
+//     } catch (err) {
+//         console.error(`Failed to initialize OpenTelemetry early: ${err}`, err);
+//         // Don't fail the entire startup - just log the error and continue
+//     }
+// } else {
+//     console.log('OpenTelemetry is disabled (ENABLE_OTEL or USE_OTL not set to true)');
+// }
 
 // temporary create logger before loading settings
 createIntLogger();
@@ -648,7 +678,7 @@ function parse_configs(parseConfigCB) {
 
             Common.sysConf = sysConf;
             var dbConf = sysConf.dbConf;
-
+            // console.log(`initSequelize. dbConf: ${JSON.stringify(dbConf,null,2)}`);
             require('./DBModel.js').initSequelize(dbConf.name, dbConf.user, dbConf.password, dbConf.host, dbConf.port, options, function(err, dbObj, sequelizeObj) {
                 if(err){
                     logger.error("initSequelize error",err);
@@ -1016,6 +1046,28 @@ Common.quit = function(exitCode) {
     if (Common.RedisClientModule) {
         Common.RedisClientModule.exit();
     }
+    
+    // Shutdown OpenTelemetry if it was initialized
+    // if (Common.useOTL) {
+    //     try {
+    //         const otel = require('./otel');
+    //         if (otel.isOTLInitialized()) {
+    //             logger.info('Shutting down OpenTelemetry...');
+    //             otel.shutdown().finally(() => {
+    //                 logger.info('OpenTelemetry shutdown completed');
+    //                 finishQuit(exitCode);
+    //             });
+    //             return; // Don't exit immediately, wait for OTL shutdown
+    //         }
+    //     } catch (err) {
+    //         logger.error(`Error shutting down OpenTelemetry: ${err}`, err);
+    //     }
+    // }
+    
+    finishQuit(exitCode);
+};
+
+function finishQuit(exitCode) {
     try {
         logger.clear();
     } catch(err) {}
@@ -1026,7 +1078,7 @@ Common.quit = function(exitCode) {
     else {
          process.exit(0);
     }
-};
+}
 
 
 Common.mkdirpCB = function(folder,opts,cb) {
@@ -1065,4 +1117,3 @@ Promise.prototype.complete = function(cb){
 
 
 module.exports = Common;
-

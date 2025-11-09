@@ -684,7 +684,7 @@ function validateActivation(activationKey, deviceID, userdata, activationdata, u
                         if (result === false) {
                             error = "Plugin validation failed.";
                             response = {
-                                status: Common.STATUS_ERROR,
+                                status: Common.STATUS_PLUGIN_VALIDATION_ERROR,
                                 message: error
                             }
                             callback(finish);
