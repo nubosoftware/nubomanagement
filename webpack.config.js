@@ -77,14 +77,12 @@ module.exports = {
     },
   ], // Need this to avoid error when working with Express
   optimization: {
-    splitChunks: {
-      chunks: 'all',
-    },
+    splitChunks: false,
   },
   module: {
 
     rules: [
-      {
+      /*{
         // Transpiles ES6-8 into ES5
         test: /\.js$/,
         exclude: [
@@ -93,17 +91,10 @@ module.exports = {
             path.resolve(__dirname, 'common.js'),
             path.resolve(__dirname, "node_modules")
         ],
-        /*use: {
-          loader: "babel-loader"
-        }*/
-        enforce: 'post',
         use: {
-            loader: WebpackObfuscator.loader,
-            options: {
-                rotateStringArray: true
-            }
+          loader: "babel-loader"
         }
-      },
+      },*/
       { test: /\.pl$/, loader: 'ignore-loader' },
       { test: /\.xml$/, loader: 'ignore-loader' },
       { test: /\.txt$/, loader: 'ignore-loader' },
@@ -122,13 +113,11 @@ module.exports = {
     ]
   },
   plugins: [
-    new IgnoreDynamicRequire()
-  ],
-  /*plugins: [
-    new WebpackObfuscator ({
+    new IgnoreDynamicRequire(),
+    new WebpackObfuscator({
         rotateStringArray: true
-    }, ['excluded_bundle_name.js'])
-  ]*/
+    })
+  ],
 
   /*plugins: [
     new HtmlWebPackPlugin({
