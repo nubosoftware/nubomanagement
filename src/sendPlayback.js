@@ -40,6 +40,12 @@ var sendPlayback = function (client, clientAddr, resourceURL) {
             return;
         }
 
+        if (!login) {
+            logger.error("sendPlayback: login token not found or expired");
+            client.close();
+            return;
+        }
+
         if (!login.isValidLogin()) {
             logger.error("startSession user not loggedin");
             client.close();

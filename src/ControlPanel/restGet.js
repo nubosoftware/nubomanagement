@@ -670,6 +670,9 @@ var loadAdminParamsFromRequest = function(req,res,cb) {
             if (err) {
                 return cb(err);
             }
+            if (!loginObj) {
+                return cb(new Error("Login token not found or expired"));
+            }
             if (loginObj.isValidLogin() && loginObj.getIsAdmin() == 1 && loginObj.getAdminConsoleLogin() == 1) {
                 logger.info("adminLoginToken validated. userName: "+loginObj.loginParams.userName);
                 cb(null,loginObj);

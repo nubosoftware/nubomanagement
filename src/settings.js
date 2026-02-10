@@ -329,6 +329,10 @@ function loadLoginParamsFromSession(req, res, callback) {
                 callback(msg);
                 return;
             }
+            if (!login) {
+                callback("Login token not found or expired");
+                return;
+            }
             //console.dir(login.loginParams);
             callback(null, login,obj);
         });

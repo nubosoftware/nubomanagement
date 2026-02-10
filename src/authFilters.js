@@ -184,6 +184,10 @@ function loginTokenFIlter(req, excludeList, callback) {
             callback(err);
             return;
         }
+        if (!login) {
+            callback("Login token not found or expired");
+            return;
+        }
 
         req.nubodata.loginToken = login;
         callback(null);

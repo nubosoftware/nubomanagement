@@ -47,6 +47,13 @@ function uploadToLoginToken(req, res, next) {
             } );
             return;
         }
+        if (!login) {
+            res.send( {
+                status : '0',
+                message : "Login token not found or expired"
+            } );
+            return;
+        }
 
         var email = login.getEmail();
         var deviceID = login.getDeviceID();
@@ -73,6 +80,13 @@ function uploadDummyFile(req, res, next) {
             res.send( {
                 status : '0',
                 message : msg
+            } );
+            return;
+        }
+        if (!login) {
+            res.send( {
+                status : '0',
+                message : "Login token not found or expired"
             } );
             return;
         } else {
