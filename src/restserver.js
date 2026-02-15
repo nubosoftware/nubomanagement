@@ -2,14 +2,15 @@
 
 var async = require('async');
 var fs = require('fs');
-var restify = require('restify');
-var net = require('net');
-var tls = require('tls');
+var express = require('express');
+var https = require('https');
+var http = require('http');
 var url = require("url");
 var querystring = require("querystring");
 var accesslog = require('accesslog');
 var _ = require('underscore');
-var NuboRestifyshutdown = require('@nubosoftware/nubo-restify-shutdown');
+var expressCompat = require('./expressCompat');
+var expressShutdown = require('./expressShutdown');
 
 
 var Common = require('./common.js');
@@ -136,30 +137,54 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
                         callback(null, urlObj, null);
                     }
                 },
-                function(urlObj, options, callback) {
-                    if (!options) {
-                        options = {};
+                function(urlObj, sslCerts, callback) {
+                    var app = express();
+                    expressCompat.setup(app, { name: opts.name });
+
+                    // Register compat middleware first (polyfills req.path, res.contentType, res.send)
+                    app.use(expressCompat.compatMiddleware);
+
+                    // Create HTTP(S) server
+                    var httpServer;
+                    if (sslCerts) {
+                        httpServer = https.createServer({
+                            key: sslCerts.key,
+                            cert: sslCerts.certificate,
+                            ca: sslCerts.ca
+                        }, app);
+                    } else {
+                        httpServer = http.createServer(app);
                     }
-                    options.name = opts.name;
-                    var server = restify.createServer(options);
-                    opts.handlers.forEach(function(hanlder) {
-                        hanlder(server);
+
+                    // Setup graceful shutdown (registers its middleware on app)
+                    expressShutdown({ logger: logger }, httpServer, app);
+
+                    // Apply handler functions (setPublicServiceServer, setPlatformServiceServer, etc.)
+                    opts.handlers.forEach(function(handler) {
+                        handler(app);
                     });
 
-                    server.listen(urlObj.port, urlObj.hostname, function() {
-                        logger.info(server.name + ' listening at ' + server.url);
-                        callback(null, server);
+                    // Error handler (replaces legacy uncaughtException handling)
+                    // Must be registered after all routes
+                    app.use(function(err, req, res, next) {
+                        logger.error("Exception in http server: " + (err && err.stack || err));
+                        res.send(err);
+                    });
+
+                    var listenUrl = urlObj.protocol + '//' + (urlObj.hostname || '0.0.0.0') + ':' + urlObj.port;
+                    httpServer.listen(urlObj.port, urlObj.hostname, function() {
+                        logger.info(app.name + ' listening at ' + listenUrl);
+                        callback(null, httpServer);
                     });
                 }
-            ], function(err, server) {
+            ], function(err, httpServer) {
                 if(err){
                     callback(err);
                     return;
                 }
 
-                NuboRestifyshutdown({logger : logger},server);
-                appServers.push(server);
-                callback(null, server);
+                appServers.push(httpServer);
+                callback(null, httpServer);
             }
         );
     };
@@ -465,15 +490,6 @@ function authValidate(req, res, next) {
 
 
 function setPublicServiceServer(server) {
-    server.on('uncaughtException', function(request, response, route, error) {
-        logger.error("Exception in http server: " + (error && error.stack || error));
-        response.send(error);
-        return true;
-    });
-    server.use(Common.restify.plugins.queryParser({ mapParams: true }));
-    //server.use(Common.restify.queryParser());
-
-
     server.use(urlFilterObj.useHandler);
     // server.use(debugFunc);
 
@@ -496,22 +512,16 @@ function setPublicServiceServer(server) {
             console.error(err);
         }
     });
-    server.use(Common.restify.plugins.bodyParser({mapParams: true,
-             mapFiles: true,
-             overrideParams: false,
-             keepExtensions: false,
-             uploadDir: uploadDir,
-             multiples: true,
-             hash: 'sha1',
-             rejectUnknown: false,
-             requestBodyOnGet: false,
-             maxBodySize: 2000000000,
-             maxFileSize: 2000000000,
+    server.use(express.json({ limit: 2000000000 }));
+    server.use(express.urlencoded({ extended: true, limit: 2000000000 }));
+    server.use(expressCompat.createMultipartMiddleware({
+        uploadDir: uploadDir,
+        keepExtensions: false,
+        multiples: true,
+        maxFileSize: 2000000000,
+        hashAlgorithm: 'sha1',
     }));
-    /*server.use(function(req,res,next) {
-        logger.info("After body parser... url: "+req.url);
-        next();
-    });*/
+    server.use(expressCompat.mapParamsMiddleware);
     server.post('/file/uploadToSession', Upload.uploadToSession);
     if(!Common.withService){
         server.post('/file/uploadToLoginToken', Upload.uploadToLoginToken);
@@ -668,14 +678,6 @@ function setPublicServiceServer(server) {
 }
 
 function presetPlatformServiceServer(server) {
-    server.on('uncaughtException', function(request, response, route, error) {
-        logger.error("Exception in http server: " + (error && error.stack || error));
-        response.send(error);
-        return true;
-    });
-    server.use(Common.restify.plugins.queryParser({ mapParams: true }));
-    //server.use(Common.restify.queryParser());
-
     server.use(urlFilterObj.useHandler);
     // server.use(debugFunc);
 
@@ -685,7 +687,9 @@ function presetPlatformServiceServer(server) {
     // 1. parse the body of request
     // 2. validate body data
     // 3. authenticate request with data from the body(not all requests)
-    server.use(Common.restify.plugins.bodyParser({mapParams: false,  maxBodySize: 1000000000}));
+    server.use(express.json({ limit: 1000000000 }));
+    server.use(express.urlencoded({ extended: true, limit: 1000000000 }));
+    server.use(expressCompat.mapParamsQueryOnlyMiddleware);
     server.use(bodyFilterObj.useHandler);
     server.use(authValidate);
 

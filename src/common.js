@@ -71,7 +71,6 @@ var Common = {
     allowedOrigns : [],
     serverurl : "https://lab.nubosoftware.com/",
     internalurl : "https://lab.nubosoftware.com/",
-    restify : require('restify'),
     crypto : require('crypto'),
     dbValidator : true,
     nodemailer : require("nodemailer"),
