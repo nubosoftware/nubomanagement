@@ -299,6 +299,7 @@ function activationLink(req, res, next) {
                 // already activated
                 // unlock pasword
                 status = 0;
+                maindomain = email.substr(email.indexOf('@') + 1);
                 Common.db.UserDevices.update({
                     loginattempts : '0'
                 }, {
@@ -308,12 +309,12 @@ function activationLink(req, res, next) {
                     }
                 }).then(function () {
                     logger.info("UserDevices.update success");
-                    
+
                     // Log account unlock event with unlock method
                     const unlockInfo = `Account unlocked via activation link, device: ${row.deviceid}, unlock method: activation_link`;
-                    eventLog.createEvent(EV_CONST.EV_ACCOUNT_UNLOCKED, email, maindomain, unlockInfo, EV_CONST.INFO);
+                    return eventLog.createEvent(EV_CONST.EV_ACCOUNT_UNLOCKED, email, maindomain, unlockInfo, EV_CONST.INFO);
                 }).catch(function (err) {
-                    logger.error("UserDevices.update error: "+err);
+                    logger.error("UserDevices.update or reportEvent error: "+err);
                 });
                 msg = "Password unlocked!";
                 cb(msg);
