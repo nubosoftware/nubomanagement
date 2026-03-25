@@ -697,6 +697,28 @@ function AddEmailSettingsToNewDevice(regEmail,deviceid,cb) {
           cb();
           return;
       }
+      // Check Exchange group filter before sending Exchange settings
+      if (Common.isEnterpriseEdition()) {
+          Common.getEnterprise().isExchangeEnabledForUser(regEmail, user.orgdomain, null).then(function(isEnabled) {
+              if (!isEnabled) {
+                  logger.info("AddEmailSettingsToNewDevice. Exchange not enabled for user group");
+                  cb();
+                  return;
+              }
+              sendExchangeSettingsToDevice(user, regEmail, deviceid, cb);
+          }).catch(function(err) {
+              logger.error("AddEmailSettingsToNewDevice. isExchangeEnabledForUser error: " + err);
+              // On error, fall back to existing behavior
+              sendExchangeSettingsToDevice(user, regEmail, deviceid, cb);
+          });
+      } else {
+          sendExchangeSettingsToDevice(user, regEmail, deviceid, cb);
+      }
+    });
+}
+
+function sendExchangeSettingsToDevice(user, regEmail, deviceid, cb) {
+      let authType = Number(user.authtype);
       let orgUser = user.orguser;
       let domain = user.exchange_domain;
       if (authType == 1) {
@@ -730,7 +752,6 @@ function AddEmailSettingsToNewDevice(regEmail,deviceid,cb) {
       addSettingsToSpecificDevice(regEmail,deviceid,"setAccount",setAccountValues,"startup.json",() => {
         cb();
       });
-    });
 }
 
 function AddTelephonySettingsToNewDevice(regEmail, deviceid,cb) {

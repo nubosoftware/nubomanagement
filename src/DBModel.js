@@ -222,6 +222,11 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         refererurl: Sequelize.STRING,
         inviteurl: Sequelize.STRING,
         admin_security_config: Sequelize.STRING,
+        exchange_group_filter_mode: {
+            type: Sequelize.STRING,
+            defaultValue: 'all'
+        },
+        exchange_group_filter: Sequelize.TEXT,
     }, {
 
         timestamps: false
