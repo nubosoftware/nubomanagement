@@ -188,6 +188,31 @@ function createMultipartMiddleware(options) {
             hashAlgorithm: options.hashAlgorithm || false,
         });
 
+        // Formidable v2 uses `!part.mimetype` (not the filename) to decide
+        // if a part is a field or file (see Formidable.js _handlePart).
+        // If mimetype is falsy the data is read as a UTF-8 string, which
+        // corrupts binary data. Ensure every part that carries a filename
+        // or looks like file data gets a mimetype so _handlePart writes it
+        // to a temp file.
+        form.onPart = function(part) {
+            if (!part.mimetype) {
+                if (part.originalFilename) {
+                    // Has filename but no mime — set a default so formidable treats it as file
+                    part.mimetype = 'application/octet-stream';
+                } else {
+                    // No filename and no mime — likely file data sent as a field
+                    part.originalFilename = part.name || 'upload';
+                    part.mimetype = 'application/octet-stream';
+                }
+            } else if (!part.originalFilename) {
+                if (part.mimetype !== 'text/plain') {
+                    // Has non-text mime but no filename — treat as file
+                    part.originalFilename = part.name || 'upload';
+                }
+            }
+            form._handlePart(part);
+        };
+
         form.parse(req, function(err, fields, files) {
             if (err) {
                 return next(err);
@@ -201,7 +226,20 @@ function createMultipartMiddleware(options) {
             req.files = req.files || {};
             for (var key in files) {
                 var val = files[key];
-                req.files[key] = Array.isArray(val) && val.length === 1 ? val[0] : val;
+                var file = Array.isArray(val) && val.length === 1 ? val[0] : val;
+                // Normalize formidable v2 property names to v1 names used by upload code
+                if (file && !Array.isArray(file)) {
+                    if (file.filepath && !file.path) file.path = file.filepath;
+                    if (file.originalFilename && !file.name) file.name = file.originalFilename;
+                    if (file.mimetype && !file.type) file.type = file.mimetype;
+                } else if (Array.isArray(file)) {
+                    file.forEach(function(f) {
+                        if (f.filepath && !f.path) f.path = f.filepath;
+                        if (f.originalFilename && !f.name) f.name = f.originalFilename;
+                        if (f.mimetype && !f.type) f.type = f.mimetype;
+                    });
+                }
+                req.files[key] = file;
             }
             next();
         });
