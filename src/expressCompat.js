@@ -1,6 +1,5 @@
 "use strict";
 
-var url = require('url');
 var formidable = require('formidable');
 
 /**
@@ -69,7 +68,7 @@ function compatMiddleware(req, res, next) {
     var origPath = req.path;
     Object.defineProperty(req, 'path', {
         value: function(u) {
-            if (u) return url.parse(u).pathname;
+            if (u) return new URL(u, 'http://localhost').pathname;
             return origPath;
         },
         writable: true,

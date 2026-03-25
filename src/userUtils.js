@@ -2,7 +2,6 @@ var fs = require('fs');
 var async = require('async');
 var Common = require('./common.js');
 var userModule = require('./user.js');
-var url = require('url');
 var ThreadedLogger = require('./ThreadedLogger.js');
 var logger = Common.getLogger(__filename);
 var http = require('./http.js');
@@ -535,7 +534,7 @@ function updateUserAccount(registrationEmail, orgEmail, authType, serverURL, dom
 
             var setAccountValues = {};
             if (authType != 0) {
-                var parsedURL = url.parse(serverURL);
+                var parsedURL = new URL(serverURL);
                 setAccountValues = {
                     'accountType': authType,
                     'email': registrationEmail,
@@ -544,7 +543,7 @@ function updateUserAccount(registrationEmail, orgEmail, authType, serverURL, dom
                     'password': orgPassword,
                     'serverName': parsedURL.hostname,
                     'domain': domain,
-                    'serverPort': parsedURL.port == null ? '443' : parsedURL.port,
+                    'serverPort': parsedURL.port || '443',
                     'secureSSL': secureSSL,
                     'signature': updatedSignature
                 };
@@ -711,7 +710,7 @@ function AddEmailSettingsToNewDevice(regEmail,deviceid,cb) {
       let orgPassword = Common.dec(user.orgpassword);
       var setAccountValues = {};
         if (authType != 0) {
-            var parsedURL = url.parse(user.serverurl);
+            var parsedURL = new URL(user.serverurl);
             setAccountValues = {
                 'accountType': authType,
                 'email': regEmail,
@@ -720,7 +719,7 @@ function AddEmailSettingsToNewDevice(regEmail,deviceid,cb) {
                 'password': orgPassword,
                 'serverName': parsedURL.hostname,
                 'domain': domain,
-                'serverPort': parsedURL.port == null ? '443' : parsedURL.port,
+                'serverPort': parsedURL.port || '443',
                 'secureSSL': user.securessl,
                 'signature': user.signature
             };
@@ -733,6 +732,7 @@ function AddEmailSettingsToNewDevice(regEmail,deviceid,cb) {
       });
     });
 }
+
 function AddTelephonySettingsToNewDevice(regEmail, deviceid,cb) {
     Common.db.UserDevices.findAll({
         where : {
@@ -1449,8 +1449,8 @@ function createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime,
                 });
             },
             function(callback) {
-                Common.fs.exists(dataFolder, function(exist) {
-                    callback(null, exist);
+                Common.fs.access(dataFolder, fs.constants.F_OK, function(err) {
+                    callback(null, !err);
                 });
             },
             function(exist, callback) {
@@ -1464,8 +1464,8 @@ function createUserFolders(email, deviceid, deviceType, overwrite, time, hrTime,
             },
             function(exists, callback) {
                 // find best new_user file
-                Common.fs.exists(domainNewUserFile, function(fomainFileExist) {
-                    if (fomainFileExist) {
+                Common.fs.access(domainNewUserFile, fs.constants.F_OK, function(err) {
+                    if (!err) {
                         logger.info(`Found domain new user file at: ${domainNewUserFile}`);
                         newUserFile = domainNewUserFile;
                     }
@@ -1775,7 +1775,8 @@ function validateUserFolders(UserName, deviceID, deviceType, keys, callback) {
             );
         },
         function(callback) {
-            Common.fs.exists(folder, function(exists) {
+            Common.fs.access(folder, fs.constants.F_OK, function(err) {
+                var exists = !err;
                 logger.info(`validateUserFolders. folder: ${folder}, exists: ${exists}`);
                 if (!exists) {
                     var msg = "Folder " + folder + " doesn't exists!";
@@ -1796,8 +1797,8 @@ function validateUserFolders(UserName, deviceID, deviceType, keys, callback) {
                 // callback(null);
                 // return;
             }
-            Common.fs.exists(chfolder, function(exists) {
-                if (!exists) {
+            Common.fs.access(chfolder, fs.constants.F_OK, function(err) {
+                if (err) {
                     var msg = "Folder " + chfolder + " doesn't exists!";
                     logger.info(msg);
                     callback(msg);
@@ -2687,8 +2688,8 @@ function getUserDeviceStorageSize(email, deviceId, callback) {
         logger.info(`getUserDeviceStorageSize: Calculating size of folder: ${deviceFolder}`);
         
         // Check if folder exists first
-        Common.fs.exists(deviceFolder, function(exists) {
-            if (!exists) {
+        Common.fs.access(deviceFolder, fs.constants.F_OK, function(err) {
+            if (err) {
                 logger.warn(`getUserDeviceStorageSize: Device folder does not exist: ${deviceFolder}`);
                 callback(null, 0); // Return 0 if folder doesn't exist
                 return;
@@ -2732,8 +2733,8 @@ function getUserGeneralStorageSize(email, callback) {
         logger.info(`getUserGeneralStorageSize: Calculating size of folder: ${storageFolder}`);
         
         // Check if folder exists first
-        Common.fs.exists(storageFolder, function(exists) {
-            if (!exists) {
+        Common.fs.access(storageFolder, fs.constants.F_OK, function(err) {
+            if (err) {
                 logger.warn(`getUserGeneralStorageSize: Storage folder does not exist: ${storageFolder}`);
                 callback(null, 0); // Return 0 if folder doesn't exist
                 return;
@@ -2777,8 +2778,8 @@ function getAllUserStorageSize(email, callback) {
         logger.info(`getAllUserStorageSize: Calculating size of folder: ${userHomeFolder}`);
         
         // Check if folder exists first
-        Common.fs.exists(userHomeFolder, function(exists) {
-            if (!exists) {
+        Common.fs.access(userHomeFolder, fs.constants.F_OK, function(err) {
+            if (err) {
                 logger.warn(`getAllUserStorageSize: User home folder does not exist: ${userHomeFolder}`);
                 callback(null, 0); // Return 0 if folder doesn't exist
                 return;

@@ -5,9 +5,7 @@ var logger = Common.getLogger(__filename);
 
 var async = require('async');
 var sender = null;
-var util = require('util');
 var request = require('./request.js');
-var querystring = require('querystring');
 var ThreadedLogger = require('./ThreadedLogger.js');
 const {  decode } = require('html-entities')
 var userModule = require('./user.js');
@@ -243,7 +241,7 @@ function sendNotificationToRemoteSever(deviceType, pushRegID, notifyTitle, notif
         urlQuery.userName = UserName;
     }
 
-    var urlstr = Common.NotificationGateway.url + "?" + querystring.stringify(urlQuery);
+    var urlstr = Common.NotificationGateway.url + "?" + new URLSearchParams(urlQuery).toString();
 
 
     request({
@@ -563,7 +561,7 @@ function pushNotificationImp(params,cb) {
         return;
 
     } else {
-        if (!util.isArray(email)) {
+        if (!Array.isArray(email)) {
             email = [email];
         }
         var appNum = appData.appNum;

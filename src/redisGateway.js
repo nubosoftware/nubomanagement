@@ -4,7 +4,6 @@ var async = require('async');
 var logger = Common.getLogger(__filename);
 
 var redisModule = require("redis");
-var util = require('util');
 var Lock = require('./lock.js');
 var platformModule = require('./platform.js');
 var gatewayModule = require('./Gateway.js');
@@ -281,7 +280,7 @@ function unregisterGateway(req, res,next) {
     res.contentType = 'json';
 
     var gwIdxList = req.params.idx;
-    if (!util.isArray(gwIdxList)) {
+    if (!Array.isArray(gwIdxList)) {
         gwIdxList = [gwIdxList];
     }
 

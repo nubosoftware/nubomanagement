@@ -8,7 +8,6 @@ var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
-var util = require('util');
 var async = require('async');
 var User = require('../user.js');
 var eventLog = require('../eventLog.js');
@@ -789,11 +788,11 @@ function addAppsToProfiles(req, res, next) {
 
 function addAppsToProfilesInternal(domain, emails, packageNames, isPrivateApp, isAppStoreOnly, callback) {
 
-    if (!util.isArray(packageNames)) {
+    if (!Array.isArray(packageNames)) {
         packageNames = [packageNames];
     }
 
-    if (!util.isArray(emails)) {
+    if (!Array.isArray(emails)) {
         emails = [emails];
     }
 

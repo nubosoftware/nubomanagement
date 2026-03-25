@@ -37,7 +37,6 @@
         "nubo-plugin-api": "^1.0.6",
         "pem": "^1.14.4",
         "prompt": "^1.1.0",
-        "querystring": "0.2.0",
         "redis": "2.6.0-1",
         "redis-commands": "^1.3.1",
         "request": "^2.88.2",
@@ -62,5 +61,8 @@
         "webpack-ignore-dynamic-require": "^1.0.0",
         "webpack-node-externals": "^3.0.0",
         "webpack-obfuscator": "^3.6.0"
+    },
+    "engines": {
+        "node": ">=24.0.0"
     }
 }

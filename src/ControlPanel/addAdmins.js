@@ -9,7 +9,6 @@ var Common = require('../common.js');
 var sessionModule = require('../session.js');
 var addAppModule = require('./addAppsToProfiles.js');
 var Login = require('../login.js');
-var util = require('util');
 var async = require('async');
 var Session = sessionModule.Session;
 var logger = Common.getLogger(__filename);
@@ -119,7 +118,7 @@ function addAdmins(req, res, next) {
         return;
     }
 
-    if (!util.isArray(email)) {
+    if (!Array.isArray(email)) {
         email = [email];
     }
 

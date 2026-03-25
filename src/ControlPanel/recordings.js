@@ -7,7 +7,6 @@ const fs = require('fs');
 const fsp = fs.promises;
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
-const util = require('util');
 const { request } = require('http');
 
 /**
@@ -46,7 +45,7 @@ async function getRecordings(req, res, next) {
         let sortBy = params.sortBy;
         let order = [['start_time','DESC']];
         if (sortBy && sortBy != "") {
-            if (!util.isArray(sortBy)) {
+            if (!Array.isArray(sortBy)) {
                 sortBy = [sortBy];
             }
             order = [];
@@ -62,7 +61,7 @@ async function getRecordings(req, res, next) {
 
         let sortDesc = req.params.sortDesc;
         if (sortDesc && sortDesc != "") {
-            if (!util.isArray(sortDesc)) {
+            if (!Array.isArray(sortDesc)) {
                 sortDesc = [sortDesc];
             }
             let ind = 0;
@@ -396,7 +395,7 @@ async function addRemoveProfiles(req, res) {
         if (!emails) {
             throw new Error("Invalid paramter");
         }
-        if (!util.isArray(emails)) {
+        if (!Array.isArray(emails)) {
             emails = emails.split(",");
         }
 

@@ -4,8 +4,6 @@ var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
-var qs = require('querystring');
-var util = require('util');
 var async = require('async');
 var setting = require('../settings.js');
 var RemoveProfilesFromGroup = require('./removeProfilesFromGroup.js');
@@ -66,10 +64,10 @@ function deleteGroups(req, res, next) {
         }
 
         // checks if we get multiple groups or just one
-        if (!util.isArray(groupName)) {
+        if (!Array.isArray(groupName)) {
             groupName = [groupName];
         }
-		if (!util.isArray(adDomain)) {
+		if (!Array.isArray(adDomain)) {
             adDomain = [adDomain];
         }
         logger.info(`deleteGroups. groupName: ${groupName}, adDomain: ${adDomain}`);

@@ -3,7 +3,6 @@
 var Common = require('./common.js');
 var logger = Common.getLogger(__filename);
 var nfs_config = {};
-var util = require('util');
 var async = require('async');
 var fs = require('fs');
 var url = require('url');
@@ -55,7 +54,7 @@ function fillRedis(item, callback) {
 
 function commitRegistration(obj) {
     var nfs_servers;
-    if (util.isArray(obj)) nfs_servers = obj;
+    if (Array.isArray(obj)) nfs_servers = obj;
     else nfs_servers = [obj];
     var zlist = [];
     var zscore = [];

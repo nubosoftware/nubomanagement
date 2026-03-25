@@ -4,8 +4,6 @@ var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
-var qs = require('querystring');
-var util = require('util');
 var setting = require('../settings.js');
 var User = require('../user.js');
 var AddAppsToProfiles = require('./addAppsToProfiles.js');
@@ -53,13 +51,13 @@ function deleteApps(req, res, next) {
         }
     }
 
-    if (emails != null && !util.isArray(emails)) {
+    if (emails != null && !Array.isArray(emails)) {
         emails = [emails];
     }
-    if (groups != null && !util.isArray(groups)) {
+    if (groups != null && !Array.isArray(groups)) {
         groups = [groups];
     }
-    if (adDomain != null && !util.isArray(adDomain)) {
+    if (adDomain != null && !Array.isArray(adDomain)) {
         adDomain = [adDomain];
     }
 
@@ -68,7 +66,7 @@ function deleteApps(req, res, next) {
         status = 0;
         msg = "deleteApps: Invalid packageName";
     }
-    if (packageNames != null && !util.isArray(packageNames)) {
+    if (packageNames != null && !Array.isArray(packageNames)) {
         packageNames = [packageNames];
     }
 
@@ -186,7 +184,7 @@ function deleteAppsSeries(emails, groups, adDomain, packageNames, domain, callba
 
 function deleteAppsFromGroupsInternal(groups, adDomain, packageNames, domain, isPrivateApp, callback) {
     // checks if we get multiple groups or just one
-    if (!util.isArray(groups)) {
+    if (!Array.isArray(groups)) {
         groups = [groups];
     }
     // Delete app for each group

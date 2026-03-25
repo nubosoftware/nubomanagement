@@ -3,7 +3,6 @@
 var Common = require('./common.js');
 var util = require('util');
 var request = require('request');
-var querystring = require('querystring');
 var async = require('async');
 var sessionModule = require('./session.js');
 var PlatformModule = require('./platform.js');
@@ -595,12 +594,12 @@ function sendSms(toPhone, body,fromPhone, callback) {
  * (gateway) Detailed of the gateway are located in Settings.json
  */
 function sendSmsNotificationToRemoteSever(toPhone, body, callback) {
-    var urlstr = Common.NotificationGateway.smsUrl + "?" + querystring.stringify({
+    var urlstr = Common.NotificationGateway.smsUrl + "?" + new URLSearchParams({
         toPhone : toPhone,
         body : body,
         serverID : Common.NotificationGateway.serverID,
         serverAuthKey : Common.NotificationGateway.authKey
-    });
+    }).toString();
 
     request({
         'method' : 'GET',

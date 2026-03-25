@@ -10,7 +10,6 @@ var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
 var setting = require('../settings.js');
 var async = require('async');
-var util = require('util');
 
 function loadAdminParamsFromSession(req, res, callback) {
     setting.loadAdminParamsFromSession(req, res, callback);
@@ -48,7 +47,7 @@ function activateProfiles(req, res, next) {
         return;
     }
 
-    if (!util.isArray(email)) {
+    if (!Array.isArray(email)) {
         email = [email];
     }
 

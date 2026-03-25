@@ -5,8 +5,6 @@ var fs = require('fs');
 var express = require('express');
 var https = require('https');
 var http = require('http');
-var url = require("url");
-var querystring = require("querystring");
 var accesslog = require('accesslog');
 var _ = require('underscore');
 var expressCompat = require('./expressCompat');
@@ -116,28 +114,32 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
         async.waterfall(
             [
                 function(callback) {
-                    var urlObj = url.parse(opts.listenAddress);
+                    var addr = opts.listenAddress;
+                    var hasHostname = !addr.endsWith('://');
+                    if (!hasHostname) addr += 'localhost';
+                    var urlObj = new URL(addr);
+                    var listenHostname = hasHostname ? urlObj.hostname : undefined;
                     if(urlObj.protocol === "https:") {
                         if(!urlObj.port) urlObj.port = 8443;
                     } else {
                         if(!urlObj.port) urlObj.port = 8080;
                     }
-                    callback(null, urlObj);
+                    callback(null, urlObj, listenHostname);
                 },
-                function(urlObj, callback) {
+                function(urlObj, listenHostname, callback) {
                     if(urlObj.protocol === "https:") {
                         readCerts(opts.sslCerts, function(err, obj) {
                             if(err) {
                                 callback(err);
                             } else {
-                                callback(null, urlObj, obj);
+                                callback(null, urlObj, listenHostname, obj);
                             }
                         });
                     } else {
-                        callback(null, urlObj, null);
+                        callback(null, urlObj, listenHostname, null);
                     }
                 },
-                function(urlObj, sslCerts, callback) {
+                function(urlObj, listenHostname, sslCerts, callback) {
                     var app = express();
                     expressCompat.setup(app, { name: opts.name });
 
@@ -171,8 +173,8 @@ var mainFunction = function(err, firstTimeLoad, partOfCluster) {
                         res.send(err);
                     });
 
-                    var listenUrl = urlObj.protocol + '//' + (urlObj.hostname || '0.0.0.0') + ':' + urlObj.port;
-                    httpServer.listen(urlObj.port, urlObj.hostname, function() {
+                    var listenUrl = urlObj.protocol + '//' + (listenHostname || '0.0.0.0') + ':' + urlObj.port;
+                    httpServer.listen(urlObj.port, listenHostname, function() {
                         logger.info(app.name + ' listening at ' + listenUrl);
                         callback(null, httpServer);
                     });

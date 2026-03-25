@@ -4,8 +4,6 @@ var crypto = require('crypto');
 var dataEncryptor = require('./dataEncryptor.js');
 var async = require('async');
 var _ = require('underscore');
-var url = require('url');
-const { URL } = require('url');
 var DEBUG = true;
 var globals = require('./globals.js');
 var config = require('./config.js');
@@ -749,10 +747,10 @@ function parse_configs(parseConfigCB) {
             }
 
             if (Common.dcURL) {
-                var publicUrlObj = url.parse(Common.dcURL);
+                var publicUrlObj = new URL(Common.dcURL);
                 Common.publicServerCredentials.options = {};
                 Common.publicServerCredentials.options.host = publicUrlObj.hostname;
-                Common.publicServerCredentials.options.port = Number(publicUrlObj.port);
+                Common.publicServerCredentials.options.port = publicUrlObj.port ? Number(publicUrlObj.port) : (publicUrlObj.protocol === 'https:' ? 443 : 80);
                 var isSSL = publicUrlObj.protocol === "https:";
                 if (isSSL) {
                     if (Common.publicServerCredentials.key && Common.publicServerCredentials.key != "") {
@@ -947,6 +945,21 @@ function parse_configs(parseConfigCB) {
 
 
 
+/**
+ * Replicate OpenSSL EVP_BytesToKey (MD5, no salt) used internally by
+ * the deprecated crypto.createCipher / crypto.createDecipher.
+ */
+function evpBytesToKey(password, keyLen, ivLen) {
+    var buf = Buffer.isBuffer(password) ? password : Buffer.from(password);
+    var derived = Buffer.alloc(0);
+    var block = Buffer.alloc(0);
+    while (derived.length < keyLen + ivLen) {
+        block = crypto.createHash('md5').update(Buffer.concat([block, buf])).digest();
+        derived = Buffer.concat([derived, block]);
+    }
+    return { key: derived.subarray(0, keyLen), iv: derived.subarray(keyLen, keyLen + ivLen) };
+}
+
 var padKey = function(encKey) {
     var resKey = "";
     var addCnt = 32-encKey.length;
@@ -959,7 +972,8 @@ var padKey = function(encKey) {
 Common.encOld = function(plainText) {
     if (!plainText || plainText.length <= 2)
         return plainText;
-    var cipher = crypto.createCipher(Common.encAlgorithmOld, Common.encKey);
+    var { key } = evpBytesToKey(Common.encKey, 16, 0);
+    var cipher = crypto.createCipheriv(Common.encAlgorithmOld, key, null);
     var encrypted = "enc:" + cipher.update(plainText, 'utf8', 'hex') + cipher.final('hex') ;
     return encrypted;
 };
@@ -993,7 +1007,8 @@ Common.dec = function(encText) {
     var decipher;
     if (arr.length == 2) {
         // old algorithm without IV
-        decipher = crypto.createDecipher(Common.encAlgorithmOld, Common.encKey);
+        var { key } = evpBytesToKey(Common.encKey, 16, 0);
+        decipher = crypto.createDecipheriv(Common.encAlgorithmOld, key, null);
         logger.info("decrypt with old algorith!");
     } else if (arr.length == 3) {
         // new algorith with IV

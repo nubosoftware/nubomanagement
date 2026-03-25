@@ -8,7 +8,6 @@ var setting = require('../settings.js');
 var GetGroupDetails = require('./getGroupDetails.js');
 var AddAppsToProfiles = require('./addAppsToProfiles.js');
 var DeleteAppFromProfiles = require('./deleteAppFromProfiles.js');
-var util = require('util');
 var async = require('async');
 
 function loadAdminParamsFromSession(req, res, callback) {
@@ -72,7 +71,7 @@ function removeProfilesFromGroup(req, res, next) {
         }
 
         // checks if we get multiple profiles or just one
-        if (!util.isArray(emails)) {
+        if (!Array.isArray(emails)) {
             emails = [emails];
         }
 

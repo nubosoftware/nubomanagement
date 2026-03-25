@@ -3,7 +3,6 @@
 var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 var setting = require('../settings.js');
-var util = require('util');
 var async = require('async');
 var addProfilesToGroupModule = require('./addProfilesToGroup.js');
 var ThreadedLogger = require('../ThreadedLogger.js');
@@ -57,7 +56,7 @@ function createGroup(req, res, next) {
         }
 
         // checks if we get multiple profiles or just one
-        if (!util.isArray(emails)) {
+        if (!Array.isArray(emails)) {
             emails = [emails];
         }
 

@@ -4,7 +4,6 @@ var Common = require('../../common.js');
 var ThreadedLogger = require('../../ThreadedLogger.js');
 var DBProcessModule = require('./DBProcess.js');
 const { Op } = require('sequelize');
-var util = require('util');
 const fsp = require('fs').promises;
 const path = require('path');
 const commonUtils = require('../../commonUtils.js');
@@ -112,7 +111,7 @@ function httpGet(req, res,next) {
     let sortBy = req.params.sortBy;
     let order = [["ID","DESC"]];
     if (sortBy && sortBy != "") {
-        if (!util.isArray(sortBy)) {
+        if (!Array.isArray(sortBy)) {
             sortBy = [sortBy];
         }
         order = [];
@@ -123,7 +122,7 @@ function httpGet(req, res,next) {
 
     let sortDesc = req.params.sortDesc;
     if (sortDesc && sortDesc != "") {
-        if (!util.isArray(sortDesc)) {
+        if (!Array.isArray(sortDesc)) {
             sortDesc = [sortDesc];
         }
         let ind = 0;

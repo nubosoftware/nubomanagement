@@ -7,7 +7,6 @@ var Session = sessionModule.Session;
 var setting = require('../settings.js');
 var AddAppsToProfiles = require('./addAppsToProfiles.js');
 var GetGroupDetails = require('./getGroupDetails.js');
-var util = require('util');
 var async = require('async');
 
 function loadAdminParamsFromSession(req, res, callback) {
@@ -78,7 +77,7 @@ function addProfilesToGroup(req, res, next) {
         }
 
         // checks if we get multiple profiles or just one
-        if (!util.isArray(emails)) {
+        if (!Array.isArray(emails)) {
             emails = [emails];
         }
 

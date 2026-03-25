@@ -22,14 +22,26 @@ let encryptedData = cipher.update(data, 'utf8', 'hex') + cipher.final('hex') + "
 
 console.log('encrypted data=', encryptedData);
 
-var cipherecb = crypto.createCipher('aes-128-ecb', password);
+function evpBytesToKey(password, keyLen, ivLen) {
+    var buf = Buffer.isBuffer(password) ? password : Buffer.from(password);
+    var derived = Buffer.alloc(0);
+    var block = Buffer.alloc(0);
+    while (derived.length < keyLen + ivLen) {
+        block = crypto.createHash('md5').update(Buffer.concat([block, buf])).digest();
+        derived = Buffer.concat([derived, block]);
+    }
+    return { key: derived.subarray(0, keyLen), iv: derived.subarray(keyLen, keyLen + ivLen) };
+}
+
+var { key: ecbKey } = evpBytesToKey(password, 16, 0);
+var cipherecb = crypto.createCipheriv('aes-128-ecb', ecbKey, null);
 var encrypted = cipherecb.update(data, 'utf8', 'hex') + cipherecb.final('hex');
 console.log('encrypted aes-128-ecb=', encrypted.toUpperCase());
 
 
 var arr = encryptedData.split(",");
 
-var decipher = crypto.createDecipheriv(alg, password_hash,new Buffer(arr[1], "hex"));
+var decipher = crypto.createDecipheriv(alg, password_hash, Buffer.from(arr[1], "hex"));
 try {
     var decrypted = decipher.update(arr[0], 'hex', 'utf8') + decipher.final('utf8');
     console.log("decrypted: "+decrypted);

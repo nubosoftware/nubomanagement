@@ -1,5 +1,4 @@
 var http = require('./http.js');
-var querystring = require('querystring');
 var Common = require('./common.js');
 var url = require('url');
 var logger = Common.getLogger(__filename);

@@ -12,7 +12,6 @@ var addAppModule = require('./addAppsToProfiles.js');
 var deleteAppFromProfile = require('./deleteAppFromProfiles.js');
 var StartSession = require('../StartSession.js');
 var Login = require('../login.js');
-var util = require('util');
 var async = require('async');
 var Session = sessionModule.Session;
 var logger = Common.getLogger(__filename);
@@ -47,7 +46,7 @@ function removeAdmins(req, res, next) {
         return;
     }
 
-    if (!util.isArray(email)) {
+    if (!Array.isArray(email)) {
         email = [email];
     }
 

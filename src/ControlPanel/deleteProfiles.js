@@ -8,8 +8,6 @@ var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
-var qs = require('querystring');
-var util = require('util');
 var setting = require('../settings.js');
 var async = require('async');
 
@@ -56,7 +54,7 @@ function deleteProfiles(req, res, next) {
         }
 
         // checks if we get multiple profiles or just one
-        if (!util.isArray(email)) {
+        if (!Array.isArray(email)) {
             email = [email];
         }
 

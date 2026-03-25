@@ -8,8 +8,6 @@ var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
-var qs = require('querystring');
-var util = require('util');
 var setting = require('../settings.js');
 var async = require('async');
 
@@ -53,7 +51,7 @@ function inviteProfiles(req, res, next) {
             domain = login.loginParams.mainDomain;
         }
 
-        if (!util.isArray(email)) {
+        if (!Array.isArray(email)) {
             email = [email];
         }
 

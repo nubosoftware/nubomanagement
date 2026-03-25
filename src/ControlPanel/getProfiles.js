@@ -11,7 +11,6 @@ var Session = sessionModule.Session;
 var setting = require('../settings.js');
 var Login = require('../login.js');
 var async = require('async');
-var util = require('util');
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 var _ = require("underscore");
@@ -124,7 +123,7 @@ function getProfiles(req, res, next) {
         let order = [['lastname'], ['firstname']];
         try {
             if (sortBy && sortBy !== "") {
-                if (!util.isArray(sortBy)) {
+                if (!Array.isArray(sortBy)) {
                     sortBy = [sortBy];
                 }
                 order = [];
@@ -144,7 +143,7 @@ function getProfiles(req, res, next) {
 
             let sortDesc = req.params.sortDesc;
             if (sortDesc && sortDesc !== "") {
-                if (!util.isArray(sortDesc)) {
+                if (!Array.isArray(sortDesc)) {
                     sortDesc = [sortDesc];
                 }
                 let ind = 0;
@@ -409,7 +408,7 @@ function getDevices(req, res,next) {
     let sortBy = req.params.sortBy;
     let order = [['last_login','DESC'],['email'], ['devicename']];
     if (sortBy && sortBy != "") {
-        if (!util.isArray(sortBy)) {
+        if (!Array.isArray(sortBy)) {
             sortBy = [sortBy];
         }
         order = [];
@@ -427,7 +426,7 @@ function getDevices(req, res,next) {
 
     let sortDesc = req.params.sortDesc;
     if (sortDesc && sortDesc != "") {
-        if (!util.isArray(sortDesc)) {
+        if (!Array.isArray(sortDesc)) {
             sortDesc = [sortDesc];
         }
         let ind = 0;

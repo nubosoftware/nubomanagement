@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 LABEL Version 3.2.01
 RUN apt-get -y update
 # install linux packages
@@ -15,8 +15,8 @@ RUN apt install -y \
     rsync \
     sudo
 
-#install node js 14.x
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+#install node js 24.x
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
 RUN apt install -y nodejs
 
 #install docker-ce-cli

@@ -4,8 +4,6 @@ var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
-var qs = require('querystring');
-var util = require('util');
 var setting = require('../settings.js');
 var User = require('../user.js');
 var AddAppsToProfiles = require('./addAppsToProfiles.js');
@@ -85,7 +83,7 @@ function deleteAppFromProfiles(req, res, next) {
 function deleteAppFromProfilesInternal(emails, packageNames, domain, isPrivateApp, callback) {
 
     // checks if we get multiple profiles or just one
-    if (!util.isArray(emails)) {
+    if (!Array.isArray(emails)) {
         emails = [emails];
     }
 

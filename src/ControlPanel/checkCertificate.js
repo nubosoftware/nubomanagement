@@ -5,7 +5,6 @@ var logger = Common.getLogger(__filename);
 var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
 var setting = require('../settings.js');
-var util = require('util');
 var User = require('../user.js');
 var async = require('async');
 var CERTIFICATE_FILE = 'cert.pfx';
@@ -133,9 +132,9 @@ function checkIfCertificateIsInNFS(email, deviceid, isDelete, callback) {
     }
     var certFile = commonUtils.buildPath(url, CERTIFICATE_FILE);
 
-    Common.fs.exists(certFile, function(exists) {
+    Common.fs.access(certFile, Common.fs.constants.F_OK, function(err) {
 
-        if (exists) {
+        if (!err) {
             if (isDelete) {
                 Common.fs.unlink(certFile, function() {
                     // think of adding another exists check

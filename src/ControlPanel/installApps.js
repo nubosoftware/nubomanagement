@@ -5,7 +5,6 @@ var logger = Common.getLogger(__filename);
 var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
 var setting = require('../settings.js');
-var util = require('util');
 var async = require('async');
 var User = require('../user.js');
 
@@ -46,10 +45,10 @@ function installApps(req, res, next) {
             msg = "installApps: Invalid group: " + groups;
         }
     }
-    if (emails != null && !util.isArray(emails)) {
+    if (emails != null && !Array.isArray(emails)) {
         emails = [emails];
     }
-    if (groups != null && !util.isArray(groups)) {
+    if (groups != null && !Array.isArray(groups)) {
         groups = [groups];
     }
     if (!packageNames || packageNames == "") {
@@ -57,7 +56,7 @@ function installApps(req, res, next) {
         status = 0;
         msg = "Invalid parameters";
     }
-    if (packageNames != null && !util.isArray(packageNames)) {
+    if (packageNames != null && !Array.isArray(packageNames)) {
         packageNames = [packageNames];
     }
     if (adDomain == null) {
@@ -65,7 +64,7 @@ function installApps(req, res, next) {
         msg = "Invalid parameters";
         adDomain = '';
     }
-    if (!util.isArray(adDomain)) {
+    if (!Array.isArray(adDomain)) {
         adDomain = [adDomain];
     }
 

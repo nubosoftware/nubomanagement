@@ -16,6 +16,17 @@ const S_PASS = "******";
 const SKEY_DOCKER = "./conf/.skey";
 const SYSCONF_DOCKER = "./conf/sysconf";
 
+function evpBytesToKey(password, keyLen, ivLen) {
+    var buf = Buffer.isBuffer(password) ? password : Buffer.from(password);
+    var derived = Buffer.alloc(0);
+    var block = Buffer.alloc(0);
+    while (derived.length < keyLen + ivLen) {
+        block = crypto.createHash('md5').update(Buffer.concat([block, buf])).digest();
+        derived = Buffer.concat([derived, block]);
+    }
+    return { key: derived.subarray(0, keyLen), iv: derived.subarray(keyLen, keyLen + ivLen) };
+}
+
 var skeyFile = null;
 var sysconfFile = null;
 var isDocker = false;
@@ -334,7 +345,8 @@ function dec(encText, encKey) {
     var decipher;
     if (arr.length == 2) {
         // old algorithm without IV
-        decipher = crypto.createDecipher(ALGOOld, encKey);
+        var derived = evpBytesToKey(encKey, 16, 16);
+        decipher = crypto.createDecipheriv(ALGOOld, derived.key, derived.iv);
         console.log("decrypt with old algorithm!");
     } else if (arr.length == 3) {
         // new algorith with IV

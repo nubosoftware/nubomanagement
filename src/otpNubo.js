@@ -7,7 +7,6 @@ var async = require('async');
 var Login = require('./login.js');
 var ThreadedLogger = require('./ThreadedLogger.js');
 var url = require('url');
-var querystring = require('querystring');
 var path = require('path');
 const request = require('request');
 var smsNotification = require('./SmsNotification.js');
