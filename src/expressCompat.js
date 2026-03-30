@@ -112,10 +112,19 @@ function mapParamsMiddleware(req, res, next) {
     var _dirty = true;
 
     function rebuild() {
+        // When body is an array, preserve it as-is so Array.isArray(req.params)
+        // stays true.  Object.assign({}, array) would flatten it into {"0": ...}.
+        if (Array.isArray(req.body)) {
+            _merged = req.body.slice();
+            Object.assign(_merged, req.query || {});
+            Object.assign(_merged, _routeParams);
+            _dirty = false;
+            return;
+        }
         var keys = Object.keys(_merged);
         for (var i = 0; i < keys.length; i++) delete _merged[keys[i]];
         Object.assign(_merged, req.query || {});
-        if (req.body && !Array.isArray(req.body)) Object.assign(_merged, req.body);
+        Object.assign(_merged, req.body || {});
         if (req.files) Object.assign(_merged, req.files);
         Object.assign(_merged, _routeParams); // route params take priority
         _dirty = false;
