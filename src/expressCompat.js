@@ -115,7 +115,7 @@ function mapParamsMiddleware(req, res, next) {
         var keys = Object.keys(_merged);
         for (var i = 0; i < keys.length; i++) delete _merged[keys[i]];
         Object.assign(_merged, req.query || {});
-        Object.assign(_merged, req.body || {});
+        if (req.body && !Array.isArray(req.body)) Object.assign(_merged, req.body);
         if (req.files) Object.assign(_merged, req.files);
         Object.assign(_merged, _routeParams); // route params take priority
         _dirty = false;
