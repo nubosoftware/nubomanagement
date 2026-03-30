@@ -988,7 +988,9 @@ var filter = {
             "notifyBody": constraints.openTextConstrOptional,
             "appName": constraints.ExcludeSpecialCharactersOptional,
             "authKey": constraints.ExcludeSpecialCharactersOptional,
-            "contentId": constraints.ExcludeSpecialCharactersOptional,
+            "contentId": {
+                "length": { "minimum": 0, "maximum": 1024 }
+            },
         },
         "bodyConstraints": {
             "session": constraints.sessionIdConstrOptional,
@@ -1002,7 +1004,9 @@ var filter = {
             "notifyBody": constraints.openTextConstrOptional,
             "appName": constraints.ExcludeSpecialCharactersOptional,
             "authKey": constraints.ExcludeSpecialCharactersOptional,
-            "contentId": constraints.ExcludeSpecialCharactersOptional
+            "contentId": {
+                "length": { "minimum": 0, "maximum": 1024 }
+            }
         },
         "headerConstraints": {
             "controlpanelid": constraints.controlPanelIDConstrOptional
