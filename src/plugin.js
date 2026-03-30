@@ -6,9 +6,14 @@ const _ = require('underscore');
 const fs = require('fs').promises;
 var crypto = require('crypto');
 const path = require('path');
+const express = require('express');
 const commonUtils = require('./commonUtils.js');
 const originalRequire = require("../scripts/originalRequire");
 const eventLog = require('./eventLog.js');
+
+// Body parser middleware for plugin routes - ensures JSON body is parsed
+// even when plugin routes are registered dynamically after global middleware
+const pluginJsonParser = express.json({ limit: 2000000000 });
 
 
 
@@ -365,13 +370,13 @@ const eventLog = require('./eventLog.js');
                     }
                     if (newServer) {
                         // add only to the new server
-                        const route = newServer[publicServerHandler.method](publicServerHandler.path,publicServerHandler.handler);
+                        const route = newServer[publicServerHandler.method](publicServerHandler.path, pluginJsonParser, publicServerHandler.handler);
                         // logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${newServer.name}`);
                         this.publicRoutes.push({route : route, server: newServer});
                     } else {
                         // add to existing servers
                         for (const server of Plugin.publicServers) {
-                            const route = server[publicServerHandler.method](publicServerHandler.path,publicServerHandler.handler);
+                            const route = server[publicServerHandler.method](publicServerHandler.path, pluginJsonParser, publicServerHandler.handler);
                             // logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${server.name}`);
                             this.publicRoutes.push({route : route, server: server});
                         }
