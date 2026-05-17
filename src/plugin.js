@@ -352,8 +352,9 @@ const pluginJsonParser = express.json({ limit: 2000000000 });
 
     /**
      * Add public server handlers
+     * @param {Object} [newEntry] - optional { server, pluginRouter } to add to a single server
      */
-    addPublicServerHandlers(newServer) {
+    addPublicServerHandlers(newEntry) {
         // add handlers to public servers
         if (this.pluginInitResponse && this.pluginInitResponse.publicServerHandlers) {
             for (const publicServerHandler of this.pluginInitResponse.publicServerHandlers) {
@@ -368,18 +369,12 @@ const pluginJsonParser = express.json({ limit: 2000000000 });
                             handler(req,res);
                         };
                     }
-                    if (newServer) {
-                        // add only to the new server
-                        const route = newServer[publicServerHandler.method](publicServerHandler.path, pluginJsonParser, publicServerHandler.handler);
-                        // logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${newServer.name}`);
-                        this.publicRoutes.push({route : route, server: newServer});
-                    } else {
-                        // add to existing servers
-                        for (const server of Plugin.publicServers) {
-                            const route = server[publicServerHandler.method](publicServerHandler.path, pluginJsonParser, publicServerHandler.handler);
-                            // logger.info(`Added public server handler. plugin: ${this.id}, method: ${publicServerHandler.method}, path: ${publicServerHandler.path}, route: ${route}, server: ${server.name}`);
-                            this.publicRoutes.push({route : route, server: server});
-                        }
+                    const targets = newEntry ? [newEntry] : Plugin.publicServers;
+                    for (const entry of targets) {
+                        const router = entry.pluginRouter;
+                        router[publicServerHandler.method](publicServerHandler.path, pluginJsonParser, publicServerHandler.handler);
+                        const layer = router.stack[router.stack.length - 1];
+                        this.publicRoutes.push({ layer, router });
                     }
                 } catch (err) {
                     logger.info(`[Plugin:${this.id}] Error adding public server handler. plugin: ${this.id}, err: ${err}`);
@@ -393,10 +388,15 @@ const pluginJsonParser = express.json({ limit: 2000000000 });
      * Remove public server handlers
      */
     removePublicServerHandlers() {
-        // remove handlers from public servers
+        // remove handlers from the plugin router. Splicing from the router's
+        // own stack preserves the router's position in the parent app stack,
+        // so plugin routes can be re-added later without falling behind
+        // catch-all routes registered after the router was mounted.
         for (const publicRoute of this.publicRoutes) {
-            publicRoute.server.rm(publicRoute.route);
-            // logger.info(`Removed public server handler. plugin: ${this.id}, route: ${publicRoute.route}, server: ${publicRoute.server.name}`);
+            const idx = publicRoute.router.stack.indexOf(publicRoute.layer);
+            if (idx !== -1) {
+                publicRoute.router.stack.splice(idx, 1);
+            }
         }
         this.publicRoutes = [];
     }
@@ -1184,13 +1184,20 @@ const pluginJsonParser = express.json({ limit: 2000000000 });
      * @param {*} server
      */
     static addPublicServer(server) {
-        Plugin.publicServers.push(server);
+        // Mount a dedicated Router for plugin routes. Its position in the
+        // parent app stack is fixed at mount time, so plugin routes added
+        // and removed at runtime always match before catch-all routes
+        // registered later (e.g. /api/:objectType/... in setPlatformServiceServer).
+        const pluginRouter = express.Router();
+        server.use(pluginRouter);
+        const entry = { server, pluginRouter };
+        Plugin.publicServers.push(entry);
         logger.info(`addPublicServer. server: ${server.name} Public servers: ${Plugin.publicServers.length} `);
         // update all plugins
         for (const id in Plugin.plugins) {
             const plugin = Plugin.plugins[id];
             if (plugin.status == Plugin.PLUGIN_STATUS_LOADED && plugin.pluginInitResponse  && plugin.pluginInitResponse.publicServerHandlers) {
-                plugin.addPublicServerHandlers(server);
+                plugin.addPublicServerHandlers(entry);
             }
         }
     }
