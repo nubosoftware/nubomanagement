@@ -14,6 +14,49 @@ function getRules() {
     }
     return rules;
 }
+
+// Whitelist of parameters sent by SMS providers (e.g. Twilio) on the
+// incoming-message webhook. The permission-parser rejects any parameter that
+// is not present in the constraints map, so every field the provider may post
+// must be listed here. See https://www.twilio.com/docs/messaging/guides/webhook-request
+var twilioSmsParam = { "length": { "minimum": 0, "maximum": 255 } };
+var twilioSmsText = { "length": { "minimum": 0, "maximum": 2000 } };
+var twilioSmsUrl = { "length": { "minimum": 0, "maximum": 1000 } };
+var receiveSMSConstraints = {
+    "MessageSid": twilioSmsParam,
+    "SmsSid": twilioSmsParam,
+    "SmsMessageSid": twilioSmsParam,
+    "AccountSid": twilioSmsParam,
+    "MessagingServiceSid": twilioSmsParam,
+    "From": twilioSmsParam,
+    "To": twilioSmsParam,
+    "Body": twilioSmsText,
+    "NumMedia": twilioSmsParam,
+    "NumSegments": twilioSmsParam,
+    "SmsStatus": twilioSmsParam,
+    "MessageStatus": twilioSmsParam,
+    "ApiVersion": twilioSmsParam,
+    "FromCity": twilioSmsParam,
+    "FromState": twilioSmsParam,
+    "FromZip": twilioSmsParam,
+    "FromCountry": twilioSmsParam,
+    "ToCity": twilioSmsParam,
+    "ToState": twilioSmsParam,
+    "ToZip": twilioSmsParam,
+    "ToCountry": twilioSmsParam,
+    // legacy lowercase fields used by internal callers (platform.receiveSMS)
+    "to": twilioSmsParam,
+    "from": twilioSmsParam,
+    "text": twilioSmsText,
+    "localid": twilioSmsParam,
+    "pdu": twilioSmsText
+};
+// Twilio sends up to 10 media items per MMS (MediaUrl0..9 / MediaContentType0..9)
+for (var mediaIdx = 0; mediaIdx < 10; mediaIdx++) {
+    receiveSMSConstraints["MediaContentType" + mediaIdx] = twilioSmsParam;
+    receiveSMSConstraints["MediaUrl" + mediaIdx] = twilioSmsUrl;
+}
+
 var filter = {
     "rules": [{
         "path": "/favicon.ico"
@@ -1531,13 +1574,12 @@ var filter = {
         }
     },
     {
+        // Incoming SMS webhook from providers such as Twilio. No nubosettingsid
+        // header is required; the request is authenticated by validating the
+        // provider's request signature (e.g. X-Twilio-Signature) in the handler.
         "path": "/receiveSMS",
-        "headerConstraints": {
-            "nubosettingsid": constraints.settingsIDConstrRequested
-        },
-        "constraints": {
-            "text": constraints.openTextConstrOptional
-        }
+        "constraints": receiveSMSConstraints,
+        "bodyConstraints": receiveSMSConstraints
     },
     {
         "path": "/logoutUser",

@@ -272,12 +272,91 @@ function deliverSMSToNuboUser(toAssigned,toLocal, fromLocal, fromAssigned, text,
             }
         });
 }
+/**
+ * Reconstruct the absolute URL that the SMS provider used to reach this
+ * endpoint. Twilio computes its request signature over this exact URL, so
+ * behind a reverse proxy we honor the X-Forwarded-Proto / X-Forwarded-Host
+ * headers. An explicit override can be configured via
+ * Common.smsOptions.webhookUrl when the public URL cannot be derived from
+ * the incoming request.
+ */
+function getReceiveSMSUrl(req) {
+    if (Common.smsOptions && Common.smsOptions.webhookUrl) {
+        return Common.smsOptions.webhookUrl;
+    }
+    let proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    // X-Forwarded-Proto may contain a comma separated list
+    proto = String(proto).split(',')[0].trim();
+    const host = req.headers['x-forwarded-host'] || req.headers['host'];
+    const originalUrl = req.originalUrl || req.url || '/receiveSMS';
+    return proto + '://' + host + originalUrl;
+}
+
+/**
+ * Validate that an incoming /receiveSMS request really originates from the
+ * configured SMS provider (Twilio). Returns true when the request is allowed
+ * to proceed.
+ *
+ * Validation is enforced whenever a Twilio auth token is configured
+ * (Common.smsOptions.authToken). It can be explicitly disabled by setting
+ * Common.smsOptions.validateSignature === false (e.g. for a non-Twilio
+ * provider or local testing).
+ */
+function isValidSmsRequest(req) {
+    if (!Common.smsOptions || !Common.smsOptions.authToken) {
+        // No Twilio credentials configured - nothing to validate against.
+        return true;
+    }
+    if (Common.smsOptions.validateSignature === false) {
+        logger.info("receiveSMS: signature validation disabled by configuration");
+        return true;
+    }
+    const signature = req.headers['x-twilio-signature'];
+    if (!signature) {
+        logger.error("receiveSMS: missing X-Twilio-Signature header");
+        return false;
+    }
+    const url = getReceiveSMSUrl(req);
+    // For POST the signature is computed over the form body parameters;
+    // for GET there are no body params.
+    const params = (req.method === 'POST' && req.body) ? req.body : {};
+    try {
+        const twilio = require('twilio');
+        const valid = twilio.validateRequest(Common.smsOptions.authToken, signature, url, params);
+        if (!valid) {
+            logger.error(`receiveSMS: invalid Twilio signature. url: ${url}`);
+        }
+        return valid;
+    } catch (e) {
+        logger.error("receiveSMS: error validating Twilio signature: " + e);
+        return false;
+    }
+}
+
+/**
+ * Reply to the SMS provider with a (possibly empty) TwiML document so that
+ * Twilio does not log a "invalid content type" / "no TwiML" warning.
+ */
+function sendTwiMLResponse(res, messageText) {
+    const twiml = new MessagingResponse();
+    if (messageText) {
+        twiml.message(messageText);
+    }
+    res.header('Content-Type', 'text/xml');
+    res.statusCode = 200;
+    res.end(twiml.toString());
+}
+
 function receiveSMS(req, res,next) {
-    logger.info("Params: "+ JSON.stringify(req.params,null,2));
-    //const twiml = new MessagingResponse();
-    //twiml.message('The Robots are coming! Head for the hills!');
-    //res.writeHead(200, {'Content-Type': 'text/xml'});
-    //res.end(twiml.toString());
+    logger.info("receiveSMS Params: "+ JSON.stringify(req.params,null,2));
+
+    if (!isValidSmsRequest(req)) {
+        res.statusCode = 403;
+        res.header('Content-Type', 'text/plain');
+        res.end("Forbidden: invalid request signature");
+        return;
+    }
+
     var status = 1;
     var msg = "OK";
     function readParam(paramName) {
@@ -293,16 +372,11 @@ function receiveSMS(req, res,next) {
     let to = readParam("To");
     let text = readParam("Body");
     let from = readParam("From");
-    let email,imei,session;
-    let platid,localid;
-    let platform;
-
 
     if (status != 1) {
-        res.send({
-            status: status,
-            msg: msg
-        });
+        // Acknowledge with TwiML so Twilio does not keep retrying / logging errors.
+        logger.error("receiveSMS: " + msg);
+        sendTwiMLResponse(res);
         return;
     }
 
@@ -314,7 +388,9 @@ function receiveSMS(req, res,next) {
     }
 
     deliverSMSToNuboUser(to,null,from,from,text,(retObj) => {
-        res.send(retObj);
+        logger.info(`receiveSMS: deliverSMSToNuboUser result: ${JSON.stringify(retObj)}`);
+        // Always acknowledge to Twilio with a valid (empty) TwiML response.
+        sendTwiMLResponse(res);
     });
 
 }
