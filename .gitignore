@@ -48,4 +48,14 @@ test/
 upload/
 urlLauncher/
 
+# Secrets / key material — never commit
+service-account-key.json
+*.key
+test-key.txt
+
+# Build artifacts / stale backups — never commit
+*.tar
+version.txt
+static-src-old/
+*-bak.js
 
