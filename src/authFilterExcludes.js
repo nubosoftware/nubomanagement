@@ -49,6 +49,7 @@ var settingsList = {
     '/notifyWindowAction': 1,
     '/platformUserNotification': 1,
     '/sendSMS': 1,
+    '/platformUserSms': 1,
     '/settings/installApkForUser': 1,
     '/settings/uninstallApkForUser': 1,
     '/settings/canInstallListForUser': 1,
