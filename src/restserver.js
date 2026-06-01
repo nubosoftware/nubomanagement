@@ -783,6 +783,11 @@ function setPlatformServiceServer(server) {
     server.post('/notifyWindowAction', require("./notifyWindowAction.js").get);
     server.post('/platformUserNotification', require("./platformUserNotification.js").post);
     server.post('/sendSMS', SmsNotification.platformUserSendSms);
+    // Outbound SMS forwarded from a nubo-phone platform (sent via the provider from
+    // the user's assigned telephony number). Client currently uses GET; POST is also
+    // registered for long multipart bodies.
+    server.get('/platformUserSms', SmsNotification.platformUserSms);
+    server.post('/platformUserSms', SmsNotification.platformUserSms);
 
     server.use(yescache);
 

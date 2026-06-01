@@ -17,6 +17,7 @@ var SmsNotification = {
     'sendSmsNotificationFromRemoteServer' : sendSmsNotificationFromRemoteServer,
     'sendSmsNotificationInternal' : sendSmsNotificationInternal,
     'platformUserSendSms': platformUserSendSms,
+    'platformUserSms': platformUserSms,
     'receiveSMS': receiveSMS,
     deliverSMSToNuboUser,
     deliverPendingMessagesToSession
@@ -395,7 +396,22 @@ function receiveSMS(req, res,next) {
 
 }
 
-function platformUserSendSms(req, res,next) {
+// Legacy route POST /sendSMS — keeps the shared-number fallback when the user has
+// no assigned telephony number.
+function platformUserSendSms(req, res, next) {
+    platformUserSendSmsImpl(req, res, { requireAssignedNumber: false });
+}
+
+// New route /platformUserSms — used by nubo-phone platforms to forward a user's
+// outbound SMS. The message must be sent from the number assigned to the user in
+// the telephony tables, so we REJECT (rather than fall back to a shared number)
+// when no assigned_phone_number is found.
+function platformUserSms(req, res, next) {
+    platformUserSendSmsImpl(req, res, { requireAssignedNumber: true });
+}
+
+function platformUserSendSmsImpl(req, res, opts) {
+    opts = opts || {};
     var status = 1;
     var msg = "OK";
     function readParam(paramName) {
@@ -461,6 +477,12 @@ function platformUserSendSms(req, res,next) {
                         fromExt = fromPhone;
                     }
                     if (!fromPhone || fromPhone.length < 5) {
+                        if (opts.requireAssignedNumber) {
+                            // Must send from the user's own assigned number — do not
+                            // fall back to the shared smsOptions.fromPhone.
+                            callback("No assigned phone number for user; refusing to send from a shared number");
+                            return;
+                        }
                         fromPhone = Common.smsOptions.fromPhone;
                         if (!fromPhone || fromPhone.length < 1) {
                             callback("Cannot find assigned phone number");

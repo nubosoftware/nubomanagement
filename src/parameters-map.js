@@ -1574,6 +1574,29 @@ var filter = {
         }
     },
     {
+        // Outbound SMS forwarded from a nubo-phone platform. Sent via the SMS
+        // provider from the user's assigned telephony number. Params may arrive
+        // as query (GET) or body (POST), so both whitelists are defined. `text`
+        // uses the longer twilioSmsText constraint to allow concatenated
+        // multipart message bodies.
+        "path": "/platformUserSms",
+        "headerConstraints": {
+            "nubosettingsid": constraints.settingsIDConstrRequested
+        },
+        "constraints": {
+            "username": constraints.userNameConstrRequested,
+            "session": constraints.sessionIdConstrRequested,
+            "destAddr": constraints.ExcludeSpecialCharactersRequested,
+            "text": twilioSmsText
+        },
+        "bodyConstraints": {
+            "username": constraints.userNameConstrRequested,
+            "session": constraints.sessionIdConstrRequested,
+            "destAddr": constraints.ExcludeSpecialCharactersRequested,
+            "text": twilioSmsText
+        }
+    },
+    {
         // Incoming SMS webhook from providers such as Twilio. No nubosettingsid
         // header is required; the request is authenticated by validating the
         // provider's request signature (e.g. X-Twilio-Signature) in the handler.
