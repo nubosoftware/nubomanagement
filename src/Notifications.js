@@ -216,7 +216,7 @@ function sendNotificationFromRemoteServer(req, res) {
  * Deliver the push notification to remote server (gateway)
  * Detailed of the gateway are located in Settings.json
  */
-function sendNotificationToRemoteSever(deviceType, pushRegID, notifyTitle, notifyTime, notifyLocation, type, ip, port, UserName, enableSound, enableVibrate, showFullNotif, packageID) {
+function sendNotificationToRemoteSever(deviceType, pushRegID, notifyTitle, notifyTime, notifyLocation, type, ip, port, UserName, enableSound, enableVibrate, showFullNotif, packageID, pushType) {
 
     var urlQuery = {
         deviceType: deviceType,
@@ -239,6 +239,12 @@ function sendNotificationToRemoteSever(deviceType, pushRegID, notifyTitle, notif
         urlQuery.ip = ip;
         urlQuery.port = port;
         urlQuery.userName = UserName;
+    }
+
+    // tell the gateway to deliver this push as an iOS PushKit VoIP push
+    // (apns-push-type: voip, topic <bundleId>.voip) instead of a normal alert.
+    if (pushType) {
+        urlQuery.pushType = pushType;
     }
 
     var urlstr = Common.NotificationGateway.url + "?" + new URLSearchParams(urlQuery).toString();
@@ -282,7 +288,7 @@ function sendNotificationToRemoteSever(deviceType, pushRegID, notifyTitle, notif
     });
 }
 
-function sendNotificationByRegId(deviceType, pushRegID, notifyTitle, notifyTime, notifyLocation, type, enableSound, enableVibrate, showFullNotif, packageID) {
+function sendNotificationByRegId(deviceType, pushRegID, notifyTitle, notifyTime, notifyLocation, type, enableSound, enableVibrate, showFullNotif, packageID, pushType) {
 
     if (showFullNotif != 1) {
         notifyLocation = '';
@@ -296,7 +302,7 @@ function sendNotificationByRegId(deviceType, pushRegID, notifyTitle, notifyTime,
 
     if (Common.NotificationGateway) {
         //logger.info(`sendNotificationByRegId deviceType: ${deviceType}, pushRegID: ${pushRegID}, notifyTitle: ${notifyTitle}`);
-        sendNotificationToRemoteSever(deviceType, pushRegID, notifyTitle, notifyTime, notifyLocation, type, "", "", "", enableSound, enableVibrate, showFullNotif, packageID);
+        sendNotificationToRemoteSever(deviceType, pushRegID, notifyTitle, notifyTime, notifyLocation, type, "", "", "", enableSound, enableVibrate, showFullNotif, packageID, pushType);
         return;
     } else {
         logger.error("Cannot send push notification as NotificationGateway is not registered in settings");

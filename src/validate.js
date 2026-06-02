@@ -1093,6 +1093,36 @@ function getClientConf(req, res, next) {
 
         },
         function(callback) {
+            // PushKit VoIP token (iOS). Updated independently of regid since the
+            // client may refresh it on its own. Used to send incoming-call RING
+            // events as VoIP pushes (see Notifications/platformUserNotification).
+            var voipregid = req.params.voipregid;
+            if (!voipregid || voipregid.length == 0) {
+                callback(null);
+                return;
+            }
+            if (voipregid == login.loginParams.voipregid) {
+                callback(null);
+                return;
+            }
+            login.loginParams.voipregid = voipregid;
+            Common.db.Activation.update({
+                voipregid : voipregid
+            }, {
+                where : {
+                    activationkey : login.getActivationKey()
+                }
+            }).then(function() {
+                logger.info("Update voipregid: "+voipregid);
+                callback();
+            }).catch(function(err) {
+                logger.info("Error in update  voipregid" + err);
+                callback();
+                return;
+            });
+
+        },
+        function(callback) {
             login.save(callback);
         }
     ], function(err) {

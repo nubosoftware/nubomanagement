@@ -1235,6 +1235,14 @@ var filter = {
                     "maximum": 255
                 }
             },
+            "voipregid": {
+                "presence": false,
+                "format": "^[.a-zA-Z0-9_\\-():]+$|^$",
+                "length": {
+                    "minimum": 0,
+                    "maximum": 255
+                }
+            },
             "playerVersion": constraints.playerVersionConstrOptional,
             "additionalDeviceInfo": constraints.ExcludeSpecialCharactersOptional,
             "captcha": {},
@@ -1479,6 +1487,14 @@ var filter = {
             "loginToken": constraints.requestedLoginTokenConstr,
             "supportedConf": constraints.NaturalNumberConstrRequested,
             "regid": {
+                "presence": false,
+                "format": "^[.a-zA-Z0-9_\\-():]+$|^$",
+                "length": {
+                    "minimum": 0,
+                    "maximum": 255
+                }
+            },
+            "voipregid": {
                 "presence": false,
                 "format": "^[.a-zA-Z0-9_\\-():]+$|^$",
                 "length": {
