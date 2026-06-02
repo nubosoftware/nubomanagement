@@ -110,6 +110,15 @@ async function activate(req, res) {
             regid = "none";
         }
 
+        // PushKit VoIP token (iOS) - same <buildType>:<bundleId>:<hexToken> format
+        // as regid but a different token value. Used to deliver incoming-call RING
+        // events as VoIP pushes so CallKit can ring full-screen. May be empty for
+        // older clients / non-iOS devices.
+        var voipregid = req.params.voipregid;
+        if (voipregid == undefined || voipregid.length < 1) {
+            voipregid = "none";
+        }
+
         let public_key = req.params.public_key;
         if (public_key) {
             // logger.info(`public_key: ${public_key}`);
@@ -195,6 +204,7 @@ async function activate(req, res) {
             jobtitle: title,
             emailtoken: emailtoken,
             pushregid: regid,
+            voipregid: voipregid,
             firstlogin: 1,
             resetpasscode: 0,
             devicetype: deviceType,

@@ -156,6 +156,7 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
         jobtitle: Sequelize.STRING,
         lastname: Sequelize.STRING,
         pushregid: Sequelize.STRING,
+        voipregid: Sequelize.STRING,
         resetpasscode: Sequelize.INTEGER,
         status: Sequelize.INTEGER,
         createdate: Sequelize.DATE,

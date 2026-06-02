@@ -85,7 +85,7 @@ function removeAllSessionNotifications(session,closeSessionMsg,logger,callback) 
 
 function platformUserNotificationInternal(opts, callback) {
 
-    var pushRegID,deviceType,enableSound,enableVibrate,showFullNotif,appname,maindomain;
+    var pushRegID,voipregid,deviceType,enableSound,enableVibrate,showFullNotif,appname,maindomain;
     var logger = opts.logger;
     var hasSound,hasVibrate;
 
@@ -113,7 +113,7 @@ function platformUserNotificationInternal(opts, callback) {
                     ", pkg: "+opts.urlparams.pkg+
                     ", activationkey: "+activationkey);
                     //", opts.session.params: "+JSON.stringify(opts.session.params,null,2));
-                var query = 'select a1.pushregid as pushregid, a1.devicetype as devicetype, u1.enablesound as enablesound,' +
+                var query = 'select a1.pushregid as pushregid, a1.voipregid as voipregid, a1.devicetype as devicetype, u1.enablesound as enablesound,' +
                     ' u1.enablevibrate as enablevibrate, o1.showfullnotif as showfullnotif '+
                     ' , o1.maindomain as maindomain ' +
                     ' from activations AS a1 ' +
@@ -127,6 +127,7 @@ function platformUserNotificationInternal(opts, callback) {
                     //get the regId from the db with the deviceId
                     if (results != null && results.length > 0) {
                         pushRegID = results[0].pushregid != null ? results[0].pushregid : '';
+                        voipregid = results[0].voipregid != null ? results[0].voipregid : '';
                         deviceType = results[0].devicetype != null ? results[0].devicetype : '';
                         enableSound = (results[0].enablesound != null && hasSound) ? results[0].enablesound : 0;
                         enableVibrate = (results[0].enablevibrate != null && hasVibrate) ? results[0].enablevibrate : 0;
@@ -196,7 +197,19 @@ function platformUserNotificationInternal(opts, callback) {
                     if (notifCode === 6) {
                         notifCode = 5;
                         title = opts.urlparams.title;
-                        Notifications.sendNotificationByRegId(deviceType, pushRegID, title, '', text, notifCode, 1, 1, showFullNotif, opts.urlparams.pkg);
+                        var hasVoipToken = voipregid && voipregid !== '' && voipregid !== '(null)' && voipregid !== 'none';
+                        var isIos = (deviceType === "iPhone" || deviceType === "iPad");
+                        if (title === "RING" && hasVoipToken && isIos) {
+                            // Incoming call on iOS with a registered PushKit token: deliver the
+                            // RING as a VoIP push to that token so the device rings full-screen
+                            // via CallKit even when backgrounded/locked. (pushType "voip")
+                            Notifications.sendNotificationByRegId(deviceType, voipregid, title, '', text, notifCode, 1, 1, showFullNotif, opts.urlparams.pkg, "voip");
+                        } else {
+                            // CANCEL must stay a normal push (a VoIP CANCEL would re-ring the
+                            // call instead of dismissing it), and RING for clients without a
+                            // VoIP token falls back to the existing alert push to regid.
+                            Notifications.sendNotificationByRegId(deviceType, pushRegID, title, '', text, notifCode, 1, 1, showFullNotif, opts.urlparams.pkg);
+                        }
                     }
                 } else {
                     Notifications.sendNotificationByRegId(deviceType, pushRegID, title, '', text, notifCode, enableSound, enableVibrate, showFullNotif, opts.urlparams.pkg+","+opts.urlparams.keyHash);
