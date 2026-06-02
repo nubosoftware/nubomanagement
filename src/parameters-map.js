@@ -1573,7 +1573,11 @@ var filter = {
             "title": constraints.openTextConstrOptional,
             "text": constraints.openTextConstrOptional,
             "hasSound": constraints.binaryBoolConstrRequested,
-            "hasVibrate": constraints.binaryBoolConstrRequested
+            "hasVibrate": constraints.binaryBoolConstrRequested,
+            "isCall": {
+                "presence": false,
+                "inclusion": ["0", "1"]
+            }
         }
     },
     {
