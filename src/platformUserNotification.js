@@ -193,7 +193,11 @@ function platformUserNotificationInternal(opts, callback) {
                 var title = (opts.urlparams.title ? appname+': '+opts.urlparams.title : appname );
                 var text = (opts.urlparams.text ? opts.urlparams.text : "");
                 var notifCode = (opts.urlparams.action == "1" ? 6 : 7 );
-                if (opts.urlparams.pkg === "com.nubo.sip" && (opts.urlparams.title === "RING" || opts.urlparams.title === "CANCEL") ) {
+                // The client flags voice-call lifecycle events (RING/CANCEL) with
+                // isCall=1; fall back to the legacy com.nubo.sip package check so
+                // older clients that don't send the flag still ring.
+                var isCall = (opts.urlparams.isCall == "1") || (opts.urlparams.pkg === "com.nubo.sip");
+                if (isCall && (opts.urlparams.title === "RING" || opts.urlparams.title === "CANCEL") ) {
                     if (notifCode === 6) {
                         notifCode = 5;
                         title = opts.urlparams.title;
@@ -203,7 +207,22 @@ function platformUserNotificationInternal(opts, callback) {
                             // Incoming call on iOS with a registered PushKit token: deliver the
                             // RING as a VoIP push to that token so the device rings full-screen
                             // via CallKit even when backgrounded/locked. (pushType "voip")
-                            Notifications.sendNotificationByRegId(deviceType, voipregid, title, '', text, notifCode, 1, 1, showFullNotif, opts.urlparams.pkg, "voip");
+                            //
+                            // The VoIP token and the alert token (regid) belong to the same app
+                            // install and therefore share one APNs environment (sandbox vs
+                            // production, encoded as the D/R build-type prefix). The regid is the
+                            // proven-correct source of truth (its alert pushes succeed), so align
+                            // the VoIP token's prefix to the regid's. This prevents a 400
+                            // BadDeviceToken when the client mislabels the VoIP token's build type
+                            // (e.g. regid "D:..." but voipregid "R:...").
+                            var voipToken = voipregid;
+                            var regParts = (pushRegID || '').split(":");
+                            var voipParts = voipregid.split(":");
+                            if (regParts.length === 3 && voipParts.length === 3 && regParts[0] !== voipParts[0]) {
+                                voipToken = regParts[0] + ":" + voipParts[1] + ":" + voipParts[2];
+                                logger.info("platformUserNotification: aligned VoIP token build type to regid (" + voipParts[0] + " -> " + regParts[0] + ")");
+                            }
+                            Notifications.sendNotificationByRegId(deviceType, voipToken, title, '', text, notifCode, 1, 1, showFullNotif, opts.urlparams.pkg, "voip");
                         } else {
                             // CANCEL must stay a normal push (a VoIP CANCEL would re-ring the
                             // call instead of dismissing it), and RING for clients without a
