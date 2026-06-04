@@ -207,6 +207,12 @@ var Common = {
         provider: "twilio",
         apiScript: "twilioAPI"
     },
+    // Multi-provider telephony. Keyed by provider name (the value stored in
+    // telephony_subscriptions.provider / telephony_trunks.provider). Each entry has a
+    // `type` ("twilio" | "didww") and type-specific `smsOptions`. Loaded as-is into
+    // Common.telephonyProviders by parse_configs(). When empty/unset, SMS sending falls
+    // back to the legacy top-level Common.smsOptions (Twilio).
+    telephonyProviders: {},
     emailSender: {
         senderEmail: "support@nubosoftware.com",
         senderName: "Nubo Support"
