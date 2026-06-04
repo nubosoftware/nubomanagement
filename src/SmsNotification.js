@@ -432,6 +432,7 @@ function platformUserSendSmsImpl(req, res, opts) {
     let fromPhone,regionCode,fromExt;
     let sentLocally = false;
     let toPhone;
+    let provider;
 
     if (!Common.isEnterpriseEdition()) {
         status = 0;
@@ -494,6 +495,25 @@ function platformUserSendSmsImpl(req, res, opts) {
                     callback(null);
                 });
             },
+            /// Resolve which provider owns the sender's number, so the outbound SMS is
+            /// sent through that provider (e.g. didww). Non-fatal: fall back to default.
+            function (callback) {
+                Common.db.telphonySubsciptions.findOne({
+                    attributes: ['provider'],
+                    where: {
+                        email: email,
+                        deviceid: deviceid
+                    },
+                }).then(function (subs) {
+                    if (subs && subs.provider) {
+                        provider = subs.provider;
+                    }
+                    callback(null);
+                }).catch(function (err) {
+                    logger.error("platformUserSendSms: Error getting telephony provider: " + err);
+                    callback(null);
+                });
+            },
             /// Check if the toPhone is local number and if yes send to Nubo
             function(callback) {
                 logger.info(`platformUserSendSms Check if the toPhone is local fromPhone: ${fromPhone}, fromExt: ${fromExt}, toPhone: ${toPhone}, destAddr: ${destAddr}`);
@@ -510,7 +530,7 @@ function platformUserSendSmsImpl(req, res, opts) {
             },
             function (callback) {
                 if (!sentLocally) {
-                    logger.info("platformUserSendSms sendSmsNotificationInternal");
+                    logger.info("platformUserSendSms sendSmsNotificationInternal. provider: " + provider);
                     sendSmsNotificationInternal(toPhone, body, fromPhone, function (returnMessage, returnStatus) {
                         if (returnStatus != 1) {
                             callback(returnMessage);
@@ -518,7 +538,7 @@ function platformUserSendSmsImpl(req, res, opts) {
                         }
                         msg = returnMessage;
                         callback(null);
-                    });
+                    }, provider);
                 } else {
                     callback(null);
                 }
@@ -543,7 +563,7 @@ function platformUserSendSmsImpl(req, res, opts) {
 
 }
 
-function sendSmsNotificationInternal(toPhone, body, fromPhone, callback) {
+function sendSmsNotificationInternal(toPhone, body, fromPhone, callback, provider) {
     var status = 1;
     var msg = '';
 
@@ -563,7 +583,7 @@ function sendSmsNotificationInternal(toPhone, body, fromPhone, callback) {
         // if everything is OK
         if (status == 1) {
             // send the SMS
-            sendSms(toPhone, body,fromPhone, callback);
+            sendSms(toPhone, body,fromPhone, callback, provider);
             msg = "Notification queued";
 
             return;
@@ -636,7 +656,24 @@ function sendSmsNotificationFromRemoteServer(req, res,next) {
     );
 }
 
-function sendSms(toPhone, body,fromPhone, callback) {
+function sendSms(toPhone, body, fromPhone, callback, provider) {
+
+    // Provider-aware dispatch: when the sender's number is assigned to a configured
+    // provider (Common.telephonyProviders[provider]), send through that provider's SMS
+    // backend. Falls through to the legacy default (smsHandler / smsOptions) otherwise.
+    if (provider && Common.telephonyProviders && Common.telephonyProviders[provider]) {
+        var providerCfg = Common.telephonyProviders[provider];
+        var providerType = providerCfg.type;
+        if (providerType === 'didww') {
+            sendSmsDidww(toPhone, body, fromPhone, providerCfg.smsOptions, callback);
+            return;
+        } else if (providerType === 'twilio') {
+            sendSmsTwilio(toPhone, body, fromPhone, providerCfg.smsOptions || Common.smsOptions, callback);
+            return;
+        } else {
+            logger.error(`sendSms: unknown provider type '${providerType}' for provider '${provider}', falling back to default`);
+        }
+    }
 
     if (Common.smsHandler) {
         try {
@@ -653,38 +690,99 @@ function sendSms(toPhone, body,fromPhone, callback) {
             logger.error("Cannot send sms, exception: " + JSON.stringify(e));
         }
     } else if(Common.smsOptions) {
-        // Twilio logic to send SMS
-        var accountSid = Common.smsOptions.accountSid;
-        var authToken = Common.smsOptions.authToken;
-        if (!fromPhone)
-            fromPhone = Common.smsOptions.fromPhone;
-        var client = require('twilio')(accountSid, authToken);
-        let params = {
-            body : body,
-            to : toPhone,
-            from : fromPhone
-        };
-        //logger.info(`sendSms: ${JSON.stringify(params,null,2)}`);
-        client.messages.create(params, function(err, message) {
-            let status;
-            let msg;
-            if (err) {
-                msg = "Error while sending message " + err;
-                logger.error(msg);
-                status = 0;
-            } else {
-                msg = "SMS Message queued, message id " + message.sid;
-                logger.info(msg);
-                status = 1;
-            }
-            if (callback) {
-                callback(msg,status)
-            }
-
-        });
+        sendSmsTwilio(toPhone, body, fromPhone, Common.smsOptions, callback);
     } else {
         logger.error("SMS notification has not been configured\nMissed Common.smsOptions");
     }
+}
+
+// Twilio SMS send. `smsOpts` carries accountSid/authToken/fromPhone for the chosen
+// provider (defaults to the legacy top-level Common.smsOptions).
+function sendSmsTwilio(toPhone, body, fromPhone, smsOpts, callback) {
+    var accountSid = smsOpts.accountSid;
+    var authToken = smsOpts.authToken;
+    if (!fromPhone)
+        fromPhone = smsOpts.fromPhone;
+    var client = require('twilio')(accountSid, authToken);
+    let params = {
+        body : body,
+        to : toPhone,
+        from : fromPhone
+    };
+    //logger.info(`sendSms: ${JSON.stringify(params,null,2)}`);
+    client.messages.create(params, function(err, message) {
+        let status;
+        let msg;
+        if (err) {
+            msg = "Error while sending message " + err;
+            logger.error(msg);
+            status = 0;
+        } else {
+            msg = "SMS Message queued, message id " + message.sid;
+            logger.info(msg);
+            status = 1;
+        }
+        if (callback) {
+            callback(msg,status)
+        }
+
+    });
+}
+
+// DIDWW outbound SMS: JSON:API POST with HTTP basic auth. DIDWW expects bare-digit
+// source/destination (no leading '+'), unlike Twilio's E.164.
+function sendSmsDidww(toPhone, body, fromPhone, smsOpts, callback) {
+    if (!smsOpts || !smsOpts.username || !smsOpts.password) {
+        let msg = "sendSmsDidww: DIDWW provider not configured (missing username/password)";
+        logger.error(msg);
+        if (callback) callback(msg, 0);
+        return;
+    }
+    let destination = String(toPhone || "").replace(/^\+/, "");
+    let source = String(fromPhone || "").replace(/^\+/, "");
+    let baseUrl = smsOpts.baseUrl || "https://sms-out.didww.com";
+    let payload = {
+        data: {
+            type: "outbound_messages",
+            attributes: {
+                destination: destination,
+                source: source,
+                content: body
+            }
+        }
+    };
+    request({
+        method: 'POST',
+        url: `${baseUrl}/outbound_messages`,
+        auth: { user: smsOpts.username, pass: smsOpts.password },
+        headers: { 'Content-Type': 'application/vnd.api+json' },
+        body: JSON.stringify(payload),
+        timeout: 10000
+    }, function (error, response, respBody) {
+        let status;
+        let msg;
+        if (error) {
+            msg = "sendSmsDidww: Error while sending message " + error;
+            logger.error(msg);
+            status = 0;
+        } else if (response && response.statusCode >= 200 && response.statusCode < 300) {
+            let messageId = "";
+            try {
+                let parsed = JSON.parse(respBody);
+                messageId = (parsed && parsed.data && parsed.data.id) ? parsed.data.id : "";
+            } catch (e) { /* non-JSON success body; ignore */ }
+            msg = "DIDWW SMS Message queued, message id " + messageId;
+            logger.info(msg);
+            status = 1;
+        } else {
+            msg = `sendSmsDidww: Error sending message. status: ${response ? response.statusCode : 'n/a'}, body: ${respBody}`;
+            logger.error(msg);
+            status = 0;
+        }
+        if (callback) {
+            callback(msg, status);
+        }
+    });
 }
 
 /**
