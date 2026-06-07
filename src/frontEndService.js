@@ -33,7 +33,7 @@ async function registerFrontEnd(frontEndParams) {
         });
 
         await new Promise((resolve, reject) => {
-            frontendLock.cs(async function(callback) {
+            frontendLock.cs(function(csDone) {
                 frontEndParams['index'] = frontendIndex;
                 const multi = Common.getRedisMulti();
 
@@ -42,9 +42,15 @@ async function registerFrontEnd(frontEndParams) {
                 multi.expire('frontend_' + frontendIndex + '_ttl', TTL);
                 multi.sadd('frontends', frontendIndex);
                 multi.exec((err, replies) => {
-                    if (err) reject(err);
-                    resolve(replies);
+                    if (err) {
+                        logger.error("registerFrontEnd: " + err);
+                    }
+                    // Always signal the critical section is done so the lock is released.
+                    csDone(err, replies);
                 });
+            }, function(err, replies) {
+                if (err) reject(err);
+                else resolve(replies);
             });
         });
 
