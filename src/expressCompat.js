@@ -44,8 +44,10 @@ function setup(app, options) {
         };
     });
 
-    // app.del() alias - legacy server uses .del() instead of .delete()
+    // app.del()/app.opts() aliases - legacy server uses .del()/.opts()
+    // instead of .delete()/.options()
     app.del = app.delete;
+    app.opts = app.options;
 
     // app.rm(routeRef) - remove a previously registered route (used by plugin.js)
     app.rm = function(routeRef) {

@@ -1189,6 +1189,13 @@ const pluginJsonParser = express.json({ limit: 2000000000 });
         // and removed at runtime always match before catch-all routes
         // registered later (e.g. /api/:objectType/... in setPlatformServiceServer).
         const pluginRouter = express.Router();
+        // Restify-compatible HTTP verb aliases. Plugins are written against the
+        // legacy restify server API, which exposes .del()/.opts(); a plain Express
+        // Router only defines .delete()/.options(). Without these aliases,
+        // router[handler.method] is undefined for del/opts handlers and
+        // addPublicServerHandlers throws "router[method] is not a function".
+        pluginRouter.del = pluginRouter.delete;
+        pluginRouter.opts = pluginRouter.options;
         server.use(pluginRouter);
         const entry = { server, pluginRouter };
         Plugin.publicServers.push(entry);
