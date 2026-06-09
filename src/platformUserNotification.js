@@ -193,44 +193,83 @@ function platformUserNotificationInternal(opts, callback) {
                 var title = (opts.urlparams.title ? appname+': '+opts.urlparams.title : appname );
                 var text = (opts.urlparams.text ? opts.urlparams.text : "");
                 var notifCode = (opts.urlparams.action == "1" ? 6 : 7 );
-                // The client flags voice-call lifecycle events (RING/CANCEL) with
-                // isCall=1; fall back to the legacy com.nubo.sip package check so
-                // older clients that don't send the flag still ring.
+                // The client flags voice-call lifecycle events with isCall=1; fall
+                // back to the legacy com.nubo.sip package check so older SIP clients
+                // that don't send the flag still ring.
                 var isCall = (opts.urlparams.isCall == "1") || (opts.urlparams.pkg === "com.nubo.sip");
-                if (isCall && (opts.urlparams.title === "RING" || opts.urlparams.title === "CANCEL") ) {
-                    if (notifCode === 6) {
-                        notifCode = 5;
-                        title = opts.urlparams.title;
-                        var hasVoipToken = voipregid && voipregid !== '' && voipregid !== '(null)' && voipregid !== 'none';
-                        var isIos = (deviceType === "iPhone" || deviceType === "iPad");
-                        if (title === "RING" && hasVoipToken && isIos) {
-                            // Incoming call on iOS with a registered PushKit token: deliver the
-                            // RING as a VoIP push to that token so the device rings full-screen
-                            // via CallKit even when backgrounded/locked. (pushType "voip")
-                            //
-                            // The VoIP token and the alert token (regid) belong to the same app
-                            // install and therefore share one APNs environment (sandbox vs
-                            // production, encoded as the D/R build-type prefix). The regid is the
-                            // proven-correct source of truth (its alert pushes succeed), so align
-                            // the VoIP token's prefix to the regid's. This prevents a 400
-                            // BadDeviceToken when the client mislabels the VoIP token's build type
-                            // (e.g. regid "D:..." but voipregid "R:...").
-                            var voipToken = voipregid;
-                            var regParts = (pushRegID || '').split(":");
-                            var voipParts = voipregid.split(":");
-                            if (regParts.length === 3 && voipParts.length === 3 && regParts[0] !== voipParts[0]) {
-                                voipToken = regParts[0] + ":" + voipParts[1] + ":" + voipParts[2];
-                                logger.info("platformUserNotification: aligned VoIP token build type to regid (" + voipParts[0] + " -> " + regParts[0] + ")");
-                            }
-                            Notifications.sendNotificationByRegId(deviceType, voipToken, title, '', text, notifCode, 1, 1, showFullNotif, opts.urlparams.pkg, "voip");
-                        } else {
-                            // CANCEL must stay a normal push (a VoIP CANCEL would re-ring the
-                            // call instead of dismissing it), and RING for clients without a
-                            // VoIP token falls back to the existing alert push to regid.
-                            Notifications.sendNotificationByRegId(deviceType, pushRegID, title, '', text, notifCode, 1, 1, showFullNotif, opts.urlparams.pkg);
+
+                // Resolve the call lifecycle event (RING / CANCEL). Two conventions:
+                //   - nubo SIP dialer: signals it with an explicit title "RING"/"CANCEL"
+                //     (always sent with action=1).
+                //   - third-party apps (WhatsApp/Telegram): send a localized title and
+                //     reuse the generic notification action — action=1 = incoming call
+                //     (RING), action=2 = dismiss the notification with this keyHash
+                //     (CANCEL). So derive the event from the action when isCall is set.
+                var callEvent = null;
+                var isSipCall = false;
+                if (opts.urlparams.title === "RING" || opts.urlparams.title === "CANCEL") {
+                    callEvent = opts.urlparams.title;
+                    isSipCall = true;
+                } else if (isCall) {
+                    callEvent = (opts.urlparams.action == "1") ? "RING" : "CANCEL";
+                }
+
+                logger.info("platformUserNotification: classified as " +
+                    (callEvent ? ("CALL/" + callEvent + (isSipCall ? " [nubo-sip]" : " [3rd-party app]")) : "normal notification") +
+                    " — pkg=" + opts.urlparams.pkg + ", action=" + opts.urlparams.action +
+                    ", isCall=" + opts.urlparams.isCall + ", title=" + opts.urlparams.title +
+                    ", keyHash=" + opts.urlparams.keyHash + ", deviceType=" + deviceType);
+
+                if (callEvent) {
+                    notifCode = 5;
+                    // Preserve the human-readable caller/app display string before `title`
+                    // is overwritten with the RING/CANCEL signal, so the client's
+                    // incoming-call UI (CallKit) can show who is calling. The pre-overwrite
+                    // `title` is the app-name-prefixed platform title (e.g. "WhatsApp: ...").
+                    // SIP calls carry no useful display here (their title was literally
+                    // RING/CANCEL), so keep the existing (empty) text. Like every push, this
+                    // display is still subject to the org's showFullNotif privacy gate
+                    // downstream in sendNotificationByRegId.
+                    var callDisplay = isSipCall ? text : title;
+                    title = callEvent;
+                    // For third-party-app calls, carry the real package id + keyHash to
+                    // the client so it can (a) tell this is NOT a nubo SIP call and skip
+                    // the SIP auto answer/decline handling, and (b) correlate the CANCEL
+                    // with its RING by keyHash. The legacy SIP path keeps its original
+                    // packageID (pkg only) to preserve existing client behavior.
+                    var callPackageId = isSipCall ? opts.urlparams.pkg : (opts.urlparams.pkg + "," + opts.urlparams.keyHash);
+                    var hasVoipToken = voipregid && voipregid !== '' && voipregid !== '(null)' && voipregid !== 'none';
+                    var isIos = (deviceType === "iPhone" || deviceType === "iPad");
+                    if (callEvent === "RING" && hasVoipToken && isIos) {
+                        // Incoming call on iOS with a registered PushKit token: deliver the
+                        // RING as a VoIP push to that token so the device rings full-screen
+                        // via CallKit even when backgrounded/locked. (pushType "voip")
+                        //
+                        // The VoIP token and the alert token (regid) belong to the same app
+                        // install and therefore share one APNs environment (sandbox vs
+                        // production, encoded as the D/R build-type prefix). The regid is the
+                        // proven-correct source of truth (its alert pushes succeed), so align
+                        // the VoIP token's prefix to the regid's. This prevents a 400
+                        // BadDeviceToken when the client mislabels the VoIP token's build type
+                        // (e.g. regid "D:..." but voipregid "R:...").
+                        var voipToken = voipregid;
+                        var regParts = (pushRegID || '').split(":");
+                        var voipParts = voipregid.split(":");
+                        if (regParts.length === 3 && voipParts.length === 3 && regParts[0] !== voipParts[0]) {
+                            voipToken = regParts[0] + ":" + voipParts[1] + ":" + voipParts[2];
+                            logger.info("platformUserNotification: aligned VoIP token build type to regid (" + voipParts[0] + " -> " + regParts[0] + ")");
                         }
+                        logger.info("platformUserNotification: sending " + title + " as iOS VoIP push (CallKit) — pkgId=" + callPackageId + ", display='" + callDisplay + "', deviceType=" + deviceType);
+                        Notifications.sendNotificationByRegId(deviceType, voipToken, title, '', callDisplay, notifCode, 1, 1, showFullNotif, callPackageId, "voip");
+                    } else {
+                        // CANCEL must stay a normal push (a VoIP CANCEL would re-ring the
+                        // call instead of dismissing it), and RING for clients without a
+                        // VoIP token falls back to the existing alert push to regid.
+                        logger.info("platformUserNotification: sending " + title + " as alert push (no VoIP token / not iOS / CANCEL) — pkgId=" + callPackageId + ", display='" + callDisplay + "', deviceType=" + deviceType);
+                        Notifications.sendNotificationByRegId(deviceType, pushRegID, title, '', callDisplay, notifCode, 1, 1, showFullNotif, callPackageId);
                     }
                 } else {
+                    logger.info("platformUserNotification: sending normal notification — notifCode=" + notifCode + ", pkg=" + opts.urlparams.pkg + ", keyHash=" + opts.urlparams.keyHash);
                     Notifications.sendNotificationByRegId(deviceType, pushRegID, title, '', text, notifCode, enableSound, enableVibrate, showFullNotif, opts.urlparams.pkg+","+opts.urlparams.keyHash);
                 }
                 callback(null);
