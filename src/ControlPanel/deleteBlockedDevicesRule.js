@@ -6,6 +6,8 @@
 
 var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 // first call goes to here
 function deleteBlockedDevicesRule(req, res, domain) {
@@ -43,10 +45,10 @@ function deleteBlockedDevicesRule(req, res, domain) {
         return;
     }
 
-    deleteBlockedDevicesRuleFromDB(res, ruleId, ruleName, filterName, domain);
+    deleteBlockedDevicesRuleFromDB(res, ruleId, ruleName, filterName, domain, req.nubodata && req.nubodata.adminLogin);
 }
 
-function deleteBlockedDevicesRuleFromDB(res, ruleId, ruleName, filterName, domain) {
+function deleteBlockedDevicesRuleFromDB(res, ruleId, ruleName, filterName, domain, adminLogin) {
 
     // delete the device rule from db
     Common.db.BlockedDevices.destroy({
@@ -58,6 +60,8 @@ function deleteBlockedDevicesRuleFromDB(res, ruleId, ruleName, filterName, domai
         }
     }).then(function() {
         require('./getBlockedDevices').clearDomainRuleCache(domain);
+        eventLog.logAdminEvent(adminLogin, EV_CONST.EV_SECURITY_CONFIG_CHANGE, null, domain,
+            `Security: deleted blocked-device rule '${ruleName}' (ruleId: ${ruleId}, filter: ${filterName})`, EV_CONST.WARN);
         res.send({
             status : '1',
             message : "deleted blocked devices rule from db successfully"

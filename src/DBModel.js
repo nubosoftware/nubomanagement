@@ -491,7 +491,8 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
             type: Sequelize.DATE,
             primaryKey: true
         },
-        level: Sequelize.STRING
+        level: Sequelize.STRING,
+        actor: Sequelize.STRING
     }, {
         timestamps: false
     });

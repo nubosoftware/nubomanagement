@@ -4,6 +4,8 @@ var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 var async = require('async');
 var DeleteGroups = require('./deleteGroups.js');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 
@@ -119,6 +121,8 @@ function post(req,res) {
             Common.db.Orgs.upsert(fields).then(function(results) {
                 if (results[1] === true) {
                     logger.info(`Inserted org record. Setting up organization configurations. results: ${JSON.stringify(results,null,2)}`);
+                    eventLog.logAdminEvent(adminLogin, EV_CONST.EV_CREATE_ORG, null, selectedDomain,
+                        `Created organization '${fields.orgname}' (domain: ${selectedDomain})`, EV_CONST.INFO);
                     require('../userUtils').postNewOrgProcedure(selectedDomain,logger,function(err) {
                         if (err) {
                             logger.info(`postNewOrgProcedure error: ${err}`);
@@ -128,6 +132,8 @@ function post(req,res) {
 
                 } else {
                     logger.info(`Updated org record: ${JSON.stringify(fields,null,2)}`);
+                    eventLog.logAdminEvent(adminLogin, EV_CONST.EV_UPDATE_ORG, null, selectedDomain,
+                        `Updated organization (domain: ${selectedDomain}) settings: ${JSON.stringify(fields)}`, EV_CONST.INFO);
                     cb();
                 }
             }).catch(function(err) {
@@ -278,6 +284,8 @@ function deleteOrg(req,res) {
                 }
             }).then(function() {
                 logger.info('Org deleted from DB');
+                eventLog.logAdminEvent(adminLogin, EV_CONST.EV_DELETE_ORG, null, selectedDomain,
+                    `Deleted organization (domain: ${selectedDomain})`, EV_CONST.WARN);
                 cb();
 
             }).catch(function(err) {

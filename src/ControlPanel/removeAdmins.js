@@ -16,6 +16,8 @@ var async = require('async');
 var Session = sessionModule.Session;
 var logger = Common.getLogger(__filename);
 var packageName = [Common.controlPanelApp];
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 var time = new Date().getTime();
 var hrTime = process.hrtime()[1];
@@ -73,6 +75,8 @@ function removeAdmins(req, res, next) {
                 if (err) {
                     callback(err);
                 } else {
+                    eventLog.logAdminEvent(login, EV_CONST.EV_REVOKE_ADMIN, email, domain,
+                        `Revoked admin permissions from user ${email}`, EV_CONST.WARN);
                     callback(null);
                 }
             });

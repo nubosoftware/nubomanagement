@@ -54,6 +54,24 @@ var EV_CONST = {
     EV_LOGIN_FAILED: 46,
     EV_ACCOUNT_LOCKED: 47,
     EV_ACCOUNT_UNLOCKED: 48,
+    EV_CREATE_ORG: 49,
+    EV_UPDATE_ORG: 50,
+    EV_DELETE_ORG: 51,
+    EV_DELETE_DEVICE: 52,
+    EV_RESET_USER_STORAGE_ALL: 53,
+    EV_RESET_USER_STORAGE_GENERAL: 54,
+    EV_RESET_USER_STORAGE_DEVICE: 55,
+    EV_PLATFORM_START: 56,
+    EV_PLATFORM_STOP: 57,
+    EV_PLATFORM_DISABLE: 58,
+    EV_PLATFORM_ENABLE: 59,
+    EV_PLUGIN_INSTALL: 60,
+    EV_PLUGIN_UNINSTALL: 61,
+    EV_PLUGIN_START: 62,
+    EV_PLUGIN_STOP: 63,
+    EV_SESSION_TIMEOUT: 64,
+    EV_GRANT_ADMIN: 65,
+    EV_REVOKE_ADMIN: 66,
 
     // Event Categories
     EV_CATEGORIES: {
@@ -105,6 +123,24 @@ var EV_CONST = {
         46: 'SECURITY_INCIDENTS',       // EV_LOGIN_FAILED
         47: 'SECURITY_INCIDENTS',       // EV_ACCOUNT_LOCKED
         48: 'SECURITY_INCIDENTS',       // EV_ACCOUNT_UNLOCKED
+        49: 'ORGANIZATION_MANAGEMENT',  // EV_CREATE_ORG
+        50: 'ORGANIZATION_MANAGEMENT',  // EV_UPDATE_ORG
+        51: 'ORGANIZATION_MANAGEMENT',  // EV_DELETE_ORG
+        52: 'DEVICE_MANAGEMENT',        // EV_DELETE_DEVICE
+        53: 'USER_MANAGEMENT',          // EV_RESET_USER_STORAGE_ALL
+        54: 'USER_MANAGEMENT',          // EV_RESET_USER_STORAGE_GENERAL
+        55: 'USER_MANAGEMENT',          // EV_RESET_USER_STORAGE_DEVICE
+        56: 'SYSTEM_ADMINISTRATION',    // EV_PLATFORM_START
+        57: 'SYSTEM_ADMINISTRATION',    // EV_PLATFORM_STOP
+        58: 'SYSTEM_ADMINISTRATION',    // EV_PLATFORM_DISABLE
+        59: 'SYSTEM_ADMINISTRATION',    // EV_PLATFORM_ENABLE
+        60: 'PLUGIN_EVENTS',            // EV_PLUGIN_INSTALL
+        61: 'PLUGIN_EVENTS',            // EV_PLUGIN_UNINSTALL
+        62: 'PLUGIN_EVENTS',            // EV_PLUGIN_START
+        63: 'PLUGIN_EVENTS',            // EV_PLUGIN_STOP
+        64: 'AUTHENTICATION',           // EV_SESSION_TIMEOUT
+        65: 'SECURITY_ADMINISTRATION',  // EV_GRANT_ADMIN
+        66: 'SECURITY_ADMINISTRATION',  // EV_REVOKE_ADMIN
     },
 
     EV_CATEGORY_NAMES: {
@@ -119,7 +155,8 @@ var EV_CONST = {
         'APPLICATION_MANAGEMENT': 'Application Management',
         'ACTIVATION_MANAGEMENT': 'Activation Management',
         'SYSTEM_ADMINISTRATION': 'System Administration',
-        'PLUGIN_EVENTS': 'Plugin Events'
+        'PLUGIN_EVENTS': 'Plugin Events',
+        'ORGANIZATION_MANAGEMENT': 'Organization Management'
     },
 
     EV_NAMES: [
@@ -172,6 +209,24 @@ var EV_CONST = {
         'Login failed',
         'Account locked',
         'Account unlocked',
+        'Create organization',
+        'Update organization',
+        'Delete organization',
+        'Delete device',
+        'Reset user data (all)',
+        'Reset user data (general)',
+        'Reset user data (device)',
+        'Platform start',
+        'Platform stop',
+        'Platform disable',
+        'Platform enable',
+        'Plugin install',
+        'Plugin uninstall',
+        'Plugin start',
+        'Plugin stop',
+        'Admin session timeout',
+        'Grant admin permissions',
+        'Revoke admin permissions',
     ],
 
     // Event Levels
@@ -185,13 +240,15 @@ var EV_CONST = {
  * Adds an event to table events_log in DB
  *
  * @param event_type   Type of event as published in the list of constants (EV_*)
- * @param email        Email of the user who caused the event (string)
+ * @param email        Email of the subject/target the event relates to (string)
  * @param extra_info   Additional information regarding the action
  *                     (for example when activating a device this would be the deviceId) (string)
  * @param level        INFO, WARN or ERR constants
  * @param callback     function(err)
+ * @param actor        Email of the admin/user who performed the action (string, optional).
+ *                     Kept separate from `email` so multiple admins can be distinguished.
  */
-function createEvent(event_type, email, maindomain, extra_info, level, callback) {
+function createEvent(event_type, email, maindomain, extra_info, level, callback, actor) {
     var time = new Date();
 
     // If callback is provided, use it (for backward compatibility)
@@ -202,11 +259,12 @@ function createEvent(event_type, email, maindomain, extra_info, level, callback)
             maindomain: maindomain,
             extrainfo: extra_info,
             time: time,
-            level: level
+            level: level,
+            actor: actor
         }).then(function(results) {
             callback(null);
         }).catch(function(err) {
-            logger.error('reportEvent Error: Cannot Insert to table.\n' + 'event_type=' + event_type + ' email=' + email + ' maindomain=' + maindomain + '\n extra_info=' + extra_info + ' time=' + time + 'level=' + level + '\nERROR: ' + err);
+            logger.error('reportEvent Error: Cannot Insert to table.\n' + 'event_type=' + event_type + ' email=' + email + ' maindomain=' + maindomain + '\n extra_info=' + extra_info + ' time=' + time + 'level=' + level + ' actor=' + actor + '\nERROR: ' + err);
             callback(err);
         });
     }
@@ -218,11 +276,59 @@ function createEvent(event_type, email, maindomain, extra_info, level, callback)
         maindomain: maindomain,
         extrainfo: extra_info,
         time: time,
-        level: level
+        level: level,
+        actor: actor
     }).catch(function(err) {
-        logger.error('reportEvent Error: Cannot Insert to table.\n' + 'event_type=' + event_type + ' email=' + email + ' maindomain=' + maindomain + '\n extra_info=' + extra_info + ' time=' + time + 'level=' + level + '\nERROR: ' + err);
+        logger.error('reportEvent Error: Cannot Insert to table.\n' + 'event_type=' + event_type + ' email=' + email + ' maindomain=' + maindomain + '\n extra_info=' + extra_info + ' time=' + time + 'level=' + level + ' actor=' + actor + '\nERROR: ' + err);
         throw err;
     });
+}
+
+/**
+ * logAdminEvent
+ * Convenience wrapper for auditing admin-initiated actions. Resolves the acting
+ * admin (actor) from the admin Login object (req.nubodata.adminLogin) and never
+ * rejects - audit logging must not break the operation it is recording.
+ *
+ * @param adminLogin  The admin Login object (req.nubodata.adminLogin) or an admin email string
+ * @param event_type  One of the EV_* constants
+ * @param subject      Email/identifier of the subject the action was performed on (may be null)
+ * @param maindomain   The affected org domain (falls back to the admin's main domain)
+ * @param extra_info   Human readable description of the action
+ * @param level        INFO/WARN/ERR (defaults to INFO)
+ */
+function logAdminEvent(adminLogin, event_type, subject, maindomain, extra_info, level) {
+    var actor = null;
+    try {
+        if (adminLogin && typeof adminLogin.getEmail === 'function') {
+            actor = adminLogin.getEmail();
+        } else if (typeof adminLogin === 'string') {
+            actor = adminLogin;
+        }
+    } catch (e) {
+        actor = null;
+    }
+
+    var domain = maindomain;
+    if (!domain) {
+        try {
+            if (adminLogin && typeof adminLogin.getMainDomain === 'function') {
+                domain = adminLogin.getMainDomain();
+            }
+        } catch (e) {
+            domain = null;
+        }
+    }
+
+    // events_logs.extrainfo is varchar(765) - keep some margin to avoid insert failures
+    if (typeof extra_info === 'string' && extra_info.length > 760) {
+        extra_info = extra_info.substring(0, 760);
+    }
+
+    return createEvent(event_type, subject || actor, domain, extra_info, level || EV_CONST.INFO, null, actor)
+        .catch(function(err) {
+            logger.error('logAdminEvent error (event_type=' + event_type + ', actor=' + actor + '): ' + err);
+        });
 }
 async function getEventsImp(domain, params) {
     let where = {
@@ -287,11 +393,19 @@ async function getEventsImp(domain, params) {
         };
     }
 
-    // Filter by email
+    // Filter by email (subject/target)
     if (params.email !== undefined) {
         const emails = Array.isArray(params.email) ? params.email : [params.email];
         where.email = {
             [Op.in]: emails
+        };
+    }
+
+    // Filter by actor (acting admin)
+    if (params.actor !== undefined) {
+        const actors = Array.isArray(params.actor) ? params.actor : [params.actor];
+        where.actor = {
+            [Op.in]: actors
         };
     }
 
@@ -317,7 +431,7 @@ async function getEventsImp(domain, params) {
         const sortDirection = params.sortDirection || "DESC";
         
         // Validate sort field
-        const validSortFields = ["ID", "eventtype", "email", "time", "level"];
+        const validSortFields = ["ID", "eventtype", "email", "actor", "time", "level"];
         if (validSortFields.includes(sortField)) {
             orderBy = [[sortField, sortDirection.toUpperCase()]];
         }
@@ -346,6 +460,7 @@ async function getEventsImp(domain, params) {
             category: category,
             categoryStr: EV_CONST.EV_CATEGORY_NAMES[category],
             email: item.email,
+            actor: item.actor,
             extrainfo: item.extrainfo,
             time: item.time,
             level: item.level
@@ -415,5 +530,6 @@ function getEvents(req,res) {
 module.exports = {
     EV_CONST : EV_CONST,
     createEvent : createEvent,
+    logAdminEvent : logAdminEvent,
     getEvents
 };

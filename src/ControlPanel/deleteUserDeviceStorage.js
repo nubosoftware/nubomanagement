@@ -4,6 +4,8 @@ var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 var async = require('async');
 var userUtils = require('../userUtils.js');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 function get(req, res) {
     logger.info("deleteUserDeviceStorage");
@@ -90,6 +92,8 @@ function get(req, res) {
                 message: err
             });
         } else {
+            eventLog.logAdminEvent(req.nubodata && req.nubodata.adminLogin, EV_CONST.EV_RESET_USER_STORAGE_DEVICE,
+                email, null, `Reset device data for user ${email}, device ${deviceId}`, EV_CONST.WARN);
             res.send({
                 status: Common.STATUS_OK,
                 message: `Successfully deleted device storage for ${email}:${deviceId}`

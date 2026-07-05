@@ -12,6 +12,8 @@ var setting = require('../settings.js');
 var User = require('../user.js');
 var userUtils = require('../userUtils.js');
 var setPasscode = require('../setPasscode.js');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 var EMAIL_SIZE = 255; // this should be the same as in parameters-map --> addProfile --> email size.
 
 function loadAdminParamsFromSession(req, res, callback) {
@@ -75,8 +77,9 @@ function addProfile(req, res, next) {
         } else {
             var domain = "nubosoftware.com";
         }
+        var adminEmail = (login && typeof login.getEmail === 'function') ? login.getEmail() : null;
 
-        addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain,password,req.params);
+        addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain,password,req.params, adminEmail);
 
     });
 
@@ -91,7 +94,7 @@ function validateEmail(email) {
     return re.test(email);
 }
 
-function addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain,password,params) {
+function addProfileToDB(res, first, last, email, manager, country, officePhone, mobilePhone, domain,password,params, adminEmail) {
     var errorMsg = "Failed to add profile";
 	email = email.toLowerCase();
 
@@ -156,6 +159,8 @@ function addProfileToDB(res, first, last, email, manager, country, officePhone, 
             }).then(function(results) {
                 userUtils.postNewUserProcedure(email, domain, logger, function(err) {
                     User.createUserApplicationNotif(email, domain);
+                    eventLog.logAdminEvent(adminEmail, EV_CONST.EV_ADD_PROFILE, email, domain,
+                        `Created user ${email}`, EV_CONST.INFO);
                     res.send({
                         status : '1',
                         message : "The profile was added successfully"

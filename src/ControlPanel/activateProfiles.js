@@ -10,6 +10,8 @@ var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
 var setting = require('../settings.js');
 var async = require('async');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 function loadAdminParamsFromSession(req, res, callback) {
     setting.loadAdminParamsFromSession(req, res, callback);
@@ -72,6 +74,10 @@ function activateProfiles(req, res, next) {
                 if (err) {
                     callback(err);
                 } else {
+                    eventLog.logAdminEvent(login,
+                        activate == 'Y' ? EV_CONST.EV_ACTIVATE_PROFILE : EV_CONST.EV_DEACTIVATE_PROFILE,
+                        email, domain,
+                        `${activate == 'Y' ? 'Activated' : 'Deactivated'} user ${email}`, EV_CONST.INFO);
                     callback(null);
                 }
             });

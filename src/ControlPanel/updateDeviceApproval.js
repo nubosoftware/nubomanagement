@@ -6,6 +6,8 @@
 
 var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 // first call goes to here
 function updateDeviceApproval(req, res, domain) {
@@ -55,10 +57,10 @@ function updateDeviceApproval(req, res, domain) {
         });
         return;
     }
-    updateDeviceApprovalToDB(res, deviceApprovalType, notifierAdmin, allowdevicereg, domain);
+    updateDeviceApprovalToDB(res, deviceApprovalType, notifierAdmin, allowdevicereg, domain, req.nubodata && req.nubodata.adminLogin);
 }
 
-function updateDeviceApprovalToDB(res, deviceApprovalType, notifierAdmin, allowdevicereg, domain) {
+function updateDeviceApprovalToDB(res, deviceApprovalType, notifierAdmin, allowdevicereg, domain, adminLogin) {
 
     Common.db.Orgs.update({
         deviceapprovaltype : deviceApprovalType,
@@ -69,6 +71,9 @@ function updateDeviceApprovalToDB(res, deviceApprovalType, notifierAdmin, allowd
             maindomain : domain
         }
     }).then(function() {
+        eventLog.logAdminEvent(adminLogin, EV_CONST.EV_SECURITY_CONFIG_CHANGE, null, domain,
+            `Security: device approval settings changed (type=${deviceApprovalType}, notifierAdmin=${notifierAdmin}, allowDeviceReg=${allowdevicereg})`,
+            EV_CONST.INFO);
         res.send({
             status : 1,
             message : "updated deviceApprovalType and notifierAdmin successfully"

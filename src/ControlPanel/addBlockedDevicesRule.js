@@ -6,6 +6,8 @@
 
 var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 // first call goes to here
 function addBlockedDevicesRule(req, res, domain) {
@@ -37,10 +39,10 @@ function addBlockedDevicesRule(req, res, domain) {
         return;
     }
 
-    addBlockedDevicesRuleToDB(res, ruleName, filterName, domain);
+    addBlockedDevicesRuleToDB(res, ruleName, filterName, domain, req.nubodata && req.nubodata.adminLogin);
 }
 
-function addBlockedDevicesRuleToDB(res, ruleName, filterName, domain) {
+function addBlockedDevicesRuleToDB(res, ruleName, filterName, domain, adminLogin) {
 
     Common.db.BlockedDevices.create({
         rulename : ruleName,
@@ -48,6 +50,8 @@ function addBlockedDevicesRuleToDB(res, ruleName, filterName, domain) {
         maindomain : domain
     }).then(function(results) {
         require('./getBlockedDevices').clearDomainRuleCache(domain);
+        eventLog.logAdminEvent(adminLogin, EV_CONST.EV_SECURITY_CONFIG_CHANGE, null, domain,
+            `Security: added blocked-device rule '${ruleName}' (filter: ${filterName})`, EV_CONST.INFO);
         res.send({
             status : '1',
             message : "Inserted device rule Successfully"

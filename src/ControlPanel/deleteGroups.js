@@ -7,6 +7,8 @@ var Session = sessionModule.Session;
 var async = require('async');
 var setting = require('../settings.js');
 var RemoveProfilesFromGroup = require('./removeProfilesFromGroup.js');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 function loadAdminParamsFromSession(req, res, callback) {
     setting.loadAdminParamsFromSession(req, res, callback);
@@ -81,6 +83,10 @@ function deleteGroups(req, res, next) {
             }
             selectProfilesFromGroup(group, domain, groupAdDomain, function(err, status) {
                 logger.info('selectProfilesFromGroup: callback. err = ' + err + ' , status = ' + status + ' , group= ' + group);
+                if (!err) {
+                    eventLog.logAdminEvent(login, EV_CONST.EV_DELETE_GROUP, null, domain,
+                        `Deleted group '${group}'${groupAdDomain ? " (adDomain: " + groupAdDomain + ")" : ""}`, EV_CONST.WARN);
+                }
                 cb(err);
             });
         }, function(err) {

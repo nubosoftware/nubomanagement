@@ -8,6 +8,8 @@ var Common = require('../common.js');
 var logger = Common.getLogger(__filename);
 var async = require('async');
 var updateSecurityPolicy = require('./updateSecurityPolicy.js');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 // first call goes to here
 function setSecurityPasscode(req, res, domain) {
@@ -56,6 +58,9 @@ function setSecurityPasscode(req, res, domain) {
                 message: err
             });
         } else {
+            eventLog.logAdminEvent(req.nubodata && req.nubodata.adminLogin, EV_CONST.EV_SECURITY_CONFIG_CHANGE, null, domain,
+                `Security: authentication policy changed (passcodeType=${passcodeType}, minChars=${minChars}, expirationDays=${expirationDays}, clientAuthType=${clientauthtype}, secondAuthMethod=${secondauthmethod}, otpType=${otptype})`,
+                EV_CONST.INFO);
             res.send({
                 status: status,
                 message: msg
@@ -87,6 +92,9 @@ async function setAdminAuthentication(req, res) {
                 maindomain: selectedDomain
             }
         });
+        eventLog.logAdminEvent(adminLogin, EV_CONST.EV_ADMIN_SECURITY_FUNCTION, null, selectedDomain,
+            `Security: admin authentication config changed: ${JSON.stringify(adminSecurityConfig)}`,
+            EV_CONST.WARN);
         res.send({
             status: '1',
             message: 'Admin authentication updated successfully'

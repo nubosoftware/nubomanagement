@@ -936,4 +936,5 @@ PRIMARY KEY (hardwaredesc, devicemodel));"
 , "1.5.0.5.100": "ALTER TABLE orgs ADD COLUMN exchange_group_filter_mode VARCHAR(10) DEFAULT 'all';"
 , "1.5.0.5.101": "ALTER TABLE orgs ADD COLUMN exchange_group_filter TEXT;"
 , "1.5.0.5.102": "ALTER TABLE activations ADD COLUMN voipregid varchar(255) AFTER pushregid;"
+, "1.5.0.5.103": "ALTER TABLE events_logs ADD COLUMN actor varchar(255) AFTER level;"
 }

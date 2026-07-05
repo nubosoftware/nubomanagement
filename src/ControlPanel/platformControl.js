@@ -12,6 +12,8 @@ var async = require('async');
 var logger = Common.getLogger(__filename);
 var PlatformModule = require('../platform.js');
 var Platform = PlatformModule.Platform;
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 const LongOperationNotif = require('../longOperationsNotif.js');
 var _ = require('underscore');
 var execFile = require('child_process').execFile;
@@ -135,6 +137,8 @@ function platformCommand(req, res, next) {
                     });
                     return;
                 }
+                eventLog.logAdminEvent(login, EV_CONST.EV_PLATFORM_STOP, null, null,
+                    `Stopped platform ${platID}${isGracefully ? " (gracefully)" : ""}`, EV_CONST.WARN);
                 res.send({
                     status : '1',
                     message : "Request was fulfilled",
@@ -150,6 +154,8 @@ function platformCommand(req, res, next) {
                     });
                     return;
                 }
+                eventLog.logAdminEvent(login, EV_CONST.EV_PLATFORM_START, null, null,
+                    `Started platform ${platID}`, EV_CONST.INFO);
                 res.send({
                     status : '1',
                     message : "Request was fulfilled",
@@ -158,6 +164,8 @@ function platformCommand(req, res, next) {
             });
         } else if (cmd == "disable") {
             disablePlatform(platID).then(() => {
+                eventLog.logAdminEvent(login, EV_CONST.EV_PLATFORM_DISABLE, null, null,
+                    `Disabled platform ${platID}`, EV_CONST.WARN);
                 res.send({
                     status : '1',
                     message : "Request was fulfilled",
@@ -170,6 +178,8 @@ function platformCommand(req, res, next) {
             });
         } else if (cmd == "enable") {
             enablePlatform(platID).then(() => {
+                eventLog.logAdminEvent(login, EV_CONST.EV_PLATFORM_ENABLE, null, null,
+                    `Enabled platform ${platID}`, EV_CONST.INFO);
                 res.send({
                     status : '1',
                     message : "Request was fulfilled",

@@ -10,6 +10,8 @@ var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
 var setting = require('../settings.js');
 var async = require('async');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 function loadAdminParamsFromSession(req, res, callback) {
     setting.loadAdminParamsFromSession(req, res, callback);
@@ -64,6 +66,8 @@ function deleteProfiles(req, res, next) {
                     cb(err);
                     return;
                 }
+                eventLog.logAdminEvent(login, EV_CONST.EV_DELETE_PROFILE, email, domain,
+                    `Deleted user ${email}`, EV_CONST.WARN);
                 cb(null);
             });
         }, function(err) {

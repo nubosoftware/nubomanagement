@@ -6,6 +6,8 @@ var sessionModule = require('../session.js');
 var Session = sessionModule.Session;
 var setting = require('../settings.js');
 var util = require('util');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 function loadAdminParamsFromSession(req, res, callback) {
     setting.loadAdminParamsFromSession(req, res, callback);
@@ -99,6 +101,8 @@ async function deleteDevice(req,res) {
             }
         });
 
+        eventLog.logAdminEvent(adminLogin, EV_CONST.EV_DELETE_DEVICE, email, maindomain,
+            `Deleted device ${imei} of user ${email}`, EV_CONST.WARN);
 
         res.send({
             status : Common.STATUS_OK,
@@ -166,12 +170,14 @@ function activateDevice(req, res, next) {
             }
         }
 
-        checkIfDeviceIsInDB(res, email, imei, activate);
+        var adminEmail = (login && typeof login.getEmail === 'function') ? login.getEmail() : null;
+        var maindomain = (login && login.loginParams) ? login.loginParams.mainDomain : null;
+        checkIfDeviceIsInDB(res, email, imei, activate, adminEmail, maindomain);
 
     });
 }
 
-function checkIfDeviceIsInDB(res, email, imei, activate) {
+function checkIfDeviceIsInDB(res, email, imei, activate, adminEmail, maindomain) {
 
     // before activate profile, check if he's found in database
     Common.db.UserDevices.findAll({
@@ -199,13 +205,13 @@ function checkIfDeviceIsInDB(res, email, imei, activate) {
             return;
 
         } else {
-            activateDeviceToDB(res, email, imei, activate);
+            activateDeviceToDB(res, email, imei, activate, adminEmail, maindomain);
         }
     });
 
 }
 
-function activateDeviceToDB(res, email, imei, activate) {
+function activateDeviceToDB(res, email, imei, activate, adminEmail, maindomain) {
     var msg = "";
 
     // activate the required device
@@ -219,6 +225,8 @@ function activateDeviceToDB(res, email, imei, activate) {
                 imei : imei
             }
         }).then(function() {
+            eventLog.logAdminEvent(adminEmail, EV_CONST.EV_ACTIVATE_DEVICE, email, maindomain,
+                `Enabled device ${imei} of user ${email}`, EV_CONST.INFO);
             res.send({
                 status : '1',
                 message : "activated device successfully"
@@ -245,6 +253,8 @@ function activateDeviceToDB(res, email, imei, activate) {
             }
         }).then(function() {
              addUserDeviceToSuspendList(email, imei);
+             eventLog.logAdminEvent(adminEmail, EV_CONST.EV_DEACTIVATE_DEVICE, email, maindomain,
+                `Disabled device ${imei} of user ${email}`, EV_CONST.WARN);
              res.send({
                 status : '0',
                 message : "deactivated device successfully"

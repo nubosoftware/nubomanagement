@@ -785,6 +785,10 @@ const pluginJsonParser = express.json({ limit: 2000000000 });
             // delete Plugin.plugins[id];
             logger.info(`Plugin deleted: ${id}`);
 
+            eventLog.logAdminEvent(req && req.nubodata && req.nubodata.adminLogin,
+                eventLog.EV_CONST.EV_PLUGIN_UNINSTALL, null, null,
+                `Uninstalled plugin ${plugin.name || id} (id: ${id})`, eventLog.EV_CONST.WARN);
+
             res.send({
                 status: Common.STATUS_OK,
                 message: "Request was fulfilled",
@@ -910,6 +914,9 @@ const pluginJsonParser = express.json({ limit: 2000000000 });
                 //await plugin.init();
                 await plugin.dbItem.save();
                 Plugin.sendMessage({command: "init", pluginId: id});
+                eventLog.logAdminEvent(req && req.nubodata && req.nubodata.adminLogin,
+                    eventLog.EV_CONST.EV_PLUGIN_START, null, null,
+                    `Started plugin ${plugin.name || id} (id: ${id})`, eventLog.EV_CONST.INFO);
             } else if (!req.params.active && plugin.active) {
                 plugin.active = false;
                 plugin.dbItem.active = 0;
@@ -917,6 +924,9 @@ const pluginJsonParser = express.json({ limit: 2000000000 });
                 Plugin.sendMessage({command: "init", pluginId: id});
                 // await plugin.deinit(true);
                 // Common.redisClient.publish("plugin", `deinit:${this.id}`);
+                eventLog.logAdminEvent(req && req.nubodata && req.nubodata.adminLogin,
+                    eventLog.EV_CONST.EV_PLUGIN_STOP, null, null,
+                    `Stopped plugin ${plugin.name || id} (id: ${id})`, eventLog.EV_CONST.WARN);
             }
 
 
@@ -1048,6 +1058,10 @@ const pluginJsonParser = express.json({ limit: 2000000000 });
                         updatePlugin.name = mainPackage.name;
                         updatePlugin.description = mainPackage.description;
                         // await updatePlugin.init();
+                        eventLog.logAdminEvent(req && req.nubodata && req.nubodata.adminLogin,
+                            eventLog.EV_CONST.EV_PLUGIN_INSTALL, null, null,
+                            `Updated plugin package ${mainPackage.name} to version ${mainPackage.version} (id: ${packageId})`,
+                            eventLog.EV_CONST.INFO);
                     } else {
                         // create db item
                         let dbItem = await Common.db.Plugins.create({
@@ -1061,6 +1075,10 @@ const pluginJsonParser = express.json({ limit: 2000000000 });
                         // let plugin = new Plugin(dbItem);
                         // initialize plugin
                         // await plugin.init();
+                        eventLog.logAdminEvent(req && req.nubodata && req.nubodata.adminLogin,
+                            eventLog.EV_CONST.EV_PLUGIN_INSTALL, null, null,
+                            `Installed plugin ${mainPackage.name} version ${mainPackage.version} (id: ${packageId})`,
+                            eventLog.EV_CONST.INFO);
                     }
                     // send init message to plugin managers
                     Plugin.sendMessage({command: "init", pluginId: packageId});

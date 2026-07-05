@@ -108,6 +108,35 @@ async function logoutAdmin(req,res) {
         });
     }
 }
+
+/**
+ * reportAdminSessionTimeout
+ * Records an audit event when the admin portal detects that its session has expired.
+ * This endpoint lives under /api/auth (excluded from admin-token validation), so it is
+ * reachable by a client whose token has already expired. The admin identity is supplied
+ * by the client from its in-memory state (email/domain), since the server-side session is
+ * already gone by the time the timeout is detected.
+ */
+function reportAdminSessionTimeout(req, res) {
+    try {
+        const email = req.params.email;
+        const domain = req.params.domain || req.params.mainDomain;
+        if (email && domain) {
+            // actor == subject == the admin whose session timed out
+            eventLog.createEvent(EV_CONST.EV_SESSION_TIMEOUT, email, domain,
+                `Admin portal session timed out`, EV_CONST.INFO, null, email);
+        } else {
+            logger.info(`reportAdminSessionTimeout: missing email/domain (email=${email}, domain=${domain})`);
+        }
+    } catch (err) {
+        logger.error(`reportAdminSessionTimeout error: ${err}`);
+    }
+    res.send({
+        status: Common.STATUS_OK,
+        message: "Request was fulfilled"
+    });
+}
+
 async function loginWebAdminAsync(req, res, arg1) {
     // logger.info(`loginWebAdminAsync: ${JSON.stringify(req.params)}`);
     let status = Common.STATUS_ERROR;
@@ -1129,6 +1158,8 @@ var apiAccess = function(req, res,next) {
             adminLoginValidateActivation(req,res);
         } else if (arg1 == "salt") {
             adminLoginGetSalt(req,res);
+        } else if (arg1 == "sessionTimeout") {
+            reportAdminSessionTimeout(req,res);
         } else {
             loginWebAdminAsync(req, res,arg1);
         }

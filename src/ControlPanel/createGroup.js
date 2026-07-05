@@ -6,6 +6,8 @@ var setting = require('../settings.js');
 var async = require('async');
 var addProfilesToGroupModule = require('./addProfilesToGroup.js');
 var ThreadedLogger = require('../ThreadedLogger.js');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 function loadAdminParamsFromSession(req, res, callback) {
     setting.loadAdminParamsFromSession(req, res, callback);
@@ -76,6 +78,8 @@ function createGroup(req, res, next) {
                     status : "1",
                     message : "The group was created successfully"
                 }
+                eventLog.logAdminEvent(login, EV_CONST.EV_CREATE_GROUP, null, domain,
+                    `Created group '${groupName}'`, EV_CONST.INFO);
             }
             res.send(obj);
             logger.logTime("request of createGroup has been completed");

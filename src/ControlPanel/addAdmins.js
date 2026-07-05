@@ -15,6 +15,8 @@ var logger = Common.getLogger(__filename);
 var packageName = Common.controlPanelApp;
 var appName = "Control Panel";
 var StartSession = require('../StartSession.js');
+var eventLog = require('../eventLog.js');
+var EV_CONST = eventLog.EV_CONST;
 
 function loadAdminParamsFromSession(req, res, callback) {
     require('../settings.js').loadAdminParamsFromSession(req, res, callback);
@@ -148,6 +150,8 @@ function addAdmins(req, res, next) {
                 if (err) {
                     callback(err);
                 } else {
+                    eventLog.logAdminEvent(login, EV_CONST.EV_GRANT_ADMIN, email, domain,
+                        `Granted/updated admin permissions for user ${email}: ${permissions || "{}"}`, EV_CONST.WARN);
                     callback(null);
                 }
             });
