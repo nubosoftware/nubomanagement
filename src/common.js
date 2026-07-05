@@ -664,6 +664,12 @@ function parse_configs(parseConfigCB) {
                     if (settings.logLevel && (settings.logLevel !== Common.logLevel)) logger.level = settings.logLevel;
                     // console.log(settings)
                     Common.withService = settings.withService;
+                    // When false (the default), a device activating under a new account
+                    // expires the previous account's activation on that device, so a
+                    // physical device only ever receives push notifications for the
+                    // account currently logged in. Set true to allow multiple accounts to
+                    // stay active on one device (legacy behavior).
+                    Common.allowMultipleUsersPerDevice = (settings.allowMultipleUsersPerDevice === true);
                     callback(null, settings, sysConf);
                 }
             });

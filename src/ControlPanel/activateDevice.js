@@ -101,6 +101,17 @@ async function deleteDevice(req,res) {
             }
         });
 
+        // Remove the matching activation row so the deleted device stops receiving push
+        // notifications. activations.deviceid === user_devices.imei, scoped by account
+        // (email) and domain (mirrors the UserDevices.destroy above).
+        await Common.db.Activation.destroy({
+            where : {
+                deviceid: imei,
+                email,
+                maindomain
+            }
+        });
+
         eventLog.logAdminEvent(adminLogin, EV_CONST.EV_DELETE_DEVICE, email, maindomain,
             `Deleted device ${imei} of user ${email}`, EV_CONST.WARN);
 
