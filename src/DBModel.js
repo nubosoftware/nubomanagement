@@ -11,7 +11,7 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
     var dbMaxIdleTime = options.dbMaxIdleTime ? options.dbMaxIdleTime : 30;
 
     // connect to mySQL
-    var sequelize = new Sequelize(dbname, user, password, {
+    var sequelizeOptions = {
         host: host,
         dialect: "mysql",
         port: port,
@@ -20,7 +20,29 @@ function initSequelize(dbname, user, password, host, port, options, callback,upg
             maxConnections: dbMaxConnections,
             maxIdleTime: dbMaxIdleTime
         }
-    });
+    };
+
+    // During DB upgrades we run legacy DDL against tables that may still carry
+    // historical column defaults such as `time DATETIME NOT NULL DEFAULT
+    // '0000-00-00 00:00:00'` (e.g. events_logs, inherited from when `time` was part
+    // of the primary key). Under MySQL 8's default sql_mode (NO_ZERO_DATE +
+    // STRICT_TRANS_TABLES) any ALTER that rebuilds such a table re-validates those
+    // defaults and aborts with "Invalid default value". Relax the sql_mode on every
+    // upgrade connection so migrations behave like the schema's original server.
+    // This affects only the short-lived upgrade process, never the running app.
+    if (upgradeOnly) {
+        sequelizeOptions.hooks = {
+            afterConnect: function (connection) {
+                return new Promise(function (resolve, reject) {
+                    connection.query("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'", function (err) {
+                        if (err) reject(err); else resolve();
+                    });
+                });
+            }
+        };
+    }
+
+    var sequelize = new Sequelize(dbname, user, password, sequelizeOptions);
 
     // authentication to mySQL
     sequelize.authenticate().then(function(err) {

@@ -10,6 +10,7 @@ var hrTime = process.hrtime()[1];
 var versionsAlreadyCommited = new Array();
 const { QueryTypes } = require('sequelize');
 const Common = require('./common.js');
+const logger = Common.getLogger(__filename);
 
 let appCommands = {
     "3.0.0.1.1" : (cb) => {
@@ -136,8 +137,18 @@ function upgradeTables(callback){
                                     return;
                                 });
                             }).catch(function(err) {
-                                var msg = "Command version " + commandVersion + " failed running on the database " + err;
+                                var errStr = "" + err;
+                                var msg = "Command version " + commandVersion + " failed running on the database " + errStr;
                                 console.log(colors.red(msg));
+                                // A change that is already present (e.g. re-running an ADD COLUMN on a
+                                // site where an earlier version added it) is benign; anything else is a
+                                // real migration failure and must be visible in the log, not just stdout.
+                                var alreadyApplied = /Duplicate column|Duplicate key|already exists|check that (column|the column\/key) exists|Duplicate entry/i.test(errStr);
+                                if (alreadyApplied) {
+                                    logger.info("Migration " + commandVersion + " appears already applied, marking as done: " + errStr);
+                                } else {
+                                    logger.error("Migration " + commandVersion + " FAILED but is being marked as done (it will NOT be retried): " + errStr);
+                                }
                                 // add this anyway to version history
                                 db.Version.create({
                                     version : commandVersion,
