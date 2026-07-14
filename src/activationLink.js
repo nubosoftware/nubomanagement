@@ -92,13 +92,13 @@ function activationLink(req, res, next) {
     }
 
     let row, userObj, userDevice, oldUserDevice, maskedUser,assignedPhoneNumber;
-    let deviceType, email, oldActivationKey, deviceid, pushRegID, firstName, lastName, jobTitle, phoneNumber, imsi, deviceName,maindomain,localNumber;
+    let deviceType, email, oldActivationKey, deviceid, pushRegID, voipRegID, firstName, lastName, jobTitle, phoneNumber, imsi, deviceName,maindomain,localNumber;
 
 
     async.series([
         (cb) => {
             Common.db.Activation.findAll({
-                attributes: ['deviceid', 'activationkey', 'status', 'pushregid', 'email', 'firstname', 'lastname', 'jobtitle', 'devicetype', 'phone_number', 'imsi', 'devicename','resetpasscode_wipe'],
+                attributes: ['deviceid', 'activationkey', 'status', 'pushregid', 'voipregid', 'email', 'firstname', 'lastname', 'jobtitle', 'devicetype', 'phone_number', 'imsi', 'devicename','resetpasscode_wipe'],
                 where: activationWhere,
             }).then(function (results) {
                 if (!results || results == "") {
@@ -135,6 +135,7 @@ function activationLink(req, res, next) {
                 oldActivationKey = row.activationkey != null ? row.activationkey : '';
                 deviceid = row.deviceid != null ? row.deviceid : '';
                 pushRegID = row.pushregid != null ? row.pushregid : '';
+                voipRegID = row.voipregid != null ? row.voipregid : '';
                 firstName = row.firstname != null ? row.firstname : '';
                 lastName = row.lastname != null ? row.lastname : '';
                 jobTitle = row.jobtitle != null ? row.jobtitle : '';
@@ -445,50 +446,46 @@ function activationLink(req, res, next) {
                 });
         },
         (cb) => {
-            // Expire every OTHER activation on the same physical device (deviceid),
-            // regardless of which account (email) it belongs to. A physical device must
-            // have at most one active activation: otherwise a previous account's row keeps
-            // status=1 with the same push token (pushregid) and receives push notifications
-            // on the same device alongside the current account.
-            // cloneActivation (HTML5 client) uses a DIFFERENT deviceid, so keying the
-            // cleanup on deviceid does not disturb it.
-            // Opt-out: set allowMultipleUsersPerDevice=true in Settings.json to restore the
-            // legacy behavior that only expires the same account's prior rows on this device.
-            const where = {
-                deviceid: deviceid,
+            // Expire every OTHER active activation that belongs to the SAME physical
+            // device as the one just activated, so only the account currently logged in
+            // receives push notifications on this device. The device is matched both by
+            // deviceid AND by its push tokens (pushregid/voipregid): the push token is the
+            // actual address a notification is delivered to, and the token-refresh path in
+            // Notifications.js can sync a live token onto a row whose deviceid has since
+            // diverged. Any stale row sharing the deviceid or a live token is expired and
+            // has its tokens cleared so it can never be targeted again on this device.
+            // cloneActivation (HTML5 client) uses a different deviceid/token, so it is not
+            // affected. Opt-out: set allowMultipleUsersPerDevice=true in Settings.json to
+            // only expire the same account's prior rows on this device (legacy behavior).
+            const deviceMatch = [{ deviceid: deviceid }];
+            if (pushRegID && pushRegID !== 'none') {
+                deviceMatch.push({ pushregid: pushRegID });
             }
+            if (voipRegID && voipRegID !== 'none') {
+                deviceMatch.push({ voipregid: voipRegID });
+            }
+            const where = {
+                activationkey: { [Op.ne]: oldActivationKey },
+                status: { [Op.ne]: 2 },
+                [Op.or]: deviceMatch,
+            };
             if (Common.allowMultipleUsersPerDevice) {
                 where.email = email;
             }
-            Common.db.Activation.findAll({
-                attributes: ['deviceid', 'activationkey', 'status', 'pushregid', 'email', 'firstname', 'lastname', 'jobtitle', 'devicetype'],
-                where: where,
-            }).then(function (results) {
-
-                results.forEach(function (row) {
-                    var otherActivationKey = row.activationkey != null ? row.activationkey : '';
-                    if (otherActivationKey != oldActivationKey) {
-                        logger.info(`Disable old activation on the same device: ${deviceid}, email: ${row.email}, activationkey: ${otherActivationKey}`);
-                        // Expire the row and clear its push tokens so it can never be
-                        // targeted for push notifications on this device.
-                        Common.db.Activation.update({
-                            status: 2,
-                            pushregid: null,
-                            voipregid: null
-                        }, {
-                                where: {
-                                    activationkey: otherActivationKey
-                                }
-                            }).then(function () {
-
-                            }).catch(function (err) {
-                                logger.error(`Failed to expire old activation ${otherActivationKey}`, err);
-                            });
-                    }
-                });
+            Common.db.Activation.update({
+                status: 2,
+                pushregid: null,
+                voipregid: null
+            }, {
+                where: where
+            }).then(function (result) {
+                const affected = Array.isArray(result) ? result[0] : result;
+                if (affected) {
+                    logger.info(`Expired ${affected} old activation(s) on device ${deviceid} for a different login (current email: ${email})`);
+                }
                 cb();
             }).catch(function (err) {
-                logger.info("ERROR: Cannot get Activations of deviceid: " + deviceid);
+                logger.error(`Cannot expire old activations for deviceid ${deviceid}`, err);
                 cb();
             });
         },
