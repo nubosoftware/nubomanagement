@@ -336,6 +336,15 @@ function frontendAuthFilter(req, excludeList, callback) {
         return;
     }
 
+    let excRegEx =  excludeList['FRONTEND_AUTH_REGEX'];
+    if (excRegEx) {
+        let m = reqPath.match(excRegEx);
+        if (m) {
+            callback(null);
+            return;
+        }
+    }
+
     // pass validation if already authneticated dor web admin
     if (req.nubodata.adminLogin) {
         callback(null);

@@ -205,6 +205,11 @@ var excludeList = {
         '/receiveSMS': 1,
     },
     'NOLOGIN_REGEX': /^\/appstore\/|^\/html\/|^\/api\/plugin\/|^\/client\//,
+    // Plugin public routes authenticate their callers themselves (api keys,
+    // signed tokens), and are called directly by internal services (platform)
+    // that hold no frontend credentials - so they are exempt from FRONTEND_AUTH
+    // as well, not only from the identity filters above.
+    'FRONTEND_AUTH_REGEX': /^\/api\/plugin\//,
     'PLATUID': {
         '/createOrReturnUserAndDomain': 1,
         '/createDomainForUser': 1,
