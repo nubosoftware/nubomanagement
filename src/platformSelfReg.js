@@ -202,6 +202,8 @@ async function removeTTLExpired() {
     try {
         //logger.info('removeTTLExpired');
         let arr = await redisSmembers(platformRegs);
+        // drop version records of platforms that are no longer registered (SysAid 13694)
+        await componentVersionManager.maintainVersions('platform-server', arr);
         for (let i = 0; i < arr.length; i++) {
             let platid = arr[i];
             if (!await redisExists(`${regPrefix}_${platid}`)) {
