@@ -428,8 +428,11 @@ function removeTTLExpiredGWs(callback) {
     Common.redisClient.zrange('gateways', 0, -1, function(err, gateways) {
         if (err) {
             logger.error("removeTTLExpiredGWs: " + err);
-            return;
+            return callback(err);
         }
+
+        // drop version records of gateways that are no longer registered (SysAid 13694)
+        componentVersionManager.maintainVersions('gateway', gateways);
 
         async.eachLimit(gateways, 100, function(gateway, callback) {
 

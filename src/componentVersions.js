@@ -1,6 +1,6 @@
 // componentVersions.js
 
-const { QueryTypes } = require('sequelize');
+const { QueryTypes, Op } = require('sequelize');
 var Common = require('./common.js');
 var logger = Common.getLogger(__filename);
 
@@ -59,18 +59,37 @@ class ComponentVersionManager {
         }
     }
 
-    async maintainVersions(componentName, validIndexes) {
+    /**
+     * Removes the records of a component whose index is not in validIndexes (the indexes currently
+     * registered in redis). Catches records orphaned when their redis registration disappeared
+     * without a clean unregister (redis restart/flush, expiry missed while management was down).
+     * Records updated during the last graceMs are kept, so a registration in progress is not removed.
+     * @param {string} componentName - The name of the component.
+     * @param {Array<number|string>} validIndexes - The indexes that are currently registered.
+     * @param {number} [graceMs=60000] - Keep records updated within this window.
+     * @returns {Promise<{success: boolean, deleted?: number, error?: any}>} The result of the operation.
+     */
+    async maintainVersions(componentName, validIndexes, graceMs = 60000) {
         try {
-            const result = await Common.db.ComponentVersions.destroy({
-                where: {
-                    componentName,
-                    componentIndex: {
-                        [Sequelize.Op.notIn]: validIndexes
-                    }
+            const where = {
+                componentName,
+                updatedAt: {
+                    [Op.lt]: new Date(Date.now() - graceMs)
                 }
-            });
-            return { success: true, deleted: result };
+            };
+            const indexes = (validIndexes || []).map(Number).filter(Number.isInteger);
+            if (indexes.length > 0) {
+                where.componentIndex = {
+                    [Op.notIn]: indexes
+                };
+            }
+            const deleted = await Common.db.ComponentVersions.destroy({ where });
+            if (deleted > 0) {
+                logger.info(`ComponentVersionManager. maintainVersions: removed ${deleted} stale ${componentName} record(s)`);
+            }
+            return { success: true, deleted };
         } catch (error) {
+            logger.info(`ComponentVersionManager. maintainVersions: error: ${error}`);
             return { success: false, error };
         }
     }

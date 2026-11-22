@@ -207,8 +207,11 @@ function unregisterTTLExpiredFrontEnds(callback) {
     Common.redisClient.smembers('frontends', function(err, frontends) {
         if (err) {
             logger.error("unregisterTTLExpiredFrontEnds: " + err);
-            return;
+            return callback(err);
         }
+
+        // drop version records of frontends that are no longer registered (SysAid 13694)
+        componentVersionManager.maintainVersions('frontend', frontends);
 
         if (!frontends.length) {
             return callback(null);
